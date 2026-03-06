@@ -1,0 +1,43 @@
+security:
+
+    password_hashers:
+        App\Entity\User:
+            algorithm: auto
+
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+
+        # كل auth endpoints مفتوحة
+        auth:
+            pattern: ^/api/auth
+            stateless: true
+            security: false
+
+        # باقي الـ API يحتاج JWT
+        api:
+            pattern: ^/api
+            stateless: true
+            jwt: ~
+
+    access_control:
+        # Login & Register مفتوحين
+        - { path: ^/api/auth, roles: PUBLIC_ACCESS }
+
+        # Public trips
+        - { path: ^/api/trips$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/trips/\d+, roles: PUBLIC_ACCESS }
+
+        # Public categories and destinations
+        - { path: ^/api/categories, roles: PUBLIC_ACCESS }
+        - { path: ^/api/destinations, roles: PUBLIC_ACCESS }
+
+        # باقي الـ API يحتاج JWT
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }

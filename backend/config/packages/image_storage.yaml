@@ -1,0 +1,4 @@
+services:
+    App\Service\ImageStorageService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'

@@ -1,0 +1,4 @@
+framework:
+    router:
+        resource: '%kernel.project_dir%/src/Controller/'
+        type: attribute
