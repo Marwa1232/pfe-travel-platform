@@ -73,10 +73,31 @@ const Navbar: React.FC = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const menuItems = [
-    { label: 'Voyages', path: '/trips', icon: <FlightTakeoffIcon /> },
-    { label: 'À propos', path: '/about', icon: <FlightTakeoffIcon /> },
-    { label: 'Contact', path: '/contact', icon: <FlightTakeoffIcon /> },
+  const handleMenuItemClick = (item: typeof menuItems[0]) => {
+    if (item.scrollTo) {
+      if (location.pathname !== '/') {
+        navigate('/');
+        setTimeout(() => {
+          const element = document.getElementById(item.scrollTo);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      } else {
+        const element = document.getElementById(item.scrollTo);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    } else {
+      navigate(item.path);
+    }
+  };
+
+    const menuItems = [
+    { label: 'Voyages', path: '/trips', icon: <FlightTakeoffIcon />, key: 'voyages' },
+    { label: 'À propos', path: '/', icon: <FlightTakeoffIcon />, key: 'about' },
+    { label: 'Contact', path: '/', icon: <FlightTakeoffIcon />, scrollTo: 'footer', key: 'contact' },
   ];
 
   const userMenuItems = [
@@ -116,8 +137,15 @@ const Navbar: React.FC = () => {
         {menuItems.map((item) => (
           <ListItem
             button
-            key={item.path}
-            onClick={() => { navigate(item.path); handleDrawerToggle(); }}
+            key={item.key}
+            onClick={() => { 
+              if (item.scrollTo) {
+                handleMenuItemClick(item);
+              } else {
+                navigate(item.path); 
+              }
+              handleDrawerToggle(); 
+            }}
             sx={{
               '&:hover': { backgroundColor: 'rgba(0, 191, 165, 0.08)' },
               py: 1.5,
@@ -332,9 +360,13 @@ const Navbar: React.FC = () => {
             <Box sx={{ display: 'flex', gap: 1, flexGrow: 1 }}>
               {menuItems.map((item) => (
                 <Button
-                  key={item.path}
+                  key={item.key}
                   component={Link}
-                  to={item.path}
+                  to={item.scrollTo ? '#' + item.scrollTo : item.path}
+                  onClick={item.scrollTo ? (e) => {
+                    e.preventDefault();
+                    handleMenuItemClick(item);
+                  } : undefined}
                   sx={{
                     color: location.pathname === '/' && !scrolled 
                       ? 'white' 

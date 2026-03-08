@@ -39,5 +39,8 @@ security:
         - { path: ^/api/categories, roles: PUBLIC_ACCESS }
         - { path: ^/api/destinations, roles: PUBLIC_ACCESS }
 
+        # AI Search is public
+        - { path: ^/api/ai/search, roles: PUBLIC_ACCESS }
+
         # باقي الـ API يحتاج JWT
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }

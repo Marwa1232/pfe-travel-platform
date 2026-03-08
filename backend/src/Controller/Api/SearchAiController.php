@@ -27,6 +27,16 @@ class SearchAiController extends AbstractController
             return new JsonResponse(['error' => 'Query is empty'], 400);
         }
 
+        // Check if OpenAI API key is configured
+        $apiKey = $_ENV['OPENAI_API_KEY'] ?? '';
+        if (empty($apiKey)) {
+            return new JsonResponse([
+                'error' => 'AI search is not configured. Please set OPENAI_API_KEY in .env file.',
+                'available_destinations' => [],
+                'available_categories' => []
+            ], 503);
+        }
+
         try {
 
             $response = $this->client->request('POST', 'https://api.openai.com/v1/chat/completions', [
