@@ -21,7 +21,11 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  IconButton,
+  Stack,
 } from '@mui/material';
+import { Delete, PictureAsPdf } from '@mui/icons-material';
+import { jsPDF } from 'jspdf';
 import { bookingAPI } from '../services/api';
 import { RootState } from '../store/index';
 
@@ -56,6 +60,110 @@ const BookingHistory: React.FC = () => {
     }
   };
 
+  const handleDelete = async (bookingId: number) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette réservation?')) {
+      return;
+    }
+    try {
+      await bookingAPI.delete(bookingId);
+      loadBookings();
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+    }
+  };
+
+  const handleExportPdf = (booking: any) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header - Blue background
+    doc.setFillColor(41, 128, 185);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RÉSERVATION', pageWidth / 2, 20, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text(`#${booking.id}`, pageWidth / 2, 32, { align: 'center' });
+    
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+    let y = 55;
+    
+    // Trip Info
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Informations du voyage', 15, y);
+    y += 10;
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Voyage: ${booking.trip?.title || '-'}`, 15, y);
+    y += 7;
+    doc.text(`Destinations: ${booking.trip?.destinations?.map((d: any) => d.name).join(', ') || '-'}`, 15, y);
+    y += 15;
+    
+    // Client Info
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Informations du client', 15, y);
+    y += 10;
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    const clientName = booking.user ? `${booking.user.first_name || ''} ${booking.user.last_name || ''}`.trim() : '-';
+    doc.text(`Nom: ${clientName}`, 15, y);
+    y += 7;
+    doc.text(`Email: ${booking.user?.email || '-'}`, 15, y);
+    y += 15;
+    
+    // Booking Details
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Détails de la réservation', 15, y);
+    y += 10;
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    const startDate = booking.tripSession?.start_date 
+      ? new Date(booking.tripSession.start_date).toLocaleDateString('fr-FR')
+      : '-';
+    doc.text(`Date de départ: ${startDate}`, 15, y);
+    y += 7;
+    doc.text(`Nombre de voyageurs: ${booking.num_travelers}`, 15, y);
+    y += 15;
+    
+    // Price - Highlighted
+    doc.setFillColor(236, 240, 241);
+    doc.rect(15, y - 5, pageWidth - 30, 20, 'F');
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Prix total: ${booking.total_price} ${booking.currency}`, 20, y + 5);
+    y += 20;
+    
+    // Status
+    const statusColors: { [key: string]: number[] } = {
+      CONFIRMED: [39, 174, 96],
+      PENDING: [241, 196, 15],
+      CANCELLED: [231, 76, 60],
+    };
+    const statusColor = statusColors[booking.status] || [128, 128, 128];
+    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.roundedRect(15, y, 60, 10, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.text(getStatusLabel(booking.status), 20, y + 7);
+    
+    // Footer
+    doc.setTextColor(128, 128, 128);
+    doc.setFontSize(9);
+    doc.text(`Document généré le ${new Date().toLocaleDateString('fr-FR')} - TripBooking`, pageWidth / 2, 280, { align: 'center' });
+    
+    // Save PDF
+    doc.save(`reservation_${booking.id}.pdf`);
+  };
+
   const handleCancel = (booking: any) => {
     setCancelDialog({ open: true, booking });
   };
@@ -79,7 +187,7 @@ const BookingHistory: React.FC = () => {
     switch (status) {
       case 'CONFIRMED':
         return 'success';
-      case 'PENDING_PAYMENT':
+      case 'PENDING':
         return 'warning';
       case 'CANCELLED':
         return 'error';
@@ -93,7 +201,7 @@ const BookingHistory: React.FC = () => {
   const getStatusLabel = (status: string) => {
     const labels: { [key: string]: string } = {
       CONFIRMED: 'Confirmée',
-      PENDING_PAYMENT: 'En attente de paiement',
+      PENDING: 'En attente de confirmation',
       CANCELLED: 'Annulée',
       REFUNDED: 'Remboursée',
     };
@@ -168,22 +276,22 @@ const BookingHistory: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell>
-                    <Button
-                      size="small"
-                      onClick={() => navigate(`/bookings/${booking.id}`)}
-                      sx={{ mr: 1 }}
-                    >
-                      Détails
-                    </Button>
-                    {booking.status === 'CONFIRMED' && (
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => handleCancel(booking)}
+                    <Stack direction="row" spacing={1}>
+                      <IconButton 
+                        color="primary" 
+                        onClick={() => handleExportPdf(booking)}
+                        title="Exporter PDF"
                       >
-                        Annuler
-                      </Button>
-                    )}
+                        <PictureAsPdf />
+                      </IconButton>
+                      <IconButton 
+                        color="error" 
+                        onClick={() => handleDelete(booking.id)}
+                        title="Supprimer"
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))}

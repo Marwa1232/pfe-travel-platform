@@ -16,6 +16,21 @@ class BookingRepository extends ServiceEntityRepository
         parent::__construct($registry, Booking::class);
     }
 
+    /**
+     * Count confirmed bookings for a session
+     */
+    public function countConfirmedForSession(int $sessionId): int
+    {
+        return $this->createQueryBuilder('b')
+            ->select('COUNT(b)')
+            ->andWhere('b.tripSession = :sessionId')
+            ->andWhere('b.status = :status')
+            ->setParameter('sessionId', $sessionId)
+            ->setParameter('status', 'CONFIRMED')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
 //    /**
 //     * @return Booking[] Returns an array of Booking objects
 //     */

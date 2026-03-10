@@ -45,7 +45,8 @@ const OrganizerTrips: React.FC = () => {
   const loadTrips = async () => {
     try {
       setLoading(true);
-      const response = await tripAPI.list({ organizer: true });
+      // Backend now filters by organizer automatically
+      const response = await tripAPI.list();
       setTrips(response.data);
     } catch (error) {
       console.error('Error loading trips:', error);
@@ -61,8 +62,11 @@ const OrganizerTrips: React.FC = () => {
       await tripAPI.delete(deleteDialog.trip.id);
       setDeleteDialog({ open: false, trip: null });
       loadTrips();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting trip:', error);
+      if (error.response?.data) {
+        console.error('Server response:', error.response.data);
+      }
     }
   };
 

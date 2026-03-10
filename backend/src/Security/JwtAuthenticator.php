@@ -19,6 +19,14 @@ use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPasspor
 
 class JwtAuthenticator extends AbstractAuthenticator
 {
+    private array $publicPaths = [
+        '/api/auth/login',
+        '/api/auth/register',
+        '/api/categories',
+        '/api/destinations',
+        '/api/ai/search',
+    ];
+
     public function __construct(
         private JwtService $jwtService,
         private EntityManagerInterface $em
@@ -29,8 +37,17 @@ class JwtAuthenticator extends AbstractAuthenticator
         if ($request->getMethod() === 'OPTIONS') {
             return false;
         }
+        
+        $path = $request->getPathInfo();
+        
+        // Check if this is a public path
+        foreach ($this->publicPaths as $publicPath) {
+            if (str_starts_with($path, $publicPath)) {
+                return false;
+            }
+        }
     
-        return str_starts_with($request->getPathInfo(), '/api');
+        return str_starts_with($path, '/api');
     }
 
     public function authenticate(Request $request): Passport

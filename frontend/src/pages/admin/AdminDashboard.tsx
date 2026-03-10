@@ -35,8 +35,16 @@ import {
   Alert,
   Tooltip,
   Badge,
+  Stack,
+  Fade,
+  Zoom,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  InputAdornment,
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
+import { styled, alpha, keyframes } from '@mui/material/styles';
 import {
   People,
   FlightTakeoff,
@@ -52,23 +60,221 @@ import {
   Security,
   Speed,
   Storage,
-  Lan,
   MoreVert,
   Block,
-  VerifiedUser,
   Cancel,
-  Sync,
   AccountBalance,
   Receipt,
-  Timeline,
-  Insights,
-  SystemUpdateAlt,
   Shield,
-  BugReport,
   PendingActions,
+  Add,
+  Edit,
+  Delete,
+  CloudUpload,
+  Place,
+  EmojiEvents,
+  AutoAwesome,
+  ShowChart,
+  Insights,
+  Timeline as TimelineIcon,
+  Search,
+  RemoveRedEye,
+  Payment,
 } from '@mui/icons-material';
 import { RootState } from '../../store';
 import { adminAPI } from '../../services/api';
+
+// Animations
+const float = keyframes`
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+`;
+
+const pulse = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+`;
+
+const shine = keyframes`
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+`;
+
+// Styled components modernes
+const ModernCard = styled(Card)(({ theme }) => ({
+  background: 'rgba(255, 255, 255, 0.9)',
+  backdropFilter: 'blur(20px)',
+  border: '1px solid rgba(255, 255, 255, 0.2)',
+  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 191, 165, 0.1)',
+  borderRadius: theme.spacing(3),
+  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+  position: 'relative',
+  overflow: 'hidden',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    background: 'linear-gradient(90deg, #00BFA5, #0D47A1, #00BFA5)',
+    animation: `${shine} 3s infinite`,
+    backgroundSize: '200% 100%',
+  },
+  '&:hover': {
+    transform: 'translateY(-8px) scale(1.02)',
+    boxShadow: '0 30px 60px rgba(0, 191, 165, 0.2), 0 15px 30px rgba(13, 71, 161, 0.15)',
+  },
+}));
+
+const GradientCard = styled(Card)(({ theme }) => ({
+  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  color: 'white',
+  position: 'relative',
+  overflow: 'hidden',
+  borderRadius: theme.spacing(3),
+  boxShadow: '0 20px 40px rgba(102, 126, 234, 0.3)',
+  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 200,
+    height: 200,
+    borderRadius: '50%',
+    background: 'rgba(255,255,255,0.1)',
+    animation: `${float} 6s ease-in-out infinite`,
+  },
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    bottom: -50,
+    left: -50,
+    width: 150,
+    height: 150,
+    borderRadius: '50%',
+    background: 'rgba(255,255,255,0.1)',
+    animation: `${float} 8s ease-in-out infinite reverse`,
+  },
+  '&:hover': {
+    transform: 'translateY(-8px) scale(1.02)',
+    boxShadow: '0 30px 60px rgba(102, 126, 234, 0.4)',
+  },
+}));
+
+const GlassPaper = styled(Paper)(({ theme }) => ({
+  background: 'rgba(255, 255, 255, 0.8)',
+  backdropFilter: 'blur(20px)',
+  border: '1px solid rgba(255, 255, 255, 0.2)',
+  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 191, 165, 0.1)',
+  borderRadius: theme.spacing(3),
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    boxShadow: '0 25px 50px rgba(0, 191, 165, 0.15)',
+  },
+}));
+
+const StatValue = styled(Typography)(({ theme }) => ({
+  fontWeight: 800,
+  fontSize: '2.5rem',
+  background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  animation: 'countUp 1s ease-out',
+  '@keyframes countUp': {
+    '0%': { opacity: 0, transform: 'translateY(20px)' },
+    '100%': { opacity: 1, transform: 'translateY(0)' },
+  },
+}));
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontWeight: 600,
+  '&.MuiTableCell-head': {
+    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+    fontWeight: 700,
+    fontSize: '0.9rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+}));
+
+const StatusChip = styled(Chip)(({ theme }) => ({
+  borderRadius: theme.spacing(1.5),
+  fontWeight: 700,
+  fontSize: '0.8rem',
+  '&.approved': {
+    backgroundColor: alpha(theme.palette.success.main, 0.1),
+    color: theme.palette.success.main,
+    border: `1px solid ${alpha(theme.palette.success.main, 0.3)}`,
+  },
+  '&.pending': {
+    backgroundColor: alpha(theme.palette.warning.main, 0.1),
+    color: theme.palette.warning.main,
+    border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
+  },
+  '&.rejected': {
+    backgroundColor: alpha(theme.palette.error.main, 0.1),
+    color: theme.palette.error.main,
+    border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+  },
+}));
+
+const StyledTab = styled(Tab)(({ theme }) => ({
+  textTransform: 'none',
+  fontWeight: 600,
+  fontSize: '1rem',
+  minHeight: 64,
+  transition: 'all 0.3s ease',
+  '&.Mui-selected': {
+    color: theme.palette.primary.main,
+    background: alpha(theme.palette.primary.main, 0.05),
+  },
+  '&:hover': {
+    background: alpha(theme.palette.primary.main, 0.02),
+  },
+}));
+
+const BackgroundBox = styled(Box)({
+  minHeight: '100vh',
+  background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+  position: 'relative',
+  overflow: 'hidden',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 600,
+    height: 600,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(0,191,165,0.1) 0%, transparent 70%)',
+    animation: `${float} 20s ease-in-out infinite`,
+  },
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    bottom: -100,
+    left: -100,
+    width: 500,
+    height: 500,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(13,71,161,0.1) 0%, transparent 70%)',
+    animation: `${float} 15s ease-in-out infinite reverse`,
+  },
+});
+
+const IconWrapper = styled(Box)(({ theme }) => ({
+  width: 60,
+  height: 60,
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(255, 255, 255, 0.2)',
+  backdropFilter: 'blur(10px)',
+  animation: `${pulse} 2s ease-in-out infinite`,
+}));
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -79,8 +285,18 @@ interface TabPanelProps {
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
   return (
-    <div role="tabpanel" hidden={value !== index} {...other}>
-      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`admin-tabpanel-${index}`}
+      aria-labelledby={`admin-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Fade in timeout={500}>
+          <Box sx={{ pt: 3 }}>{children}</Box>
+        </Fade>
+      )}
     </div>
   );
 }
@@ -114,6 +330,7 @@ interface FinancialData {
   organizerPayouts: number;
   pendingPayouts: number;
   completedPayouts: number;
+  monthlyCommission?: { month: string; commission: number }[];
 }
 
 interface SystemHealth {
@@ -122,6 +339,7 @@ interface SystemHealth {
   counts: { users: number; trips: number; bookings: number; organizers: number };
   pending: { organizers: number; bookings: number };
   timestamp: string;
+  services?: { name: string; status: 'operational' | 'degraded' | 'down'; latency: number }[];
 }
 
 const AdminDashboard: React.FC = () => {
@@ -131,6 +349,9 @@ const AdminDashboard: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedOrganizer, setSelectedOrganizer] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
@@ -154,7 +375,7 @@ const AdminDashboard: React.FC = () => {
   const [destinations, setDestinations] = useState<any[]>([]);
   
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
-  const [newDestination, setNewDestination] = useState({ name: '', country: '', region: '' });
+  const [newDestination, setNewDestination] = useState({ name: '', country: '', region: '', image: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<'category' | 'destination'>('category');
 
@@ -277,13 +498,13 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleBlockOrganizer = async (id: number) => {
+  const handleRejectOrganizer = async (id: number) => {
     try {
       await adminAPI.blockOrganizer(id);
       loadOrganizers();
       loadStats();
     } catch (error) {
-      console.error('Error blocking organizer:', error);
+      console.error('Error rejecting organizer:', error);
     }
   };
 
@@ -310,7 +531,7 @@ const AdminDashboard: React.FC = () => {
   const handleCreateDestination = async () => {
     try {
       await adminAPI.createDestination(newDestination);
-      setNewDestination({ name: '', country: '', region: '' });
+      setNewDestination({ name: '', country: '', region: '', image: '' });
       loadDestinations();
       setDialogOpen(false);
     } catch (error) {
@@ -323,11 +544,44 @@ const AdminDashboard: React.FC = () => {
     setDialogOpen(true);
   };
 
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, organizer: any) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedOrganizer(organizer);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedOrganizer(null);
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setNewDestination({ ...newDestination, image: imageUrl });
+    }
+  };
+
+  const filteredOrganizers = organizers.filter(org => {
+    return org.agency_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           org.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const filteredUsers = users.filter(u => {
+    return u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           `${u.first_name} ${u.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ mt: 4, textAlign: 'center', minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress size={60} />
-      </Container>
+      <BackgroundBox>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+          <ModernCard sx={{ p: 4, textAlign: 'center' }}>
+            <CircularProgress size={60} thickness={4} sx={{ color: '#00BFA5', mb: 2 }} />
+            <Typography variant="h5" fontWeight={600}>Chargement du tableau de bord...</Typography>
+          </ModernCard>
+        </Box>
+      </BackgroundBox>
     );
   }
 
@@ -335,767 +589,1085 @@ const AdminDashboard: React.FC = () => {
   const approvedOrganizers = organizers.filter(o => o.status === 'APPROVED');
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" component="h1" fontWeight="bold">
-            🎯 Control Tower
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Administration de la plateforme TripBooking
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={refreshing ? <CircularProgress size={20} color="inherit" /> : <Refresh />}
-          onClick={refreshData}
-          disabled={refreshing}
-        >
-          Actualiser
-        </Button>
-      </Box>
-
-      {/* KPIs Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="h3" fontWeight="bold">{stats.totalUsers}</Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>Utilisateurs</Typography>
-                </Box>
-                <People sx={{ fontSize: 50, opacity: 0.5 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="h3" fontWeight="bold">{stats.totalOrganizers}</Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>Organisateurs</Typography>
-                </Box>
-                <Business sx={{ fontSize: 50, opacity: 0.5 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="h3" fontWeight="bold">{stats.totalTrips}</Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>Voyages</Typography>
-                </Box>
-                <FlightTakeoff sx={{ fontSize: 50, opacity: 0.5 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="h5" fontWeight="bold">{(stats.totalRevenue || 0).toFixed(2)} TND</Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>Revenus Totaux</Typography>
-                </Box>
-                <AttachMoney sx={{ fontSize: 50, opacity: 0.5 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Secondary KPIs */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <CheckCircle color="success" sx={{ fontSize: 30, mb: 1 }} />
-              <Typography variant="h5" fontWeight="bold">{stats.completedBookings}</Typography>
-              <Typography variant="body2" color="text.secondary">Réservations confirmées</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Warning color="warning" sx={{ fontSize: 30, mb: 1 }} />
-              <Typography variant="h5" fontWeight="bold">{stats.pendingBookings}</Typography>
-              <Typography variant="body2" color="text.secondary">En attente</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <TrendingUp color="primary" sx={{ fontSize: 30, mb: 1 }} />
-              <Typography variant="h5" fontWeight="bold">{stats.conversionRate}%</Typography>
-              <Typography variant="body2" color="text.secondary">Taux de conversion</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Badge badgeContent={stats.pendingOrganizers} color="error">
-                <PendingActions sx={{ fontSize: 30, color: 'warning.main' }} />
-              </Badge>
-              <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>{stats.pendingOrganizers}</Typography>
-              <Typography variant="body2" color="text.secondary">Organisateurs en attente</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Tabs */}
-      <Paper sx={{ mb: 3 }}>
-        <Tabs
-          value={tabValue}
-          onChange={(_, newValue) => setTabValue(newValue)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ borderBottom: 1, borderColor: 'divider' }}
-        >
-          <Tab icon={<Shield />} label="Modération" />
-          <Tab icon={<Insights />} label="Insights Stratégiques" />
-          <Tab icon={<AccountBalance />} label="Financier" />
-          <Tab icon={<Category />} label="Contenu" />
-          <Tab icon={<Speed />} label="Santé Système" />
-        </Tabs>
-      </Paper>
-
-      {/* Tab Panels */}
-      <TabPanel value={tabValue} index={0}>
-        {/* Moderation & Validation */}
-        <Grid container spacing={3}>
-          {/* Pending Organizers */}
-          <Grid xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Badge badgeContent={pendingOrganizers.length} color="error">
-                  <Security />
-                </Badge>
-                Demandes d'organisation en attente
-              </Typography>
-              {pendingOrganizers.length === 0 ? (
-                <Alert severity="success">Aucune demande en attente</Alert>
-              ) : (
-                <List>
-                  {pendingOrganizers.map((organizer) => (
-                    <React.Fragment key={organizer.id}>
-                      <ListItem
-                        secondaryAction={
-                          <Box>
-                            <IconButton color="success" onClick={() => handleApproveOrganizer(organizer.id)}>
-                              <CheckCircle />
-                            </IconButton>
-                            <IconButton color="error" onClick={() => handleBlockOrganizer(organizer.id)}>
-                              <Block />
-                            </IconButton>
-                          </Box>
-                        }
-                      >
-                        <ListItemAvatar>
-                          <Avatar sx={{ bgcolor: 'warning.main' }}>
-                            {organizer.agency_name?.[0] || 'O'}
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={organizer.agency_name}
-                          secondary={`${organizer.user?.first_name} ${organizer.user?.last_name} - ${organizer.user?.email}`}
-                        />
-                      </ListItem>
-                      <Divider />
-                    </React.Fragment>
-                  ))}
-                </List>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* User Management */}
-          <Grid xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <People /> Gestion des utilisateurs
-              </Typography>
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Nom</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Statut</TableCell>
-                      <TableCell>Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {users.slice(0, 5).map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>{user.first_name} {user.last_name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <Chip
-                            size="small"
-                            color={user.is_active ? 'success' : 'error'}
-                            label={user.is_active ? 'Actif' : 'Inactif'}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="small"
-                            color={user.is_active ? 'error' : 'success'}
-                            onClick={() => handleToggleUserStatus(user.id, user.is_active)}
-                          >
-                            {user.is_active ? 'Désactiver' : 'Activer'}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <Button fullWidth sx={{ mt: 2 }} onClick={() => navigate('/admin/users')}>
-                Voir tous les utilisateurs
-              </Button>
-            </Paper>
-          </Grid>
-
-          {/* Approved Organizers */}
-          <Grid xs={12}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Organisateurs approuvés ({approvedOrganizers.length})
-              </Typography>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Agence</TableCell>
-                      <TableCell>Responsable</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Pays</TableCell>
-                      <TableCell>Statut</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {approvedOrganizers.slice(0, 10).map((organizer) => (
-                      <TableRow key={organizer.id}>
-                        <TableCell>{organizer.agency_name}</TableCell>
-                        <TableCell>{organizer.user?.first_name} {organizer.user?.last_name}</TableCell>
-                        <TableCell>{organizer.user?.email}</TableCell>
-                        <TableCell>{organizer.country}</TableCell>
-                        <TableCell>
-                          <Chip
-                            size="small"
-                            color={organizer.status === 'APPROVED' ? 'success' : 'default'}
-                            label={organizer.status}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <IconButton color="error" onClick={() => handleBlockOrganizer(organizer.id)}>
-                            <Block />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          </Grid>
-        </Grid>
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={1}>
-        {/* Strategic Insights */}
-        <Grid container spacing={3}>
-          {/* Monthly Trends */}
-          <Grid xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                📈 Tendances mensuelles (6 derniers mois)
-              </Typography>
-              {detailedStats && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary">Nouveaux utilisateurs</Typography>
-                  {detailedStats.monthlyUsers.map((item, idx) => (
-                    <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2" sx={{ width: 60 }}>{item.month}</Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={(item.count / Math.max(...detailedStats.monthlyUsers.map(u => u.count), 1)) * 100}
-                        sx={{ flex: 1, height: 8, borderRadius: 4 }}
-                      />
-                      <Typography variant="body2" sx={{ ml: 1, width: 30 }}>{item.count}</Typography>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* Bookings by Month */}
-          <Grid xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                🎫 Réservations mensuelles
-              </Typography>
-              {detailedStats && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary">Réservations</Typography>
-                  {detailedStats.monthlyBookings.map((item, idx) => (
-                    <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2" sx={{ width: 60 }}>{item.month}</Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        color="secondary"
-                        value={(item.count / Math.max(...detailedStats.monthlyBookings.map(b => b.count), 1)) * 100}
-                        sx={{ flex: 1, height: 8, borderRadius: 4 }}
-                      />
-                      <Typography variant="body2" sx={{ ml: 1, width: 30 }}>{item.count}</Typography>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* Top Destinations */}
-          <Grid xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                🌍 Destinations populaires
-              </Typography>
-              {detailedStats && detailedStats.topDestinations.length > 0 ? (
-                <List>
-                  {detailedStats.topDestinations.map((dest, idx) => (
-                    <ListItem key={idx}>
-                      <ListItemAvatar>
-                        <Avatar sx={{ bgcolor: idx === 0 ? 'gold' : 'grey.300' }}>
-                          {idx + 1}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={dest.destination}
-                        secondary={`${dest.country} - ${dest.tripCount} voyages`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              ) : (
-                <Typography color="text.secondary">Aucune destination</Typography>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* Top Organizers */}
-          <Grid xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                🏆 Meilleurs organisateurs
-              </Typography>
-              {detailedStats && detailedStats.topOrganizers.length > 0 ? (
-                <List>
-                  {detailedStats.topOrganizers.map((org, idx) => (
-                    <ListItem key={idx}>
-                      <ListItemAvatar>
-                        <Avatar sx={{ bgcolor: idx === 0 ? 'gold' : 'grey.300' }}>
-                          {idx + 1}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={org.organizer}
-                        secondary={`${org.bookings} réservations - ${org.revenue.toFixed(2)} TND`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              ) : (
-                <Typography color="text.secondary">Aucune donnée</Typography>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* Trips by Category */}
-          <Grid xs={12}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                📊 Répartition des voyages par catégorie
-              </Typography>
-              {detailedStats && (
-                <Grid container spacing={2} sx={{ mt: 1 }}>
-                  {detailedStats.tripsByCategory.map((cat, idx) => (
-                    <Grid xs={6} sm={4} md={2} key={idx}>
-                      <Card sx={{ textAlign: 'center', p: 2, bgcolor: 'primary.light', color: 'white' }}>
-                        <Typography variant="h4" fontWeight="bold">{cat.count}</Typography>
-                        <Typography variant="caption">{cat.category}</Typography>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </Paper>
-          </Grid>
-        </Grid>
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={2}>
-        {/* Financial Overview */}
-        <Grid container spacing={3}>
-          <Grid xs={12} md={3}>
-            <Card sx={{ bgcolor: 'success.main', color: 'white' }}>
-              <CardContent>
-                <Typography variant="h6">Revenu Total</Typography>
-                <Typography variant="h3" fontWeight="bold">
-                  {(financialData?.totalRevenue || 0).toFixed(2)} TND
+    <BackgroundBox>
+      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, py: 4 }}>
+        {/* Header ultra moderne */}
+        <GlassPaper sx={{ p: 3, mb: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <IconWrapper>
+                <Shield sx={{ fontSize: 30, color: '#00BFA5' }} />
+              </IconWrapper>
+              <Box>
+                <Typography variant="h3" component="h1" fontWeight="800" sx={{
+                  background: 'linear-gradient(135deg, #00BFA5, #0D47A1, #667eea)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}>
+                  Control Tower
                 </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid xs={12} md={3}>
-            <Card sx={{ bgcolor: 'primary.main', color: 'white' }}>
-              <CardContent>
-                <Typography variant="h6">Commission Plateforme</Typography>
-                <Typography variant="h3" fontWeight="bold">
-                  {(financialData?.totalCommission || 0).toFixed(2)} TND
+                <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem' }}>
+                  Administration de la plateforme TripBooking
                 </Typography>
-                <Typography variant="caption">Taux: {financialData?.commissionRate}%</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid xs={12} md={3}>
-            <Card sx={{ bgcolor: 'secondary.main', color: 'white' }}>
-              <CardContent>
-                <Typography variant="h6">Revenus Organisateurs</Typography>
-                <Typography variant="h3" fontWeight="bold">
-                  {(financialData?.organizerPayouts || 0).toFixed(2)} TND
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid xs={12} md={3}>
-            <Card sx={{ bgcolor: 'warning.main', color: 'white' }}>
-              <CardContent>
-                <Typography variant="h6">En attente de paiement</Typography>
-                <Typography variant="h3" fontWeight="bold">
-                  {financialData?.pendingPayouts || 0}
-                </Typography>
-                <Typography variant="caption">Paiements</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Revenue Chart */}
-          <Grid xs={12}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                📈 Revenus mensuels
-              </Typography>
-              {detailedStats && detailedStats.monthlyRevenue && (
-                <Box sx={{ mt: 2 }}>
-                  {detailedStats.monthlyRevenue.map((item, idx) => (
-                    <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="body2" sx={{ width: 60, fontWeight: 'bold' }}>{item.month}</Typography>
-                      <Box sx={{ flex: 1, mr: 2 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          color="success"
-                          value={(item.revenue / Math.max(...detailedStats.monthlyRevenue.map(r => r.revenue), 1)) * 100}
-                          sx={{ height: 20, borderRadius: 2 }}
-                        />
-                      </Box>
-                      <Typography variant="body1" fontWeight="bold" sx={{ width: 100, textAlign: 'right' }}>
-                        {item.revenue.toFixed(2)} TND
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Paper>
-          </Grid>
-        </Grid>
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={3}>
-        {/* Content & System Management */}
-        <Grid container spacing={3}>
-          {/* Categories */}
-          <Grid xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  <Category sx={{ mr: 1, verticalAlign: 'middle' }} />
-                  Catégories ({categories.length})
-                </Typography>
-                <Button variant="contained" size="small" onClick={() => openDialog('category')}>
-                  + Ajouter
-                </Button>
               </Box>
-              <List>
-                {categories.map((cat) => (
-                  <ListItem key={cat.id}>
-                    <ListItemText primary={cat.name} secondary={cat.description} />
-                  </ListItem>
-                ))}
-              </List>
-            </Paper>
-          </Grid>
+            </Box>
+            <Button
+              variant="contained"
+              size="large"
+              startIcon={refreshing ? <CircularProgress size={20} color="inherit" /> : <Refresh />}
+              onClick={refreshData}
+              disabled={refreshing}
+              sx={{
+                background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
+                borderRadius: 3,
+                px: 4,
+                py: 1.5,
+                fontSize: '1rem',
+                fontWeight: 600,
+                boxShadow: '0 10px 20px rgba(0,191,165,0.3)',
+                '&:hover': {
+                  background: 'linear-gradient(90deg, #0D47A1, #00BFA5)',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 15px 30px rgba(0,191,165,0.4)',
+                },
+              }}
+            >
+              Actualiser
+            </Button>
+          </Box>
+        </GlassPaper>
 
-          {/* Destinations */}
-          <Grid xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  <Public sx={{ mr: 1, verticalAlign: 'middle' }} />
-                  Destinations ({destinations.length})
-                </Typography>
-                <Button variant="contained" size="small" onClick={() => openDialog('destination')}>
-                  + Ajouter
-                </Button>
-              </Box>
-              <List>
-                {destinations.map((dest) => (
-                  <ListItem key={dest.id}>
-                    <ListItemText
-                      primary={dest.name}
-                      secondary={`${dest.country} ${dest.region ? `- ${dest.region}` : ''}`}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Paper>
-          </Grid>
-        </Grid>
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={4}>
-        {/* System Health Checker */}
-        <Grid container spacing={3}>
-          {/* Health Status */}
-          <Grid xs={12} md={4}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Box
-                  sx={{
-                    width: 80,
-                    height: 80,
-                    borderRadius: '50%',
-                    bgcolor: systemHealth?.status === 'operational' ? 'success.main' : 'error.main',
+        {/* KPIs Cards - Design ultra moderne avec dégradés */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid xs={10} sm={6} md={3}>
+            <ModernCard>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Box sx={{ 
+                    width: 60, 
+                    height: 60, 
+                    borderRadius: 3,
+                    background: 'linear-gradient(135deg, #FF6B6B, #FFA07A)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    mx: 'auto',
-                    mb: 2,
-                  }}
-                >
-                  {systemHealth?.status === 'operational' ? (
-                    <CheckCircle sx={{ fontSize: 50, color: 'white' }} />
-                  ) : (
-                    <Warning sx={{ fontSize: 50, color: 'white' }} />
-                  )}
+                  }}>
+                    <People sx={{ fontSize: 30, color: 'white' }} />
+                  </Box>
+                  <Badge badgeContent={stats.totalUsers} color="primary" max={9999} sx={{ '& .MuiBadge-badge': { fontSize: '1rem', height: 24, minWidth: 24 } }} />
                 </Box>
-                <Typography variant="h5" fontWeight="bold">
-                  {systemHealth?.status === 'operational' ? 'Système Opérationnel' : 'Système Dégradé'}
+                <Typography variant="h3" fontWeight="800" sx={{ mb: 1, background: 'linear-gradient(135deg, #FF6B6B, #FFA07A)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  {stats.totalUsers}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Dernière vérification: {systemHealth?.timestamp}
+                <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Utilisateurs
                 </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Database Status */}
-          <Grid xs={12} md={4}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Storage /> Base de données
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <Chip
-                    color={systemHealth?.database === 'healthy' ? 'success' : 'error'}
-                    label={systemHealth?.database === 'healthy' ? 'Connectée' : 'Erreur'}
-                  />
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  Statut de la connexion à la base de données
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Pending Items */}
-          <Grid xs={12} md={4}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  📋 Éléments en attente
-                </Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography>Organisateurs:</Typography>
-                  <Chip label={systemHealth?.pending.organizers || 0} color="warning" size="small" />
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography>Réservations:</Typography>
-                  <Chip label={systemHealth?.pending.bookings || 0} color="info" size="small" />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+                  <TrendingUp sx={{ fontSize: 16, color: '#4CAF50' }} />
+                 
                 </Box>
               </CardContent>
-            </Card>
+            </ModernCard>
           </Grid>
 
-          {/* System Stats */}
-          <Grid xs={12}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                📊 Statistiques système
-              </Typography>
-              <Grid container spacing={3}>
-                <Grid xs={6} sm={3}>
-                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.100', borderRadius: 2 }}>
-                    <People sx={{ fontSize: 40, color: 'primary.main' }} />
-                    <Typography variant="h4" fontWeight="bold">{systemHealth?.counts.users || 0}</Typography>
-                    <Typography variant="body2" color="text.secondary">Utilisateurs</Typography>
+          <Grid xs={12} sm={6} md={3}>
+            <ModernCard>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Box sx={{ 
+                    width: 60, 
+                    height: 60, 
+                    borderRadius: 3,
+                    background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Business sx={{ fontSize: 30, color: 'white' }} />
                   </Box>
-                </Grid>
-                <Grid xs={6} sm={3}>
-                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.100', borderRadius: 2 }}>
-                    <FlightTakeoff sx={{ fontSize: 40, color: 'secondary.main' }} />
-                    <Typography variant="h4" fontWeight="bold">{systemHealth?.counts.trips || 0}</Typography>
-                    <Typography variant="body2" color="text.secondary">Voyages</Typography>
-                  </Box>
-                </Grid>
-                <Grid xs={6} sm={3}>
-                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.100', borderRadius: 2 }}>
-                    <Receipt sx={{ fontSize: 40, color: 'warning.main' }} />
-                    <Typography variant="h4" fontWeight="bold">{systemHealth?.counts.bookings || 0}</Typography>
-                    <Typography variant="body2" color="text.secondary">Réservations</Typography>
-                  </Box>
-                </Grid>
-                <Grid xs={6} sm={3}>
-                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.100', borderRadius: 2 }}>
-                    <Business sx={{ fontSize: 40, color: 'error.main' }} />
-                    <Typography variant="h4" fontWeight="bold">{systemHealth?.counts.organizers || 0}</Typography>
-                    <Typography variant="body2" color="text.secondary">Organisateurs</Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Paper>
+                  <Badge badgeContent={stats.pendingOrganizers} color="warning" sx={{ '& .MuiBadge-badge': { fontSize: '1rem', height: 24, minWidth: 24 } }} />
+                </Box>
+                <Typography variant="h3" fontWeight="800" sx={{ mb: 1, background: 'linear-gradient(135deg, #FFD700, #FFA500)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  {stats.totalOrganizers}
+                </Typography>
+                <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Organisateurs
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+                  <People sx={{ fontSize: 16, color: '#FFA500' }} />
+                  <Typography variant="caption" fontWeight={600} color="warning.main">
+                    {stats.pendingOrganizers} en attente
+                  </Typography>
+                </Box>
+              </CardContent>
+            </ModernCard>
           </Grid>
 
-          {/* AI Health Analysis */}
-          <Grid xs={12}>
-            <Paper sx={{ p: 3, bgcolor: 'primary.main', color: 'white' }}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                🤖 Analyse IA de la santé de la plateforme
-              </Typography>
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid xs={12} md={4}>
-                  <Box sx={{ bgcolor: 'rgba(255,255,255,0.1)', p: 2, borderRadius: 2 }}>
-                    <Typography variant="subtitle2">Score de santé global</Typography>
-                    <Typography variant="h4" fontWeight="bold">
-                      {systemHealth?.status === 'operational' ? '95%' : '70%'}
-                    </Typography>
+          <Grid xs={12} sm={6} md={3}>
+            <ModernCard>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Box sx={{ 
+                    width: 60, 
+                    height: 60, 
+                    borderRadius: 3,
+                    background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <FlightTakeoff sx={{ fontSize: 30, color: 'white' }} />
                   </Box>
-                </Grid>
-                <Grid xs={12} md={4}>
-                  <Box sx={{ bgcolor: 'rgba(255,255,255,0.1)', p: 2, borderRadius: 2 }}>
-                    <Typography variant="subtitle2">Recommandation</Typography>
-                    <Typography variant="body1">
-                      {systemHealth?.pending.organizers && systemHealth.pending.organizers > 3
-                        ? 'Traiter les demandes d\'organisateurs en attente'
-                        : 'Plateforme stable - Aucune action requise'}
-                    </Typography>
+                </Box>
+                <Typography variant="h3" fontWeight="800" sx={{ mb: 1, background: 'linear-gradient(135deg, #00BFA5, #0D47A1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  {stats.totalTrips}
+                </Typography>
+                <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Voyages
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+                  <CheckCircle sx={{ fontSize: 16, color: '#00BFA5' }} />
+                  <Typography variant="caption" fontWeight={600} color="primary.main">
+                    {stats.completedBookings} réservations
+                  </Typography>
+                </Box>
+              </CardContent>
+            </ModernCard>
+          </Grid>
+
+          <Grid xs={12} sm={6} md={3}>
+            <ModernCard>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Box sx={{ 
+                    width: 60, 
+                    height: 60, 
+                    borderRadius: 3,
+                    background: 'linear-gradient(135deg, #4CAF50, #8BC34A)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <AttachMoney sx={{ fontSize: 30, color: 'white' }} />
                   </Box>
-                </Grid>
-                <Grid xs={12} md={4}>
-                  <Box sx={{ bgcolor: 'rgba(255,255,255,0.1)', p: 2, borderRadius: 2 }}>
-                    <Typography variant="subtitle2">Tendance</Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <TrendingUp />
-                      <Typography variant="body1">En croissance</Typography>
-                    </Box>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Paper>
+                </Box>
+                <Typography variant="h3" fontWeight="800" sx={{ mb: 1, background: 'linear-gradient(135deg, #4CAF50, #8BC34A)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  {(stats.totalRevenue || 0).toFixed(0)} TND
+                </Typography>
+                <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Revenus Totaux
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+                  <TrendingUp sx={{ fontSize: 16, color: '#4CAF50' }} />
+                  
+                </Box>
+              </CardContent>
+            </ModernCard>
           </Grid>
         </Grid>
-      </TabPanel>
 
-      {/* Dialog for adding Category/Destination */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {dialogType === 'category' ? 'Ajouter une catégorie' : 'Ajouter une destination'}
-        </DialogTitle>
-        <DialogContent>
-          {dialogType === 'category' ? (
-            <>
-              <TextField
-                fullWidth
-                label="Nom"
-                value={newCategory.name}
-                onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                margin="normal"
-              />
-              <TextField
-                fullWidth
-                label="Description"
-                value={newCategory.description}
-                onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-                margin="normal"
-                multiline
-                rows={3}
-              />
-            </>
-          ) : (
-            <>
-              <TextField
-                fullWidth
-                label="Nom"
-                value={newDestination.name}
-                onChange={(e) => setNewDestination({ ...newDestination, name: e.target.value })}
-                margin="normal"
-              />
-              <TextField
-                fullWidth
-                label="Pays"
-                value={newDestination.country}
-                onChange={(e) => setNewDestination({ ...newDestination, country: e.target.value })}
-                margin="normal"
-              />
-              <TextField
-                fullWidth
-                label="Région"
-                value={newDestination.region}
-                onChange={(e) => setNewDestination({ ...newDestination, region: e.target.value })}
-                margin="normal"
-              />
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Annuler</Button>
-          <Button
-            variant="contained"
-            onClick={dialogType === 'category' ? handleCreateCategory : handleCreateDestination}
+        {/* Deux gros boutons ultra modernes */}
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid xs={12} md={6}>
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              startIcon={<People sx={{ fontSize: 28 }} />}
+              onClick={() => navigate('/admin/users')}
+              sx={{
+                py: 3,
+                borderRadius: 4,
+                background: 'linear-gradient(135deg, #00BFA5, #0D47A1, #667eea)',
+                fontSize: '1.3rem',
+                fontWeight: 700,
+                textTransform: 'none',
+                boxShadow: '0 20px 40px rgba(0,191,165,0.3)',
+                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #667eea, #0D47A1, #00BFA5)',
+                  transform: 'translateY(-8px) scale(1.02)',
+                  boxShadow: '0 30px 60px rgba(0,191,165,0.4)',
+                },
+              }}
+            >
+              Gérer les utilisateurs
+            </Button>
+          </Grid>
+          <Grid xs={12} md={6}>
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              startIcon={<Business sx={{ fontSize: 28 }} />}
+              onClick={() => navigate('/admin/organizers')}
+              sx={{
+                py: 3,
+                borderRadius: 4,
+                background: 'linear-gradient(135deg, #FFD700, #FFA500, #FF6B6B)',
+                fontSize: '1.3rem',
+                fontWeight: 700,
+                textTransform: 'none',
+                boxShadow: '0 20px 40px rgba(255,165,0,0.3)',
+                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #FF6B6B, #FFA500, #FFD700)',
+                  transform: 'translateY(-8px) scale(1.02)',
+                  boxShadow: '0 30px 60px rgba(255,165,0,0.4)',
+                },
+              }}
+            >
+              Gérer les organisateurs
+            </Button>
+          </Grid>
+        </Grid>
+
+        {/* Secondary KPIs */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid xs={6} sm={3}>
+            <GlassPaper sx={{ p: 3, textAlign: 'center' }}>
+              <CheckCircle sx={{ fontSize: 40, color: '#4CAF50', mb: 1 }} />
+              <Typography variant="h4" fontWeight="800" sx={{ color: '#4CAF50' }}>{stats.completedBookings}</Typography>
+              <Typography variant="body2" fontWeight={600} color="text.secondary">Réservations confirmées</Typography>
+            </GlassPaper>
+          </Grid>
+          <Grid xs={6} sm={3}>
+            <GlassPaper sx={{ p: 3, textAlign: 'center' }}>
+              <Warning sx={{ fontSize: 40, color: '#FF9800', mb: 1 }} />
+              <Typography variant="h4" fontWeight="800" sx={{ color: '#FF9800' }}>{stats.pendingBookings}</Typography>
+              <Typography variant="body2" fontWeight={600} color="text.secondary">En attente</Typography>
+            </GlassPaper>
+          </Grid>
+          <Grid xs={6} sm={3}>
+            <GlassPaper sx={{ p: 3, textAlign: 'center' }}>
+              <TrendingUp sx={{ fontSize: 40, color: '#00BFA5', mb: 1 }} />
+              <Typography variant="h4" fontWeight="800" sx={{ color: '#00BFA5' }}>{stats.conversionRate}%</Typography>
+              <Typography variant="body2" fontWeight={600} color="text.secondary">Taux de conversion</Typography>
+            </GlassPaper>
+          </Grid>
+          <Grid xs={6} sm={3}>
+            <GlassPaper sx={{ p: 3, textAlign: 'center' }}>
+              <Badge badgeContent={stats.pendingOrganizers} color="error">
+                <PendingActions sx={{ fontSize: 40, color: '#FF9800' }} />
+              </Badge>
+              <Typography variant="h4" fontWeight="800" sx={{ color: '#FF9800', mt: 1 }}>{stats.pendingOrganizers}</Typography>
+              <Typography variant="body2" fontWeight={600} color="text.secondary">Organisateurs en attente</Typography>
+            </GlassPaper>
+          </Grid>
+        </Grid>
+
+        {/* Tabs */}
+        <GlassPaper sx={{ mb: 3, p: 0 }}>
+          <Tabs
+            value={tabValue}
+            onChange={(_, newValue) => setTabValue(newValue)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              '& .MuiTabs-indicator': {
+                height: 4,
+                backgroundColor: '#00BFA5',
+                borderRadius: '4px 4px 0 0',
+              },
+            }}
           >
-            Ajouter
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+            <StyledTab icon={<Shield />} label="Modération" />
+            <StyledTab icon={<Insights />} label="Insights" />
+            <StyledTab icon={<AccountBalance />} label="Financier" />
+            <StyledTab icon={<Category />} label="Contenu" />
+            <StyledTab icon={<Speed />} label="Système" />
+          </Tabs>
+        </GlassPaper>
+
+        {/* Panel Modération */}
+        <TabPanel value={tabValue} index={0}>
+          <Grid container spacing={3}>
+            {/* Barre de recherche */}
+            <Grid xs={12}>
+              <GlassPaper sx={{ p: 2 }}>
+                <TextField
+                  fullWidth
+                  placeholder="Rechercher un organisateur..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search />
+                      </InputAdornment>
+                    ),
+                    sx: { borderRadius: 2, fontSize: '1.1rem' }
+                  }}
+                  variant="outlined"
+                />
+              </GlassPaper>
+            </Grid>
+
+            {/* Pending Organizers - Agrandi et modernisé */}
+            <Grid xs={12}>
+              <ModernCard>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h4" fontWeight="800" sx={{
+                      display: 'flex', alignItems: 'center', gap: 2,
+                      background: 'linear-gradient(135deg, #FF9800, #F44336)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}>
+                      <Badge badgeContent={pendingOrganizers.length} color="error">
+                        <Security sx={{ fontSize: 40 }} />
+                      </Badge>
+                      Demandes d'organisation
+                    </Typography>
+                    {pendingOrganizers.length > 0 && (
+                      <Chip 
+                        label={`${pendingOrganizers.length} en attente`}
+                        color="warning"
+                        size="medium"
+                        sx={{ fontWeight: 700, fontSize: '1rem', px: 2 }}
+                      />
+                    )}
+                  </Box>
+                  
+                  {pendingOrganizers.length === 0 ? (
+                    <Alert 
+                      severity="success" 
+                      icon={<CheckCircle fontSize="large" />}
+                      sx={{ 
+                        borderRadius: 3, 
+                        py: 3, 
+                        fontSize: '1.2rem',
+                        background: alpha('#4CAF50', 0.1),
+                        border: `1px solid ${alpha('#4CAF50', 0.3)}`,
+                      }}
+                    >
+                      Aucune demande en attente
+                    </Alert>
+                  ) : (
+                    <List>
+                      {filteredOrganizers.filter(o => o.status === 'PENDING').map((organizer, idx) => (
+                        <Fade in timeout={500 + idx * 100} key={organizer.id}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              mb: 2,
+                              p: 3,
+                              borderRadius: 3,
+                              border: '1px solid',
+                              borderColor: alpha('#FF9800', 0.3),
+                              background: alpha('#FF9800', 0.02),
+                              transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                              '&:hover': {
+                                borderColor: '#FF9800',
+                                boxShadow: '0 20px 40px rgba(255,152,0,0.2)',
+                                transform: 'translateY(-4px)',
+                              },
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <Avatar 
+                                sx={{ 
+                                  width: 80, 
+                                  height: 80, 
+                                  bgcolor: 'warning.main',
+                                  fontSize: '2rem',
+                                  boxShadow: '0 10px 20px rgba(255,152,0,0.3)',
+                                }}
+                              >
+                                {organizer.agency_name?.[0] || 'O'}
+                              </Avatar>
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant="h5" fontWeight={700} gutterBottom>
+                                  {organizer.agency_name}
+                                </Typography>
+                                <Typography variant="body1" color="text.secondary" gutterBottom>
+                                  {organizer.user?.first_name} {organizer.user?.last_name}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  📧 {organizer.user?.email} • 📍 {organizer.country} • 🏢 {organizer.registration_number}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Tooltip title="Approuver">
+                                  <IconButton
+                                    color="success"
+                                    size="large"
+                                    onClick={() => handleApproveOrganizer(organizer.id)}
+                                    sx={{ 
+                                      bgcolor: alpha('#4CAF50', 0.1),
+                                      '&:hover': { bgcolor: alpha('#4CAF50', 0.2), transform: 'scale(1.1)' },
+                                      transition: 'all 0.3s ease',
+                                    }}
+                                  >
+                                    <CheckCircle fontSize="large" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Rejeter">
+                                  <IconButton
+                                    color="error"
+                                    size="large"
+                                    onClick={() => handleRejectOrganizer(organizer.id)}
+                                    sx={{ 
+                                      bgcolor: alpha('#F44336', 0.1),
+                                      '&:hover': { bgcolor: alpha('#F44336', 0.2), transform: 'scale(1.1)' },
+                                      transition: 'all 0.3s ease',
+                                    }}
+                                  >
+                                    <Block fontSize="large" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
+                            </Box>
+                          </Paper>
+                        </Fade>
+                      ))}
+                    </List>
+                  )}
+                </CardContent>
+              </ModernCard>
+            </Grid>
+          </Grid>
+        </TabPanel>
+
+        {/* Panel Insights */}
+        <TabPanel value={tabValue} index={1}>
+          <Grid container spacing={3}>
+            {/* Destinations populaires */}
+            <Grid xs={12} md={6}>
+              <ModernCard>
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h4" fontWeight="800" gutterBottom sx={{
+                    display: 'flex', alignItems: 'center', gap: 2,
+                    background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}>
+                    <Public sx={{ fontSize: 40 }} />
+                    Destinations populaires
+                  </Typography>
+                  
+                  <List>
+                    {detailedStats?.topDestinations.map((dest, idx) => (
+                      <ListItem 
+                        key={idx}
+                        sx={{ 
+                          mb: 2, 
+                          borderRadius: 3,
+                          bgcolor: idx === 0 ? alpha('#FFD700', 0.1) : 'transparent',
+                          border: idx === 0 ? `1px solid ${alpha('#FFD700', 0.3)}` : 'none',
+                        }}
+                      >
+                        <ListItemAvatar>
+                          <Avatar 
+                            sx={{ 
+                              bgcolor: idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : idx === 2 ? '#CD7F32' : '#00BFA5',
+                              width: 48, height: 48,
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            {idx + 1}
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={<Typography variant="h6">{dest.destination}</Typography>}
+                          secondary={`${dest.country} • ${dest.tripCount} voyages`}
+                        />
+                        <Chip
+                          label={`${Math.round((dest.tripCount / stats.totalTrips) * 100)}%`}
+                          color="primary"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+
+            {/* Meilleurs organisateurs */}
+            <Grid xs={12} md={6}>
+              <ModernCard>
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h4" fontWeight="800" gutterBottom sx={{
+                    display: 'flex', alignItems: 'center', gap: 2,
+                    background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}>
+                    <EmojiEvents sx={{ fontSize: 40 }} />
+                    Top Organisateurs
+                  </Typography>
+                  
+                  <List>
+                    {detailedStats?.topOrganizers.map((org, idx) => (
+                      <ListItem 
+                        key={idx}
+                        sx={{ 
+                          mb: 2, 
+                          borderRadius: 3,
+                          bgcolor: idx === 0 ? alpha('#FFD700', 0.1) : 'transparent',
+                          border: idx === 0 ? `1px solid ${alpha('#FFD700', 0.3)}` : 'none',
+                        }}
+                      >
+                        <ListItemAvatar>
+                          <Avatar 
+                            sx={{ 
+                              bgcolor: idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : '#CD7F32',
+                              width: 48, height: 48,
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={<Typography variant="h6">{org.organizer}</Typography>}
+                          secondary={`${org.bookings} réservations • ${org.revenue.toFixed(2)} TND`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+          </Grid>
+        </TabPanel>
+
+        {/* Panel Financier */}
+        <TabPanel value={tabValue} index={2}>
+          <Grid container spacing={3}>
+            {/* Cartes financières */}
+            <Grid xs={12} md={3}>
+              <ModernCard sx={{ background: 'linear-gradient(135deg, #4CAF50, #2E7D32)' }}>
+                <CardContent sx={{ p: 3, color: 'white' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <AttachMoney sx={{ fontSize: 40 }} />
+                    <Typography variant="h6">Revenu Total</Typography>
+                  </Box>
+                  <Typography variant="h3" fontWeight="800">
+                    {(financialData?.totalRevenue || 0).toFixed(2)} TND
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
+                    <TrendingUp sx={{ fontSize: 20 }} />
+                    <Typography variant="body2">+15% ce mois</Typography>
+                  </Box>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+
+            <Grid xs={12} md={3}>
+              <ModernCard sx={{ background: 'linear-gradient(135deg, #00BFA5, #0D47A1)' }}>
+                <CardContent sx={{ p: 3, color: 'white' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <AccountBalance sx={{ fontSize: 40 }} />
+                    <Typography variant="h6">Commission</Typography>
+                  </Box>
+                  <Typography variant="h3" fontWeight="800">
+                    {(financialData?.totalCommission || 0).toFixed(2)} TND
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 2 }}>Taux: {financialData?.commissionRate}%</Typography>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+
+            <Grid xs={12} md={3}>
+              <ModernCard sx={{ background: 'linear-gradient(135deg, #FF9800, #F57C00)' }}>
+                <CardContent sx={{ p: 3, color: 'white' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <Business sx={{ fontSize: 40 }} />
+                    <Typography variant="h6">Paiements Org</Typography>
+                  </Box>
+                  <Typography variant="h3" fontWeight="800">
+                    {(financialData?.organizerPayouts || 0).toFixed(2)} TND
+                  </Typography>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+
+            <Grid xs={12} md={3}>
+              <ModernCard sx={{ background: 'linear-gradient(135deg, #F44336, #D32F2F)' }}>
+                <CardContent sx={{ p: 3, color: 'white' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <PendingActions sx={{ fontSize: 40 }} />
+                    <Typography variant="h6">En attente</Typography>
+                  </Box>
+                  <Typography variant="h3" fontWeight="800">
+                    {financialData?.pendingPayouts || 0}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 2 }}>Paiements</Typography>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+
+            
+          </Grid>
+        </TabPanel>
+
+        {/* Panel Contenu */}
+        <TabPanel value={tabValue} index={3}>
+          <Grid container spacing={3}>
+            {/* Catégories */}
+            <Grid xs={12} md={6}>
+              <ModernCard>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h4" fontWeight="800" sx={{
+                      display: 'flex', alignItems: 'center', gap: 2,
+                      background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}>
+                      <Category sx={{ fontSize: 40 }} />
+                      Catégories ({categories.length})
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      startIcon={<Add />}
+                      onClick={() => openDialog('category')}
+                      sx={{
+                        background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
+                        borderRadius: 3,
+                        px: 4,
+                        py: 1.5,
+                      }}
+                    >
+                      Ajouter
+                    </Button>
+                  </Box>
+                  
+                  <Grid container spacing={2}>
+                    {categories.map((cat, idx) => (
+                      <Grid xs={12} key={cat.id}>
+                        <Paper
+                          sx={{
+                            p: 3,
+                            borderRadius: 3,
+                            border: '1px solid',
+                            borderColor: alpha('#00BFA5', 0.2),
+                            background: alpha('#00BFA5', 0.02),
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                              borderColor: '#00BFA5',
+                              boxShadow: '0 10px 30px rgba(0,191,165,0.1)',
+                            },
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box>
+                              <Typography variant="h6" fontWeight={700}>{cat.name}</Typography>
+                              <Typography variant="body2" color="text.secondary">{cat.description}</Typography>
+                            </Box>
+                            <Box>
+                              <IconButton size="large"><Edit fontSize="medium" /></IconButton>
+                              <IconButton size="large" color="error"><Delete fontSize="medium" /></IconButton>
+                            </Box>
+                          </Box>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+
+            {/* Destinations */}
+            <Grid xs={12} md={6}>
+              <ModernCard>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h4" fontWeight="800" sx={{
+                      display: 'flex', alignItems: 'center', gap: 2,
+                      background: 'linear-gradient(135deg, #FF6B6B, #FFA07A)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}>
+                      <Public sx={{ fontSize: 40 }} />
+                      Destinations ({destinations.length})
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      startIcon={<Add />}
+                      onClick={() => openDialog('destination')}
+                      sx={{
+                        background: 'linear-gradient(90deg, #FF6B6B, #FFA07A)',
+                        borderRadius: 3,
+                        px: 4,
+                        py: 1.5,
+                      }}
+                    >
+                      Ajouter
+                    </Button>
+                  </Box>
+                  
+                  <List>
+                    {destinations.map((dest, idx) => (
+                      <ListItem 
+                        key={dest.id}
+                        sx={{ 
+                          mb: 2, 
+                          borderRadius: 3,
+                          bgcolor: alpha('#FF6B6B', 0.02),
+                          border: '1px solid',
+                          borderColor: alpha('#FF6B6B', 0.2),
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            borderColor: '#FF6B6B',
+                            transform: 'translateX(8px)',
+                          },
+                        }}
+                      >
+                        <ListItemAvatar>
+                          <Avatar 
+                            src={dest.image} 
+                            sx={{ 
+                              width: 60, 
+                              height: 60,
+                              border: '2px solid',
+                              borderColor: '#FF6B6B',
+                            }}
+                          >
+                            <Place />
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={<Typography variant="h6">{dest.name}</Typography>}
+                          secondary={`${dest.country} ${dest.region ? `- ${dest.region}` : ''}`}
+                        />
+                        <Box>
+                          <IconButton size="large"><Edit fontSize="medium" /></IconButton>
+                          <IconButton size="large" color="error"><Delete fontSize="medium" /></IconButton>
+                        </Box>
+                      </ListItem>
+                    ))}
+                  </List>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+          </Grid>
+        </TabPanel>
+
+        {/* Panel Santé Système */}
+        <TabPanel value={tabValue} index={4}>
+          <Grid container spacing={3}>
+            {/* Health Status */}
+            <Grid xs={12} md={4}>
+              <ModernCard>
+                <CardContent sx={{ p: 4, textAlign: 'center' }}>
+                  <Box
+                    sx={{
+                      width: 150,
+                      height: 150,
+                      borderRadius: '50%',
+                      mx: 'auto',
+                      mb: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: systemHealth?.status === 'operational' 
+                        ? 'linear-gradient(135deg, #4CAF50, #2E7D32)'
+                        : 'linear-gradient(135deg, #F44336, #D32F2F)',
+                      boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+                      animation: `${pulse} 2s infinite`,
+                    }}
+                  >
+                    {systemHealth?.status === 'operational' ? (
+                      <CheckCircle sx={{ fontSize: 80, color: 'white' }} />
+                    ) : (
+                      <Warning sx={{ fontSize: 80, color: 'white' }} />
+                    )}
+                  </Box>
+                  <Typography variant="h4" fontWeight="800" gutterBottom>
+                    {systemHealth?.status === 'operational' ? 'Système Opérationnel' : 'Système Dégradé'}
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    Dernière vérification: {new Date().toLocaleString()}
+                  </Typography>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+
+            {/* Services Status */}
+            <Grid xs={12} md={8}>
+              <ModernCard>
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h4" fontWeight="800" gutterBottom sx={{
+                    display: 'flex', alignItems: 'center', gap: 2,
+                    background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}>
+                    <Speed sx={{ fontSize: 40 }} />
+                    Services
+                  </Typography>
+                  
+                  <Grid container spacing={2}>
+                    {systemHealth?.services?.map((service, idx) => (
+                      <Grid xs={12} sm={6} key={idx}>
+                        <Paper
+                          sx={{
+                            p: 3,
+                            borderRadius: 3,
+                            border: '1px solid',
+                            borderColor: service.status === 'operational' ? alpha('#4CAF50', 0.3) : alpha('#F44336', 0.3),
+                            bgcolor: service.status === 'operational' ? alpha('#4CAF50', 0.05) : alpha('#F44336', 0.05),
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Typography variant="h6" fontWeight={600}>
+                              {service.name}
+                            </Typography>
+                            <Chip
+                              size="small"
+                              label={service.status}
+                              color={service.status === 'operational' ? 'success' : 'error'}
+                            />
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Latence: {service.latency}ms
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+
+           
+
+            {/* Analyse IA */}
+            <Grid xs={12}>
+              <ModernCard sx={{ background: 'linear-gradient(135deg, #00BFA5, #0D47A1, #667eea)' }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
+                    <AutoAwesome sx={{ fontSize: 60, color: 'white' }} />
+                    <Box>
+                      <Typography variant="h3" fontWeight="800" color="white">
+                        Analyse IA
+                      </Typography>
+                    
+                    </Box>
+                  </Box>
+                  
+                  <Grid container spacing={3}>
+                    <Grid xs={12} md={4}>
+                      <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 3, backdropFilter: 'blur(10px)' }}>
+                        <Typography variant="h6" color="white" gutterBottom>Score de santé</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                          <Typography variant="h2" fontWeight="800" color="white">
+                            {systemHealth?.status === 'operational' ? '95' : '70'}
+                          </Typography>
+                          <Typography variant="h5" color="rgba(255,255,255,0.6)">/100</Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={systemHealth?.status === 'operational' ? 95 : 70}
+                          sx={{ mt: 2, height: 10, borderRadius: 5, bgcolor: 'rgba(255,255,255,0.2)' }}
+                        />
+                      </Paper>
+                    </Grid>
+                    
+                    <Grid xs={12} md={4}>
+                      <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 3, backdropFilter: 'blur(10px)' }}>
+                        <Typography variant="h6" color="white" gutterBottom>Recommandation</Typography>
+                        <Typography variant="h5" color="white" fontWeight="600">
+                          {systemHealth?.pending.organizers && systemHealth.pending.organizers > 3
+                            ? ' Traiter les demandes en attente'
+                            : ' Plateforme stable'}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                    
+                    <Grid xs={12} md={4}>
+                      <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 3, backdropFilter: 'blur(10px)' }}>
+                        <Typography variant="h6" color="white" gutterBottom>Tendance</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <TrendingUp sx={{ fontSize: 40, color: 'white' }} />
+                          <Typography variant="h4" color="white" fontWeight="700">+12%</Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </ModernCard>
+            </Grid>
+          </Grid>
+        </TabPanel>
+
+        {/* Dialog pour ajouter catégorie/destination */}
+        <Dialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 4,
+              background: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(20px)',
+              boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+            color: 'white',
+            py: 3,
+            fontSize: '1.5rem',
+            fontWeight: 700,
+          }}>
+            {dialogType === 'category' ? 'Ajouter une catégorie' : 'Ajouter une destination'}
+          </DialogTitle>
+          <DialogContent sx={{ p: 4 }}>
+            {dialogType === 'category' ? (
+              <Stack spacing={3}>
+                <TextField
+                  fullWidth
+                  label="Nom"
+                  value={newCategory.name}
+                  onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                  variant="outlined"
+                  InputProps={{ sx: { borderRadius: 2, py: 1 } }}
+                />
+                <TextField
+                  fullWidth
+                  label="Description"
+                  value={newCategory.description}
+                  onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                  multiline
+                  rows={3}
+                  variant="outlined"
+                  InputProps={{ sx: { borderRadius: 2 } }}
+                />
+              </Stack>
+            ) : (
+              <Stack spacing={3}>
+                <TextField
+                  fullWidth
+                  label="Nom"
+                  value={newDestination.name}
+                  onChange={(e) => setNewDestination({ ...newDestination, name: e.target.value })}
+                  variant="outlined"
+                  InputProps={{ sx: { borderRadius: 2 } }}
+                />
+                <TextField
+                  fullWidth
+                  label="Pays"
+                  value={newDestination.country}
+                  onChange={(e) => setNewDestination({ ...newDestination, country: e.target.value })}
+                  variant="outlined"
+                  InputProps={{ sx: { borderRadius: 2 } }}
+                />
+                <TextField
+                  fullWidth
+                  label="Région"
+                  value={newDestination.region}
+                  onChange={(e) => setNewDestination({ ...newDestination, region: e.target.value })}
+                  variant="outlined"
+                  InputProps={{ sx: { borderRadius: 2 } }}
+                />
+                
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CloudUpload />}
+                  sx={{ 
+                    borderRadius: 2, 
+                    py: 2,
+                    border: '2px dashed',
+                    borderColor: '#00BFA5',
+                    '&:hover': { borderColor: '#0D47A1' },
+                  }}
+                >
+                  Télécharger une image
+                  <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
+                </Button>
+                
+                {newDestination.image && (
+                  <Box sx={{ position: 'relative' }}>
+                    <img
+                      src={newDestination.image}
+                      alt="Aperçu"
+                      style={{
+                        width: '100%',
+                        height: 200,
+                        objectFit: 'cover',
+                        borderRadius: 12,
+                      }}
+                    />
+                    <IconButton
+                      sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        bgcolor: 'rgba(255,255,255,0.9)',
+                        '&:hover': { bgcolor: 'white' },
+                      }}
+                      onClick={() => setNewDestination({ ...newDestination, image: '' })}
+                    >
+                      <Delete />
+                    </IconButton>
+                  </Box>
+                )}
+              </Stack>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ p: 4, pt: 0 }}>
+            <Button 
+              onClick={() => setDialogOpen(false)} 
+              variant="outlined"
+              size="large"
+              sx={{ borderRadius: 2, px: 4 }}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={dialogType === 'category' ? handleCreateCategory : handleCreateDestination}
+              sx={{
+                borderRadius: 2,
+                px: 4,
+                background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
+              }}
+            >
+              Ajouter
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Organizer Actions Menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+          PaperProps={{
+            sx: {
+              mt: 1,
+              minWidth: 200,
+              borderRadius: 2,
+              boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+            },
+          }}
+        >
+          <MenuItem onClick={() => { navigate(`/admin/organizers/${selectedOrganizer?.id}`); handleMenuClose(); }}>
+            <ListItemIcon><RemoveRedEye fontSize="small" /></ListItemIcon>
+            <ListItemText>Voir les détails</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={handleMenuClose}>
+            <ListItemIcon><Payment fontSize="small" /></ListItemIcon>
+            <ListItemText>Voir les paiements</ListItemText>
+          </MenuItem>
+          <Divider />
+          <MenuItem onClick={() => { handleRejectOrganizer(selectedOrganizer?.id); handleMenuClose(); }} sx={{ color: 'error.main' }}>
+            <ListItemIcon><Block fontSize="small" color="error" /></ListItemIcon>
+            <ListItemText>Bloquer</ListItemText>
+          </MenuItem>
+        </Menu>
+      </Container>
+    </BackgroundBox>
   );
 };
 

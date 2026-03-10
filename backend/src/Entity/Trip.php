@@ -103,7 +103,7 @@ class Trip
 
     #[ORM\ManyToMany(targetEntity: Destination::class, inversedBy: 'trips')]
     #[ORM\JoinTable(name: 'trip_destinations')]
-    #[Groups(['trip:read'])]
+    #[Groups(['trip:read', 'booking:read'])]
     private Collection $destinations;
 
     #[ORM\ManyToMany(targetEntity: Category::class, inversedBy: 'trips')]

@@ -16,11 +16,11 @@ class Destination
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['destination:read', 'trip:read', 'trip:list'])]
+    #[Groups(['destination:read', 'trip:read', 'trip:list', 'booking:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 200)]
-    #[Groups(['destination:read', 'trip:read', 'trip:list'])]
+    #[Groups(['destination:read', 'trip:read', 'trip:list', 'booking:read'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 50)]

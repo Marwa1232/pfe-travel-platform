@@ -31,9 +31,12 @@ security:
         # Login & Register مفتوحين
         - { path: ^/api/auth, roles: PUBLIC_ACCESS }
 
-        # Public trips
+        # CORS preflight - allow OPTIONS without auth
+        - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
+
+        # Public trips - GET only
         - { path: ^/api/trips$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/trips/\d+, roles: PUBLIC_ACCESS }
+        - { path: ^/api/trips/\d+$, roles: PUBLIC_ACCESS }
 
         # Public categories and destinations
         - { path: ^/api/categories, roles: PUBLIC_ACCESS }
@@ -41,6 +44,9 @@ security:
 
         # AI Search is public
         - { path: ^/api/ai/search, roles: PUBLIC_ACCESS }
+
+        # Organizer trips - needs authentication
+        - { path: ^/api/trips$, roles: IS_AUTHENTICATED_FULLY, methods: [POST, PUT, DELETE] }
 
         # باقي الـ API يحتاج JWT
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }

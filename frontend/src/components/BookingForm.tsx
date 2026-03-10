@@ -106,7 +106,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 day: 'numeric',
               })}
               {' - '}
-              {session.max_capacity - (session.bookings_count || 0)} places disponibles
+              {session.max_capacity || 0} places
             </MenuItem>
           ))}
         </TextField>

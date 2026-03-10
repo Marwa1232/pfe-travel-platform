@@ -34,18 +34,29 @@ class DestinationApiController extends AbstractController
         
         // Add trips_count and min_price to each destination
         $result = array_map(function ($destination) {
+            // Count all active trips (draft or published) for display purposes
+            $activeTrips = $destination->getTrips()->filter(fn($trip) => $trip->isActive());
+            $tripsCount = $activeTrips->count();
+            
+            // Get min price from active trips
+            $minPrice = null;
+            if (!$activeTrips->isEmpty()) {
+                $prices = $activeTrips->map(fn($trip) => (float) $trip->getBasePrice())->toArray();
+                $minPrice = min($prices);
+            }
+            
             return [
                 'id' => $destination->getId(),
                 'name' => $destination->getName(),
                 'country' => $destination->getCountry(),
                 'region' => $destination->getRegion(),
                 'image' => $destination->getImage() ?? 'https://images.unsplash.com/photo-1539650116574-8efeb43e2750?w=800&q=80',
-                'trips_count' => $destination->getTripsCount(),
-                'min_price' => $destination->getMinPrice(),
+                'trips_count' => $tripsCount,
+                'min_price' => $minPrice,
             ];
         }, $destinations);
 
-        // Filter destinations with trips and sort by trips_count
+        // Filter destinations with at least one active trip and sort by trips_count
         $result = array_filter($result, fn($d) => $d['trips_count'] > 0);
         usort($result, fn($a, $b) => $b['trips_count'] - $a['trips_count']);
 

@@ -32,7 +32,7 @@ class TripSession
     private ?\DateTimeInterface $end_date = null;
 
     #[ORM\Column]
-    #[Groups(['trip:read'])]
+    #[Groups(['trip:read', 'booking:read'])]
     private ?int $max_capacity = null;
 
     #[ORM\Column(length: 20)]

@@ -1,6 +1,14 @@
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8000/api';
+const BACKEND_URL = 'http://localhost:8000';
+
+// Helper to fix image URLs - prepend backend URL for relative paths
+export const fixImageUrl = (url: string | undefined | null): string => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return BACKEND_URL + url;
+};
 
 const api = axios.create({
   baseURL: API_URL,
@@ -26,9 +34,24 @@ export const authAPI = {
 export const tripAPI = {
   list: (params?: any) => api.get('/trips', { params }),
   get: (id: number) => api.get(`/trips/${id}`),
-  create: (data: any) => api.post('/trips', data),
-  update: (id: number, data: any) => api.put(`/trips/${id}`, data),
+  create: (data: any, config?: any) => api.post('/trips', data, config),
+  update: (id: number, data: any, config?: any) => api.put(`/trips/${id}`, data, config),
   delete: (id: number) => api.delete(`/trips/${id}`),
+  uploadImages: (files: File[], tripId?: number, isCover: boolean = false) => {
+    console.log('[DEBUG API] uploadImages called with files:', files.length);
+    const formData = new FormData();
+    files.forEach((file, index) => {
+      console.log('[DEBUG API] Adding file:', index, file.name, file.size);
+      formData.append('images[]', file);
+    });
+    if (tripId) {
+      formData.append('trip_id', tripId.toString());
+    }
+    formData.append('is_cover', isCover.toString());
+    return api.post('/trips/upload-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 export const destinationAPI = {
@@ -45,6 +68,7 @@ export const bookingAPI = {
   create: (data: any) => api.post('/bookings', data),
   get: (id: number) => api.get(`/bookings/${id}`),
   myBookings: () => api.get('/bookings/me'),
+  delete: (id: number) => api.delete(`/bookings/${id}`),
 };
 
 // Admin APIs

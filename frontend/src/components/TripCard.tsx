@@ -9,6 +9,7 @@ import Chip from '@mui/material/Chip';
 import { Link } from 'react-router-dom';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import { fixImageUrl } from '../services/api';
 
 interface Trip {
   id: number;
@@ -26,7 +27,7 @@ interface TripCardProps {
 }
 
 const TripCard: React.FC<TripCardProps> = ({ trip }) => {
-  const coverImage = trip.images?.find(img => img.is_cover)?.url || trip.images?.[0]?.url || '';
+  const coverImage = fixImageUrl(trip.images?.find(img => img.is_cover)?.url || trip.images?.[0]?.url || '');
   const destinationName = trip.destinations?.[0]?.name || '';
 
   return (

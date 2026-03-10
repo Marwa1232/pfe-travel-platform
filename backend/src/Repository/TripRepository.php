@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Trip;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -46,6 +47,12 @@ class TripRepository extends ServiceEntityRepository
         if ($filters['duration']) {
             $qb->andWhere('t.duration_days = :duration')
                ->setParameter('duration', $filters['duration']);
+        }
+
+        // Filter by organizer (for organizer dashboard)
+        if (!empty($filters['organizer_id'])) {
+            $qb->andWhere('t.organizer = :organizer_id')
+               ->setParameter('organizer_id', $filters['organizer_id']);
         }
 
         $offset = ($filters['page'] - 1) * $filters['limit'];

@@ -19,18 +19,128 @@ import {
   Divider,
   useMediaQuery,
   useTheme,
+  Badge,
+  Tooltip,
+  Fade,
+  Zoom,
 } from '@mui/material';
+import { styled, alpha } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import BookingsIcon from '@mui/icons-material/Book';
+import BookOnlineIcon from '@mui/icons-material/BookOnline';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import LogoutIcon from '@mui/icons-material/Logout';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
-import ExploreIcon from '@mui/icons-material/Explore';
+import InfoIcon from '@mui/icons-material/Info';
+import ContactMailIcon from '@mui/icons-material/ContactMail';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { logout } from '../store/authSlice';
 import { RootState } from '../store';
+
+// Styled components (les mêmes que précédemment)
+const StyledAppBar = styled(AppBar, {
+  shouldForwardProp: (prop) => prop !== 'scrolled' && prop !== 'isTransparent',
+})<{ scrolled: boolean; isTransparent: boolean }>(({ theme, scrolled, isTransparent }) => ({
+  backgroundColor: scrolled 
+    ? alpha(theme.palette.background.paper, 0.85)
+    : isTransparent 
+      ? 'transparent' 
+      : alpha(theme.palette.background.paper, 0.95),
+  backdropFilter: scrolled ? 'blur(20px)' : 'none',
+  boxShadow: scrolled 
+    ? '0 4px 30px rgba(0, 0, 0, 0.1)' 
+    : 'none',
+  borderBottom: scrolled 
+    ? `1px solid ${alpha(theme.palette.primary.main, 0.1)}` 
+    : 'none',
+  transition: 'all 0.3s ease',
+}));
+
+const NavButton = styled(Button, {
+  shouldForwardProp: (prop) => prop !== 'active' && prop !== 'transparent',
+})<{ active?: boolean; transparent?: boolean }>(({ theme, active, transparent }) => ({
+  color: transparent && !active 
+    ? theme.palette.common.white 
+    : active 
+      ? theme.palette.primary.main 
+      : theme.palette.text.primary,
+  fontWeight: active ? 600 : 500,
+  fontSize: '1rem',
+  textTransform: 'none',
+  position: 'relative',
+  '&::after': active ? {
+    content: '""',
+    position: 'absolute',
+    bottom: 0,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '30%',
+    height: 3,
+    borderRadius: 3,
+    backgroundColor: theme.palette.primary.main,
+    transition: 'width 0.3s ease',
+  } : {},
+  '&:hover': { 
+    backgroundColor: transparent 
+      ? alpha(theme.palette.common.white, 0.1) 
+      : alpha(theme.palette.primary.main, 0.08),
+    color: transparent 
+      ? theme.palette.common.white 
+      : theme.palette.primary.main,
+    '&::after': {
+      width: '30%',
+    },
+  },
+  '& .MuiButton-startIcon': {
+    color: active 
+      ? theme.palette.primary.main 
+      : transparent 
+        ? theme.palette.common.white 
+        : theme.palette.primary.main,
+    marginRight: theme.spacing(1),
+  },
+}));
+
+const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
+  borderRadius: theme.spacing(1),
+  margin: theme.spacing(0.5, 1),
+  padding: theme.spacing(1, 2),
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+    transform: 'translateX(5px)',
+  },
+}));
+
+const LogoText = styled(Typography)(({ theme }) => ({
+  fontWeight: 800,
+  fontSize: '1.8rem',
+  background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  cursor: 'pointer',
+  transition: 'transform 0.3s ease',
+  '&:hover': {
+    transform: 'scale(1.02)',
+  },
+}));
+
+const UserAvatar = styled(Avatar)(({ theme }) => ({
+  width: 40,
+  height: 40,
+  background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+  cursor: 'pointer',
+  transition: 'all 0.3s ease',
+  border: '2px solid transparent',
+  '&:hover': {
+    transform: 'scale(1.1)',
+    borderColor: theme.palette.primary.main,
+  },
+}));
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -39,9 +149,11 @@ const Navbar: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, token } = useSelector((state: RootState) => state.auth);
+  
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [notificationsAnchor, setNotificationsAnchor] = useState<null | HTMLElement>(null);
 
   // Handle scroll for glassmorphism effect
   useEffect(() => {
@@ -53,12 +165,22 @@ const Navbar: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const isTransparent = location.pathname === '/' && !scrolled;
+
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleNotificationsOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setNotificationsAnchor(event.currentTarget);
+  };
+
+  const handleNotificationsClose = () => {
+    setNotificationsAnchor(null);
   };
 
   const handleLogout = () => {
@@ -92,45 +214,65 @@ const Navbar: React.FC = () => {
     } else {
       navigate(item.path);
     }
+    handleDrawerToggle();
   };
 
-    const menuItems = [
-    { label: 'Voyages', path: '/trips', icon: <FlightTakeoffIcon />, key: 'voyages' },
-    { label: 'À propos', path: '/', icon: <FlightTakeoffIcon />, key: 'about' },
-    { label: 'Contact', path: '/', icon: <FlightTakeoffIcon />, scrollTo: 'footer', key: 'contact' },
+  const menuItems = [
+    { 
+      label: 'Voyages', 
+      path: '/trips', 
+      icon: <FlightTakeoffIcon />, 
+      key: 'voyages' 
+    },
+    { 
+      label: 'À propos', 
+      path: '/about', 
+      icon: <InfoIcon />, 
+      key: 'about',
+      scrollTo: 'about' 
+    },
+    { 
+      label: 'Contact', 
+      path: '/contact', 
+      icon: <ContactMailIcon />, 
+      key: 'contact',
+      scrollTo: 'footer' 
+    },
   ];
 
+  // Items pour utilisateurs normaux uniquement
   const userMenuItems = [
     { label: 'Tableau de bord', path: '/dashboard', icon: <DashboardIcon /> },
-    { label: 'Mes réservations', path: '/bookings', icon: <BookingsIcon /> },
+    { label: 'Mes réservations', path: '/bookings', icon: <BookOnlineIcon /> },
+    { label: 'Mes favoris', path: '/saved', icon: <FavoriteIcon /> },
+    { label: 'Paramètres', path: '/settings', icon: <SettingsIcon /> },
   ];
 
+  // Items pour organisateurs
   const organizerMenuItems = [
-    { label: 'Dashboard', path: '/organizer/dashboard', icon: <DashboardIcon /> },
+    { label: 'Dashboard Organisateur', path: '/organizer/dashboard', icon: <DashboardIcon /> },
     { label: 'Mes voyages', path: '/organizer/trips', icon: <FlightTakeoffIcon /> },
-    { label: 'Réservations', path: '/organizer/bookings', icon: <BookingsIcon /> },
+    { label: 'Réservations', path: '/organizer/bookings', icon: <BookOnlineIcon /> },
+    { label: 'Paramètres', path: '/settings', icon: <SettingsIcon /> },
   ];
 
+  // Items pour admins
   const adminMenuItems = [
-    { label: 'Dashboard', path: '/admin/dashboard', icon: <AdminPanelSettingsIcon /> },
+    { label: 'Dashboard Admin', path: '/admin/dashboard', icon: <AdminPanelSettingsIcon /> },
     { label: 'Utilisateurs', path: '/admin/users', icon: <AccountCircleIcon /> },
     { label: 'Organisateurs', path: '/admin/organizers', icon: <BusinessCenterIcon /> },
+    { label: 'Paramètres', path: '/settings', icon: <SettingsIcon /> },
   ];
 
   const drawer = (
-    <Box sx={{ width: 280, pt: 2 }}>
-      <Box sx={{ px: 2, pb: 2 }}>
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 700,
-            background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
+    <Box sx={{ width: 280, pt: 2, height: '100%', bgcolor: 'background.paper' }}>
+      <Box sx={{ px: 2, pb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <LogoText variant="h5" onClick={() => navigate('/')}>
           TripBooking
-        </Typography>
+        </LogoText>
+        <IconButton onClick={handleDrawerToggle}>
+          <MenuIcon />
+        </IconButton>
       </Box>
       <Divider />
       <List>
@@ -138,58 +280,91 @@ const Navbar: React.FC = () => {
           <ListItem
             button
             key={item.key}
-            onClick={() => { 
-              if (item.scrollTo) {
-                handleMenuItemClick(item);
-              } else {
-                navigate(item.path); 
-              }
-              handleDrawerToggle(); 
-            }}
+            onClick={() => handleMenuItemClick(item)}
             sx={{
-              '&:hover': { backgroundColor: 'rgba(0, 191, 165, 0.08)' },
-              py: 1.5,
+              borderRadius: 2,
+              mx: 1,
+              mb: 0.5,
+              backgroundColor: isActive(item.path) ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
+              '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.12) },
             }}
           >
-            <ListItemIcon sx={{ color: isActive(item.path) ? '#00BFA5' : 'inherit', minWidth: 40 }}>
+            <ListItemIcon sx={{ 
+              color: isActive(item.path) ? '#00BFA5' : 'primary.main',
+              minWidth: 40 
+            }}>
               {item.icon}
             </ListItemIcon>
-            <ListItemText
+            <ListItemText 
               primary={item.label}
-              sx={{ '& .MuiTypography-root': { fontWeight: isActive(item.path) ? 600 : 400 } }}
+              primaryTypographyProps={{
+                fontWeight: isActive(item.path) ? 600 : 400,
+                color: isActive(item.path) ? 'primary.main' : 'text.primary',
+              }}
             />
           </ListItem>
         ))}
 
         {token && user && (
           <>
-            <Divider sx={{ my: 1 }} />
-            {userMenuItems.map((item) => (
-              <ListItem
-                button
-                key={item.path}
-                onClick={() => { navigate(item.path); handleDrawerToggle(); }}
-                sx={{
-                  '&:hover': { backgroundColor: 'rgba(0, 191, 165, 0.08)' },
-                  py: 1.5,
-                }}
-              >
-                <ListItemIcon sx={{ color: isActive(item.path) ? '#00BFA5' : 'inherit', minWidth: 40 }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  sx={{ '& .MuiTypography-root': { fontWeight: isActive(item.path) ? 600 : 400 } }}
-                />
-              </ListItem>
-            ))}
+            <Divider sx={{ my: 2 }} />
+            
+            {/* User info in drawer */}
+            <Box sx={{ px: 2, py: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar sx={{ bgcolor: 'primary.main' }}>
+                  {user?.first_name?.[0]}{user?.last_name?.[0]}
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    {user?.first_name} {user?.last_name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {user?.email}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
 
-            {user.roles?.includes('ROLE_ORGANIZER') && (
+            {/* Menu items based on role */}
+            {!user?.roles?.includes('ROLE_ORGANIZER') && !user?.roles?.includes('ROLE_ADMIN') ? (
+              // Utilisateur normal
+              userMenuItems.map((item) => (
+                <ListItem
+                  button
+                  key={item.path}
+                  onClick={() => { navigate(item.path); handleDrawerToggle(); }}
+                  sx={{
+                    borderRadius: 2,
+                    mx: 1,
+                    mb: 0.5,
+                    backgroundColor: isActive(item.path) ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
+                    '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.12) },
+                  }}
+                >
+                  <ListItemIcon sx={{ 
+                    color: isActive(item.path) ? '#00BFA5' : 'primary.main',
+                    minWidth: 40 
+                  }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.label}
+                    primaryTypographyProps={{
+                      fontWeight: isActive(item.path) ? 600 : 400,
+                      color: isActive(item.path) ? 'primary.main' : 'text.primary',
+                    }}
+                  />
+                </ListItem>
+              ))
+            ) : null}
+
+            {/* Organizer section */}
+            {user?.roles?.includes('ROLE_ORGANIZER') && (
               <>
-                <Divider sx={{ my: 1 }} />
                 <Box sx={{ px: 2, py: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
-                    Organisateur
+                  <Typography variant="caption" color="primary.main" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
+                    Espace Organisateur
                   </Typography>
                 </Box>
                 {organizerMenuItems.map((item) => (
@@ -198,27 +373,36 @@ const Navbar: React.FC = () => {
                     key={item.path}
                     onClick={() => { navigate(item.path); handleDrawerToggle(); }}
                     sx={{
-                      '&:hover': { backgroundColor: 'rgba(0, 191, 165, 0.08)' },
-                      py: 1.5,
+                      borderRadius: 2,
+                      mx: 1,
+                      mb: 0.5,
+                      backgroundColor: isActive(item.path) ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
+                      '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.12) },
                     }}
                   >
-                    <ListItemIcon sx={{ color: isActive(item.path) ? '#00BFA5' : 'inherit', minWidth: 40 }}>
+                    <ListItemIcon sx={{ 
+                      color: isActive(item.path) ? '#00BFA5' : 'primary.main',
+                      minWidth: 40 
+                    }}>
                       {item.icon}
                     </ListItemIcon>
-                    <ListItemText
+                    <ListItemText 
                       primary={item.label}
-                      sx={{ '& .MuiTypography-root': { fontWeight: isActive(item.path) ? 600 : 400 } }}
+                      primaryTypographyProps={{
+                        fontWeight: isActive(item.path) ? 600 : 400,
+                        color: isActive(item.path) ? 'primary.main' : 'text.primary',
+                      }}
                     />
                   </ListItem>
                 ))}
               </>
             )}
 
-            {user.roles?.includes('ROLE_ADMIN') && (
+            {/* Admin section */}
+            {user?.roles?.includes('ROLE_ADMIN') && (
               <>
-                <Divider sx={{ my: 1 }} />
                 <Box sx={{ px: 2, py: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Typography variant="caption" color="error.main" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
                     Administration
                   </Typography>
                 </Box>
@@ -228,56 +412,79 @@ const Navbar: React.FC = () => {
                     key={item.path}
                     onClick={() => { navigate(item.path); handleDrawerToggle(); }}
                     sx={{
-                      '&:hover': { backgroundColor: 'rgba(0, 191, 165, 0.08)' },
-                      py: 1.5,
+                      borderRadius: 2,
+                      mx: 1,
+                      mb: 0.5,
+                      backgroundColor: isActive(item.path) ? alpha(theme.palette.error.main, 0.08) : 'transparent',
+                      '&:hover': { backgroundColor: alpha(theme.palette.error.main, 0.12) },
                     }}
                   >
-                    <ListItemIcon sx={{ color: isActive(item.path) ? '#00BFA5' : 'inherit', minWidth: 40 }}>
+                    <ListItemIcon sx={{ 
+                      color: isActive(item.path) ? 'error.main' : 'error.main',
+                      minWidth: 40 
+                    }}>
                       {item.icon}
                     </ListItemIcon>
-                    <ListItemText
+                    <ListItemText 
                       primary={item.label}
-                      sx={{ '& .MuiTypography-root': { fontWeight: isActive(item.path) ? 600 : 400 } }}
+                      primaryTypographyProps={{
+                        fontWeight: isActive(item.path) ? 600 : 400,
+                        color: isActive(item.path) ? 'error.main' : 'error.main',
+                      }}
                     />
                   </ListItem>
                 ))}
               </>
             )}
 
-            <Divider sx={{ my: 1 }} />
+            <Divider sx={{ my: 2 }} />
             <ListItem
               button
               onClick={() => { handleLogout(); handleDrawerToggle(); }}
               sx={{
-                '&:hover': { backgroundColor: 'rgba(255, 109, 0, 0.08)' },
-                py: 1.5,
+                borderRadius: 2,
+                mx: 1,
+                backgroundColor: alpha('#FF6D00', 0.08),
+                '&:hover': { backgroundColor: alpha('#FF6D00', 0.12) },
               }}
             >
               <ListItemIcon sx={{ color: '#FF6D00', minWidth: 40 }}>
                 <LogoutIcon />
               </ListItemIcon>
-              <ListItemText primary="Déconnexion" sx={{ '& .MuiTypography-root': { color: '#FF6D00' } }} />
+              <ListItemText 
+                primary="Déconnexion"
+                primaryTypographyProps={{ fontWeight: 600, color: '#FF6D00' }}
+              />
             </ListItem>
           </>
         )}
       </List>
 
       {!token && (
-        <Box sx={{ p: 2 }}>
+        <Box sx={{ p: 2, position: 'absolute', bottom: 0, width: '100%' }}>
           <Button
             fullWidth
             variant="contained"
-            color="primary"
             onClick={() => { navigate('/login'); handleDrawerToggle(); }}
-            sx={{ mb: 1 }}
+            sx={{ 
+              mb: 1,
+              background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
+              borderRadius: 2,
+              py: 1.5,
+            }}
           >
             Connexion
           </Button>
           <Button
             fullWidth
             variant="outlined"
-            color="primary"
             onClick={() => { navigate('/register'); handleDrawerToggle(); }}
+            sx={{ 
+              borderRadius: 2,
+              py: 1.5,
+              borderColor: '#00BFA5',
+              color: '#00BFA5',
+            }}
           >
             S'inscrire
           </Button>
@@ -288,236 +495,301 @@ const Navbar: React.FC = () => {
 
   return (
     <>
-      <AppBar 
+      <StyledAppBar 
         position="fixed" 
         elevation={0}
-        sx={{
-          backgroundColor: scrolled 
-            ? 'rgba(255, 255, 255, 0.85)' 
-            : location.pathname === '/' 
-              ? 'transparent' 
-              : 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: scrolled ? 'blur(20px)' : 'none',
-          boxShadow: scrolled 
-            ? '0 4px 30px rgba(0, 0, 0, 0.1)' 
-            : 'none',
-          borderBottom: scrolled 
-            ? '1px solid rgba(255, 255, 255, 0.3)' 
-            : 'none',
-          transition: 'all 0.3s ease',
-        }}
+        scrolled={scrolled}
+        isTransparent={isTransparent}
       >
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
+        <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
+          {/* Mobile Menu Icon */}
           {isMobile && (
             <IconButton
               color="inherit"
               aria-label="open drawer"
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ mr: 2 }}
+              sx={{ 
+                mr: 2,
+                color: isTransparent ? 'white' : 'text.primary',
+              }}
             >
               <MenuIcon />
             </IconButton>
           )}
 
-          <Typography
+          {/* Logo */}
+          <LogoText
             variant="h5"
-            component={Link}
-            to="/"
-            sx={{
+            onClick={() => navigate('/')}
+            sx={{ 
               flexGrow: isMobile ? 1 : 0,
-              textDecoration: 'none',
-              fontWeight: 700,
-              background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              mr: 4,
-              display: { xs: 'none', md: 'block' },
+              display: { xs: 'block', md: 'block' },
+              cursor: 'pointer',
             }}
           >
             TripBooking
-          </Typography>
+          </LogoText>
 
-          {/* Mobile logo - always visible */}
-          <Typography
-            variant="h6"
-            component={Link}
-            to="/"
-            sx={{
-              flexGrow: isMobile ? 1 : 0,
-              textDecoration: 'none',
-              fontWeight: 700,
-              background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              display: { xs: 'block', md: 'none' },
-            }}
-          >
-            TripBooking
-          </Typography>
-
+          {/* Desktop Menu */}
           {!isMobile && (
-            <Box sx={{ display: 'flex', gap: 1, flexGrow: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, flexGrow: 1, ml: 4 }}>
               {menuItems.map((item) => (
-                <Button
+                <NavButton
                   key={item.key}
-                  component={Link}
-                  to={item.scrollTo ? '#' + item.scrollTo : item.path}
                   onClick={item.scrollTo ? (e) => {
                     e.preventDefault();
                     handleMenuItemClick(item);
-                  } : undefined}
-                  sx={{
-                    color: location.pathname === '/' && !scrolled 
-                      ? 'white' 
-                      : isActive(item.path) 
-                        ? 'primary.main' 
-                        : 'text.secondary',
-                    fontWeight: isActive(item.path) ? 600 : 400,
-                    '&:hover': { 
-                      backgroundColor: location.pathname === '/' && !scrolled 
-                        ? 'rgba(255,255,255,0.1)' 
-                        : 'rgba(0, 191, 165, 0.08)' 
-                    },
-                  }}
+                  } : () => navigate(item.path)}
+                  active={isActive(item.path)}
+                  transparent={isTransparent}
+                  startIcon={item.icon}
+                  sx={{ px: 2 }}
                 >
                   {item.label}
-                </Button>
+                </NavButton>
               ))}
             </Box>
           )}
 
+          {/* Right side - User menu */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {token ? (
+            {token && user ? (
               <>
-                {!isMobile && (
-                  <>
-                    {user?.roles?.includes('ROLE_ORGANIZER') && (
-                      <Button
-                        component={Link}
-                        to="/organizer/dashboard"
-                        sx={{
-                          color: isActive('/organizer/dashboard') ? 'primary.main' : 'text.secondary',
-                          fontWeight: isActive('/organizer/dashboard') ? 600 : 400,
-                        }}
-                      >
-                        Organisateur
-                      </Button>
-                    )}
-                    {user?.roles?.includes('ROLE_ADMIN') && (
-                      <Button
-                        component={Link}
-                        to="/admin/dashboard"
-                        sx={{
-                          color: isActive('/admin/dashboard') ? 'primary.main' : 'text.secondary',
-                          fontWeight: isActive('/admin/dashboard') ? 600 : 400,
-                        }}
-                      >
-                        Admin
-                      </Button>
-                    )}
-                  </>
-                )}
-                <IconButton
-                  size="large"
-                  edge="end"
-                  aria-label="account"
-                  aria-controls="menu-appbar"
-                  aria-haspopup="true"
-                  onClick={handleMenu}
-                  sx={{ ml: 1 }}
-                >
-                  <Avatar
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      bgcolor: 'secondary.main',
-                      fontSize: '0.9rem',
+                {/* Notifications (optional) */}
+                <Tooltip title="Notifications">
+                  <IconButton
+                    onClick={handleNotificationsOpen}
+                    sx={{ 
+                      color: isTransparent ? 'white' : 'text.primary',
+                      '&:hover': { 
+                        backgroundColor: isTransparent 
+                          ? alpha(theme.palette.common.white, 0.1) 
+                          : alpha(theme.palette.primary.main, 0.08) 
+                      },
                     }}
                   >
-                    {user?.first_name?.[0] || <AccountCircleIcon />}
-                  </Avatar>
-                </IconButton>
+                    <Badge badgeContent={3} color="primary">
+                      <NotificationsIcon />
+                    </Badge>
+                  </IconButton>
+                </Tooltip>
+
+                {/* User Avatar */}
+                <Tooltip title="Menu utilisateur">
+                  <IconButton
+                    onClick={handleMenu}
+                    sx={{ p: 0 }}
+                  >
+                    <UserAvatar>
+                      {user?.first_name?.[0]}{user?.last_name?.[0]}
+                    </UserAvatar>
+                  </IconButton>
+                </Tooltip>
+
+                {/* User Menu */}
                 <Menu
-                  id="menu-appbar"
                   anchorEl={anchorEl}
-                  anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'right',
-                  }}
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  keepMounted
                   open={Boolean(anchorEl)}
                   onClose={handleClose}
+                  TransitionComponent={Fade}
                   PaperProps={{
                     sx: {
-                      mt: 1,
-                      minWidth: 200,
-                      boxShadow: '0px 4px 20px rgba(0,0,0,0.12)',
+                      mt: 1.5,
+                      minWidth: 240,
+                      borderRadius: 3,
+                      boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+                      overflow: 'visible',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: -8,
+                        right: 14,
+                        width: 16,
+                        height: 16,
+                        bgcolor: 'background.paper',
+                        transform: 'rotate(45deg)',
+                        borderTopLeftRadius: 4,
+                      },
+                    },
+                  }}
+                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                >
+                  {/* User info */}
+                  <Box sx={{ px: 2, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Avatar sx={{ bgcolor: 'primary.main' }}>
+                        {user?.first_name?.[0]}{user?.last_name?.[0]}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle1" fontWeight={600}>
+                          {user?.first_name} {user?.last_name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {user?.email}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  {/* User menu items - différent selon le rôle */}
+                  
+                  {/* Pour utilisateur normal */}
+                  {!user?.roles?.includes('ROLE_ORGANIZER') && !user?.roles?.includes('ROLE_ADMIN') && (
+                    <>
+                      <StyledMenuItem onClick={() => { navigate('/dashboard'); handleClose(); }}>
+                        <ListItemIcon><DashboardIcon fontSize="small" sx={{ color: '#00BFA5' }} /></ListItemIcon>
+                        <ListItemText>Tableau de bord</ListItemText>
+                      </StyledMenuItem>
+
+                      <StyledMenuItem onClick={() => { navigate('/bookings'); handleClose(); }}>
+                        <ListItemIcon><BookOnlineIcon fontSize="small" sx={{ color: '#00BFA5' }} /></ListItemIcon>
+                        <ListItemText>Mes réservations</ListItemText>
+                      </StyledMenuItem>
+
+                      <StyledMenuItem onClick={() => { navigate('/saved'); handleClose(); }}>
+                        <ListItemIcon><FavoriteIcon fontSize="small" sx={{ color: '#00BFA5' }} /></ListItemIcon>
+                        <ListItemText>Mes favoris</ListItemText>
+                      </StyledMenuItem>
+
+                      <StyledMenuItem onClick={() => { navigate('/settings'); handleClose(); }}>
+                        <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} /></ListItemIcon>
+                        <ListItemText>Paramètres</ListItemText>
+                      </StyledMenuItem>
+                    </>
+                  )}
+
+                  {/* Pour organisateur */}
+                  {user?.roles?.includes('ROLE_ORGANIZER') && (
+                    <>
+                      <StyledMenuItem onClick={() => { navigate('/organizer/dashboard'); handleClose(); }}>
+                        <ListItemIcon><DashboardIcon fontSize="small" sx={{ color: '#00BFA5' }} /></ListItemIcon>
+                        <ListItemText>Dashboard organisateur</ListItemText>
+                      </StyledMenuItem>
+
+                      <StyledMenuItem onClick={() => { navigate('/organizer/trips'); handleClose(); }}>
+                        <ListItemIcon><FlightTakeoffIcon fontSize="small" sx={{ color: '#00BFA5' }} /></ListItemIcon>
+                        <ListItemText>Mes voyages</ListItemText>
+                      </StyledMenuItem>
+
+                      <StyledMenuItem onClick={() => { navigate('/organizer/bookings'); handleClose(); }}>
+                        <ListItemIcon><BookOnlineIcon fontSize="small" sx={{ color: '#00BFA5' }} /></ListItemIcon>
+                        <ListItemText>Réservations reçues</ListItemText>
+                      </StyledMenuItem>
+
+                      <StyledMenuItem onClick={() => { navigate('/settings'); handleClose(); }}>
+                        <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} /></ListItemIcon>
+                        <ListItemText>Paramètres</ListItemText>
+                      </StyledMenuItem>
+                    </>
+                  )}
+
+                  {/* Pour admin */}
+                  {user?.roles?.includes('ROLE_ADMIN') && (
+                    <>
+                      <StyledMenuItem onClick={() => { navigate('/admin/dashboard'); handleClose(); }}>
+                        <ListItemIcon><AdminPanelSettingsIcon fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon>
+                        <ListItemText>Dashboard admin</ListItemText>
+                      </StyledMenuItem>
+
+                      <StyledMenuItem onClick={() => { navigate('/admin/users'); handleClose(); }}>
+                        <ListItemIcon><AccountCircleIcon fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon>
+                        <ListItemText>Utilisateurs</ListItemText>
+                      </StyledMenuItem>
+
+                      <StyledMenuItem onClick={() => { navigate('/admin/organizers'); handleClose(); }}>
+                        <ListItemIcon><BusinessCenterIcon fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon>
+                        <ListItemText>Organisateurs</ListItemText>
+                      </StyledMenuItem>
+
+                      <StyledMenuItem onClick={() => { navigate('/settings'); handleClose(); }}>
+                        <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} /></ListItemIcon>
+                        <ListItemText>Paramètres</ListItemText>
+                      </StyledMenuItem>
+                    </>
+                  )}
+
+                  <Divider sx={{ my: 1 }} />
+
+                  <StyledMenuItem onClick={handleLogout} sx={{ color: '#FF6D00' }}>
+                    <ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#FF6D00' }} /></ListItemIcon>
+                    <ListItemText>Déconnexion</ListItemText>
+                  </StyledMenuItem>
+                </Menu>
+
+                {/* Notifications Menu */}
+                <Menu
+                  anchorEl={notificationsAnchor}
+                  open={Boolean(notificationsAnchor)}
+                  onClose={handleNotificationsClose}
+                  TransitionComponent={Zoom}
+                  PaperProps={{
+                    sx: {
+                      mt: 1.5,
+                      minWidth: 320,
+                      maxHeight: 400,
+                      borderRadius: 3,
+                      boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
                     },
                   }}
                 >
-                  <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="subtitle2" fontWeight={600}>
-                      {user?.first_name} {user?.last_name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {user?.email}
+                  <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      Notifications
                     </Typography>
                   </Box>
-                  <MenuItem onClick={() => { navigate('/dashboard'); handleClose(); }}>
-                    <ListItemIcon><DashboardIcon fontSize="small" /></ListItemIcon>
-                    Tableau de bord
-                  </MenuItem>
-                  <MenuItem onClick={() => { navigate('/bookings'); handleClose(); }}>
-                    <ListItemIcon><BookingsIcon fontSize="small" /></ListItemIcon>
-                    Mes réservations
-                  </MenuItem>
-                  <Divider />
-                  <MenuItem onClick={handleLogout} sx={{ color: '#FF6D00' }}>
-                    <ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#FF6D00' }} /></ListItemIcon>
-                    Déconnexion
-                  </MenuItem>
+                  <Box sx={{ p: 2, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      3 nouvelles notifications
+                    </Typography>
+                  </Box>
                 </Menu>
               </>
             ) : (
               <>
                 {!isMobile && (
-                  <>
-                    <Button 
-                      color="inherit" 
-                      component={Link} 
-                      to="/login"
-                      sx={{
-                        color: location.pathname === '/' && !scrolled ? 'white' : 'text.secondary',
-                        '&:hover': { 
-                          backgroundColor: location.pathname === '/' && !scrolled 
-                            ? 'rgba(255,255,255,0.1)' 
-                            : 'rgba(0, 191, 165, 0.08)' 
-                        },
-                      }}
-                    >
-                      Connexion
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      component={Link}
-                      to="/register"
-                    >
-                      S'inscrire
-                    </Button>
-                  </>
+                  <Zoom in>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button 
+                        onClick={() => navigate('/login')}
+                        sx={{
+                          color: isTransparent ? 'white' : 'text.primary',
+                          borderColor: isTransparent ? 'white' : 'transparent',
+                          '&:hover': { 
+                            backgroundColor: isTransparent 
+                              ? alpha(theme.palette.common.white, 0.1) 
+                              : alpha(theme.palette.primary.main, 0.08),
+                            color: isTransparent ? 'white' : 'primary.main',
+                          },
+                        }}
+                      >
+                        Connexion
+                      </Button>
+                      <Button
+                        variant="contained"
+                        onClick={() => navigate('/register')}
+                        sx={{
+                          background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
+                          borderRadius: 2,
+                          px: 3,
+                          '&:hover': {
+                            background: 'linear-gradient(90deg, #0D47A1, #00BFA5)',
+                          },
+                        }}
+                      >
+                        S'inscrire
+                      </Button>
+                    </Box>
+                  </Zoom>
                 )}
               </>
             )}
           </Box>
         </Toolbar>
-      </AppBar>
+      </StyledAppBar>
 
+      {/* Mobile Drawer */}
       <Drawer
         variant="temporary"
         open={mobileOpen}
@@ -525,7 +797,12 @@ const Navbar: React.FC = () => {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 280 },
+          '& .MuiDrawer-paper': { 
+            boxSizing: 'border-box', 
+            width: 320,
+            borderTopRightRadius: 24,
+            borderBottomRightRadius: 24,
+          },
         }}
       >
         {drawer}

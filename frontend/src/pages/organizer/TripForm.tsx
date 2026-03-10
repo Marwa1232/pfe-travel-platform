@@ -107,6 +107,7 @@ const TripForm: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [destinations, setDestinations] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [visibilityScore, setVisibilityScore] = useState(0);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [previewMode, setPreviewMode] = useState(false);
@@ -117,6 +118,7 @@ const TripForm: React.FC = () => {
     slug: '',
     category: '',
     destination: '',
+    difficulty_level: 'medium',
     short_description: '',
     long_description: '',
     tags: [] as string[],
@@ -161,9 +163,15 @@ const TripForm: React.FC = () => {
 
   const loadOptions = async () => {
     try {
+      // Load destinations
       const destRes = await fetch('http://localhost:8000/api/destinations');
       const destData = await destRes.json();
       setDestinations(destData['hydra:member'] || destData);
+      
+      // Load categories
+      const catRes = await fetch('http://localhost:8000/api/categories');
+      const catData = await catRes.json();
+      setCategories(catData['hydra:member'] || catData);
     } catch (error) {
       console.error('Error loading options:', error);
     }
@@ -175,26 +183,38 @@ const TripForm: React.FC = () => {
       const response = await tripAPI.get(Number(id));
       const trip = response.data;
 
+      // Extract category and destination IDs from relationships
+      const categoryId = trip.categories?.[0]?.id || '';
+      const destinationId = trip.destinations?.[0]?.id || '';
+      
+      // Extract session data
+      const session = trip.sessions?.[0] || {};
+      
+      // Extract images
+      const coverImage = trip.images?.find((img: any) => img.is_cover);
+      const galleryImages = trip.images?.filter((img: any) => !img.is_cover) || [];
+
       setFormData({
         ...formData,
         title: trip.title || '',
         slug: trip.slug || '',
-        category: trip.categories?.[0]?.name || '',
-        destination: trip.destinations?.[0]?.name || '',
+        category: categoryId,
+        destination: destinationId,
         short_description: trip.short_description || '',
         long_description: trip.long_description || '',
         tags: trip.tags || [],
-        start_date: trip.sessions?.[0]?.start_date || '',
-        end_date: trip.sessions?.[0]?.end_date || '',
+        start_date: session.start_date ? new Date(session.start_date).toISOString().split('T')[0] : '',
+        end_date: session.end_date ? new Date(session.end_date).toISOString().split('T')[0] : '',
         meeting_point: trip.meeting_point || '',
         meeting_address: trip.meeting_address || '',
-        max_places: trip.sessions?.[0]?.max_capacity?.toString() || '',
-        base_price: trip.base_price || '',
+        max_places: session.max_capacity?.toString() || '',
+        base_price: trip.base_price?.toString() || '',
         currency: trip.currency || 'TND',
         inclusions: trip.inclusions || [],
         exclusions: trip.exclusions || [],
-        cover_image_preview: trip.images?.[0]?.url || '',
-        gallery: trip.images?.slice(1).map((img: any) => ({ file: null, preview: '', url: img.url })) || [],
+        cover_image: null,
+        cover_image_preview: coverImage?.url || '',
+        gallery: galleryImages.map((img: any) => ({ file: null, preview: '', url: img.url })),
         status: trip.status || 'draft',
       });
     } catch {
@@ -384,22 +404,99 @@ const TripForm: React.FC = () => {
     setSaving(true);
     setError(null);
 
+    // Client-side validation
+    const validationErrors: string[] = [];
+    if (!formData.title.trim()) validationErrors.push('Le titre est requis');
+    if (!formData.short_description.trim()) validationErrors.push('La description courte est requise');
+    if (!formData.base_price || parseFloat(formData.base_price) <= 0) validationErrors.push('Le prix de base doit être supérieur à 0');
+    if (!formData.category) validationErrors.push('Veuillez sélectionner une catégorie');
+    if (!formData.destination) validationErrors.push('Veuillez sélectionner une destination');
+    
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join('. \n'));
+      setSaving(false);
+      return;
+    }
+
     try {
+      // Format dates to YYYY-MM-DD for Symfony
+      const formatDate = (dateStr: string) => {
+        if (!dateStr) return null;
+        const date = new Date(dateStr);
+        return date.toISOString().split('T')[0];
+      };
+
+      // Upload cover image first if exists
+      console.log('[DEBUG] === SUBMIT TRIP STARTED ===');
+      console.log('[DEBUG] formData:', formData);
+      console.log('[DEBUG] Cover image file:', formData?.cover_image);
+      console.log('[DEBUG] Cover image preview:', formData?.cover_image_preview);
+      let coverImageUrl = formData?.cover_image_preview || '';
+      if (formData?.cover_image) {
+        try {
+          console.log('[DEBUG] Uploading cover image...');
+          const coverResponse = await tripAPI.uploadImages([formData.cover_image], undefined, true);
+          console.log('[DEBUG] Cover upload response:', coverResponse.data);
+          coverImageUrl = coverResponse.data.urls?.[0] || null;
+          console.log('[DEBUG] Cover image URL after upload:', coverImageUrl);
+        } catch (uploadErr) {
+          console.error('[DEBUG] Cover image upload failed:', uploadErr);
+        }
+      }
+
+      // Upload gallery images
+      let galleryUrls: string[] = [];
+      const galleryFiles = formData.gallery?.filter((img: any) => img.file) || [];
+      console.log('[DEBUG] Gallery files:', galleryFiles.length);
+      if (galleryFiles.length > 0) {
+        try {
+          const files = galleryFiles.map((img: any) => img.file);
+          console.log('[DEBUG] Uploading gallery images:', files.length);
+          const galleryResponse = await tripAPI.uploadImages(files, undefined, false);
+          console.log('[DEBUG] Gallery upload response:', galleryResponse.data);
+          galleryUrls = galleryResponse.data.urls || [];
+        } catch (uploadErr) {
+          console.error('[DEBUG] Gallery upload failed:', uploadErr);
+        }
+      }
+
+      // Build submit data matching Symfony Entity field names
       const submitData = {
-        title: formData.title,
-        slug: formData.slug,
-        short_description: formData.short_description,
-        long_description: formData.long_description,
-        base_price: parseFloat(formData.base_price),
-        currency: formData.currency,
-        duration_days: formData.program.length || parseInt(formData.end_date) - parseInt(formData.start_date) || 1,
-        difficulty_level: 'medium',
+        // Basic trip info
+        title: formData.title.trim(),
+        slug: formData.slug.trim() || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+        short_description: formData.short_description.trim(),
+        long_description: formData.long_description?.trim() || null,
+        base_price: parseFloat(formData.base_price) || 0,
+        currency: formData.currency || 'TND',
+        duration_days: formData.program.length || 1,
+        difficulty_level: formData.difficulty_level || 'medium',
         status: status,
-        tags: formData.tags,
-        inclusions: formData.inclusions,
-        exclusions: formData.exclusions,
-        meeting_point: formData.meeting_point,
-        meeting_address: formData.meeting_address,
+        
+        // JSON fields - Symfony will handle these as JSON arrays
+        tags: formData.tags || [],
+        inclusions: formData.inclusions || [],
+        exclusions: formData.exclusions || [],
+        
+        // Location
+        meeting_point: formData.meeting_point?.trim() || null,
+        meeting_address: formData.meeting_address?.trim() || null,
+        
+        // Relationships - send IDs as integers
+        category: formData.category ? parseInt(formData.category) : null,
+        destination: formData.destination ? parseInt(formData.destination) : null,
+        
+        // Session dates - format as YYYY-MM-DD
+        start_date: formatDate(formData.start_date),
+        end_date: formatDate(formData.end_date),
+        max_places: formData.max_places ? parseInt(formData.max_places) : null,
+        
+        // Program - array of {day, title, description}
+        program: formData.program.length > 0 ? formData.program : null,
+        
+        // Images - uploaded URLs
+        cover_image: (console.log('[DEBUG] Submit data - cover_image:', coverImageUrl), coverImageUrl || null),
+        gallery: (console.log('[DEBUG] Submit data - gallery:', galleryUrls), galleryUrls.length > 0 ? galleryUrls : null),
       };
 
       if (isEdit) {
@@ -461,7 +558,7 @@ const TripForm: React.FC = () => {
                     label="Catégorie"
                   >
                     {categories.map((cat) => (
-                      <MenuItem key={cat.value} value={cat.value}>{cat.label}</MenuItem>
+                      <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -477,8 +574,24 @@ const TripForm: React.FC = () => {
                     label="Destination"
                   >
                     {destinations.map((dest) => (
-                      <MenuItem key={dest.id} value={dest.name}>{dest.name} ({dest.country})</MenuItem>
+                      <MenuItem key={dest.id} value={dest.id}>{dest.name} ({dest.country})</MenuItem>
                     ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Niveau de difficulté</InputLabel>
+                  <Select
+                    name="difficulty_level"
+                    value={formData.difficulty_level}
+                    onChange={(e) => setFormData(prev => ({ ...prev, difficulty_level: e.target.value }))}
+                    label="Niveau de difficulté"
+                  >
+                    <MenuItem value="easy">Facile</MenuItem>
+                    <MenuItem value="medium">Moyen</MenuItem>
+                    <MenuItem value="difficult">Difficile</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>

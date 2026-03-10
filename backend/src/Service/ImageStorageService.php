@@ -11,7 +11,7 @@ class ImageStorageService
     private Filesystem $filesystem;
 
     public function __construct(
-        private string $projectDir
+        string $projectDir
     ) {
         $this->uploadDir = $projectDir . '/public/uploads/trips';
         $this->filesystem = new Filesystem();
