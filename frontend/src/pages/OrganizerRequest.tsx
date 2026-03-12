@@ -21,6 +21,7 @@ import {
   Fade,
   Zoom,
   LinearProgress,
+  Autocomplete,
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import {
@@ -28,6 +29,7 @@ import {
   Language,
   Facebook,
   Instagram,
+  LocationOn,
   Send,
   CheckCircle,
   Upload,
@@ -155,6 +157,14 @@ const OrganizerRequest: React.FC = () => {
   const [error, setError] = useState('');
   const [documents, setDocuments] = useState<Document[]>([]);
 
+  const countries = [
+    'Tunisia', 'Algeria', 'Morocco', 'Egypt', 'Libya', 'Sudan', 'Mauritania', 'Jordan',
+    'Lebanon', 'Syria', 'Iraq', 'Kuwait', 'Bahrain', 'Qatar', 'UAE', 'Saudi Arabia',
+    'Yemen', 'Oman', 'Turkey', 'France', 'Spain', 'Italy', 'Germany', 'United Kingdom',
+    'United States', 'Canada', 'Brazil', 'Argentina', 'Mexico', 'Australia', 'Japan', 'China',
+    'India', 'Thailand', 'Vietnam', 'Indonesia', 'Malaysia', 'Singapore', 'Greece', 'Portugal'
+  ];
+
   const [formData, setFormData] = useState({
     agency_name: '',
     description: '',
@@ -165,6 +175,8 @@ const OrganizerRequest: React.FC = () => {
     instagram: '',
     license_number: '',
     tax_number: '',
+    address: '',
+    country: '',
   });
 
   const steps = ['Informations', 'Expérience', 'Documents', 'Réseaux sociaux'];
@@ -495,6 +507,40 @@ const OrganizerRequest: React.FC = () => {
                         startAdornment: <Language sx={{ mr: 1, color: '#00BFA5' }} />,
                         sx: { borderRadius: 2 }
                       }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Adresse"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      placeholder="Rue, ville, code postal"
+                      InputProps={{
+                        startAdornment: <LocationOn sx={{ mr: 1, color: '#00BFA5' }} />,
+                        sx: { borderRadius: 2 }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Autocomplete
+                      options={countries}
+                      value={formData.country || null}
+                      onChange={(_, newValue) => {
+                        setFormData(prev => ({ ...prev, country: newValue || '' }));
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Pays"
+                          placeholder="Sélectionnez un pays"
+                          InputProps={{
+                            ...params.InputProps,
+                            startAdornment: <LocationOn sx={{ mr: 1, color: '#00BFA5' }} />,
+                          }}
+                        />
+                      )}
                     />
                   </Grid>
                 </Grid>

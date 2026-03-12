@@ -9,6 +9,7 @@ import theme from './theme';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
+import About from './pages/About';
 import Destinations from './pages/Destinations';
 import TripList from './pages/TripList';
 import TripDetail from './pages/TripDetail';
@@ -43,6 +44,7 @@ function App() {
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<Home />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/destinations" element={<Destinations />} />
                 <Route path="/trips" element={<TripList />} />
                 <Route path="/trips/:id" element={<TripDetail />} />
@@ -65,6 +67,7 @@ function App() {
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/organizers" element={<AdminOrganizers />} />
+                <Route path="/admin/organizers/:id" element={<AdminOrganizers />} />
               </Routes>
             </Box>
             <Footer />

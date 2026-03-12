@@ -598,6 +598,15 @@ const Home: React.FC = () => {
               </Typography>
             </Box>
             
+            <Button 
+              variant="outlined" 
+              component={Link} 
+              to="/destinations"
+              endIcon={<ArrowForwardIcon />}
+            >
+              Voir tout
+            </Button>
+            
             <Box sx={{ display: 'flex', gap: 1 }}>
               <IconButton 
                 onClick={() => scrollDestinations('left')}

@@ -12,12 +12,6 @@ import {
   Chip,
   Button,
   IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -36,15 +30,13 @@ import {
   Tooltip,
   Badge,
   Stack,
-  Fade,
-  Zoom,
   Menu,
   MenuItem,
   ListItemIcon,
   InputAdornment,
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
-import { styled, alpha, keyframes } from '@mui/material/styles';
+import { styled, alpha } from '@mui/material/styles';
 import {
   People,
   FlightTakeoff,
@@ -53,18 +45,14 @@ import {
   Warning,
   CheckCircle,
   TrendingUp,
-  TrendingDown,
   Refresh,
   Category,
   Public,
   Security,
   Speed,
-  Storage,
   MoreVert,
   Block,
-  Cancel,
   AccountBalance,
-  Receipt,
   Shield,
   PendingActions,
   Add,
@@ -73,10 +61,7 @@ import {
   CloudUpload,
   Place,
   EmojiEvents,
-  AutoAwesome,
-  ShowChart,
   Insights,
-  Timeline as TimelineIcon,
   Search,
   RemoveRedEye,
   Payment,
@@ -84,30 +69,27 @@ import {
 import { RootState } from '../../store';
 import { adminAPI } from '../../services/api';
 
-// Animations
-const float = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-`;
+// Style professionnel mais avec le thème existant
+const StyledCard = styled(Card)(({ theme }) => ({
+  backgroundColor: '#ffffff',
+  borderRadius: theme.spacing(2),
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+  border: '1px solid #eef2f6',
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+    borderColor: '#00BFA5',
+  },
+}));
 
-const pulse = keyframes`
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-`;
-
-const shine = keyframes`
-  0% { background-position: -100% 0; }
-  100% { background-position: 200% 0; }
-`;
-
-// Styled components modernes
+// ModernCard pour le panel Contenu (design original)
 const ModernCard = styled(Card)(({ theme }) => ({
   background: 'rgba(255, 255, 255, 0.9)',
   backdropFilter: 'blur(20px)',
   border: '1px solid rgba(255, 255, 255, 0.2)',
-  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 191, 165, 0.1)',
-  borderRadius: theme.spacing(3),
-  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+  boxShadow: '0 15px 30px rgba(0, 0, 0, 0.08), 0 5px 15px rgba(0, 191, 165, 0.08)',
+  borderRadius: theme.spacing(2.5),
+  transition: 'all 0.3s ease',
   position: 'relative',
   overflow: 'hidden',
   '&::before': {
@@ -116,164 +98,74 @@ const ModernCard = styled(Card)(({ theme }) => ({
     top: 0,
     left: 0,
     right: 0,
-    height: 4,
+    height: 3,
     background: 'linear-gradient(90deg, #00BFA5, #0D47A1, #00BFA5)',
-    animation: `${shine} 3s infinite`,
     backgroundSize: '200% 100%',
   },
   '&:hover': {
-    transform: 'translateY(-8px) scale(1.02)',
-    boxShadow: '0 30px 60px rgba(0, 191, 165, 0.2), 0 15px 30px rgba(13, 71, 161, 0.15)',
-  },
-}));
-
-const GradientCard = styled(Card)(({ theme }) => ({
-  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  color: 'white',
-  position: 'relative',
-  overflow: 'hidden',
-  borderRadius: theme.spacing(3),
-  boxShadow: '0 20px 40px rgba(102, 126, 234, 0.3)',
-  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 200,
-    height: 200,
-    borderRadius: '50%',
-    background: 'rgba(255,255,255,0.1)',
-    animation: `${float} 6s ease-in-out infinite`,
-  },
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    bottom: -50,
-    left: -50,
-    width: 150,
-    height: 150,
-    borderRadius: '50%',
-    background: 'rgba(255,255,255,0.1)',
-    animation: `${float} 8s ease-in-out infinite reverse`,
-  },
-  '&:hover': {
-    transform: 'translateY(-8px) scale(1.02)',
-    boxShadow: '0 30px 60px rgba(102, 126, 234, 0.4)',
+    transform: 'translateY(-4px) scale(1.01)',
+    boxShadow: '0 20px 40px rgba(0, 191, 165, 0.15), 0 10px 20px rgba(13, 71, 161, 0.1)',
   },
 }));
 
 const GlassPaper = styled(Paper)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.8)',
-  backdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255, 255, 255, 0.2)',
-  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 191, 165, 0.1)',
-  borderRadius: theme.spacing(3),
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    boxShadow: '0 25px 50px rgba(0, 191, 165, 0.15)',
-  },
+  backgroundColor: '#ffffff',
+  border: '1px solid #eef2f6',
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+  borderRadius: theme.spacing(2),
 }));
 
 const StatValue = styled(Typography)(({ theme }) => ({
-  fontWeight: 800,
-  fontSize: '2.5rem',
-  background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-  animation: 'countUp 1s ease-out',
-  '@keyframes countUp': {
-    '0%': { opacity: 0, transform: 'translateY(20px)' },
-    '100%': { opacity: 1, transform: 'translateY(0)' },
-  },
-}));
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 600,
-  '&.MuiTableCell-head': {
-    backgroundColor: alpha(theme.palette.primary.main, 0.05),
-    fontWeight: 700,
-    fontSize: '0.9rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
+  fontWeight: 700,
+  fontSize: '2rem',
+  color: theme.palette.primary.main,
 }));
 
 const StatusChip = styled(Chip)(({ theme }) => ({
-  borderRadius: theme.spacing(1.5),
-  fontWeight: 700,
-  fontSize: '0.8rem',
+  borderRadius: theme.spacing(1),
+  fontWeight: 600,
+  fontSize: '0.75rem',
+  height: 24,
   '&.approved': {
     backgroundColor: alpha(theme.palette.success.main, 0.1),
     color: theme.palette.success.main,
-    border: `1px solid ${alpha(theme.palette.success.main, 0.3)}`,
   },
   '&.pending': {
     backgroundColor: alpha(theme.palette.warning.main, 0.1),
     color: theme.palette.warning.main,
-    border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
   },
   '&.rejected': {
     backgroundColor: alpha(theme.palette.error.main, 0.1),
     color: theme.palette.error.main,
-    border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
   },
 }));
 
 const StyledTab = styled(Tab)(({ theme }) => ({
   textTransform: 'none',
   fontWeight: 600,
-  fontSize: '1rem',
-  minHeight: 64,
-  transition: 'all 0.3s ease',
+  fontSize: '0.9rem',
+  minHeight: 48,
+  color: theme.palette.text.secondary,
   '&.Mui-selected': {
     color: theme.palette.primary.main,
-    background: alpha(theme.palette.primary.main, 0.05),
-  },
-  '&:hover': {
-    background: alpha(theme.palette.primary.main, 0.02),
+    fontWeight: 700,
   },
 }));
 
 const BackgroundBox = styled(Box)({
   minHeight: '100vh',
-  background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-  position: 'relative',
-  overflow: 'hidden',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: -100,
-    right: -100,
-    width: 600,
-    height: 600,
-    borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(0,191,165,0.1) 0%, transparent 70%)',
-    animation: `${float} 20s ease-in-out infinite`,
-  },
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    bottom: -100,
-    left: -100,
-    width: 500,
-    height: 500,
-    borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(13,71,161,0.1) 0%, transparent 70%)',
-    animation: `${float} 15s ease-in-out infinite reverse`,
-  },
+  backgroundColor: '#f8fafc',
 });
 
-const IconWrapper = styled(Box)(({ theme }) => ({
-  width: 60,
-  height: 60,
-  borderRadius: '50%',
+const IconBox = styled(Box)(({ theme, color }: { theme?: any; color: string }) => ({
+  width: 48,
+  height: 48,
+  borderRadius: theme.spacing(1.5),
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'rgba(255, 255, 255, 0.2)',
-  backdropFilter: 'blur(10px)',
-  animation: `${pulse} 2s ease-in-out infinite`,
+  backgroundColor: alpha(color, 0.1),
+  color: color,
 }));
 
 interface TabPanelProps {
@@ -289,14 +181,9 @@ function TabPanel(props: TabPanelProps) {
       role="tabpanel"
       hidden={value !== index}
       id={`admin-tabpanel-${index}`}
-      aria-labelledby={`admin-tab-${index}`}
       {...other}
     >
-      {value === index && (
-        <Fade in timeout={500}>
-          <Box sx={{ pt: 3 }}>{children}</Box>
-        </Fade>
-      )}
+      {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
     </div>
   );
 }
@@ -314,10 +201,6 @@ interface Stats {
 }
 
 interface DetailedStats {
-  monthlyUsers: { month: string; count: number }[];
-  monthlyBookings: { month: string; count: number }[];
-  monthlyRevenue: { month: string; revenue: number }[];
-  tripsByCategory: { category: string; count: number }[];
   topDestinations: { destination: string; country: string; tripCount: number }[];
   topOrganizers: { organizer: string; bookings: number; revenue: number }[];
 }
@@ -326,19 +209,13 @@ interface FinancialData {
   totalRevenue: number;
   totalCommission: number;
   commissionRate: number;
-  platformRevenue: number;
   organizerPayouts: number;
   pendingPayouts: number;
-  completedPayouts: number;
-  monthlyCommission?: { month: string; commission: number }[];
 }
 
 interface SystemHealth {
-  database: string;
   status: string;
-  counts: { users: number; trips: number; bookings: number; organizers: number };
   pending: { organizers: number; bookings: number };
-  timestamp: string;
   services?: { name: string; status: 'operational' | 'degraded' | 'down'; latency: number }[];
 }
 
@@ -508,15 +385,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleToggleUserStatus = async (id: number, isActive: boolean) => {
-    try {
-      await adminAPI.updateUserStatus(id, !isActive);
-      loadUsers();
-    } catch (error) {
-      console.error('Error updating user status:', error);
-    }
-  };
-
   const handleCreateCategory = async () => {
     try {
       await adminAPI.createCategory(newCategory);
@@ -567,227 +435,182 @@ const AdminDashboard: React.FC = () => {
            org.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const filteredUsers = users.filter(u => {
-    return u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           `${u.first_name} ${u.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
-  });
-
   if (loading) {
     return (
       <BackgroundBox>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-          <ModernCard sx={{ p: 4, textAlign: 'center' }}>
-            <CircularProgress size={60} thickness={4} sx={{ color: '#00BFA5', mb: 2 }} />
-            <Typography variant="h5" fontWeight={600}>Chargement du tableau de bord...</Typography>
-          </ModernCard>
+          <CircularProgress size={48} thickness={4} sx={{ color: '#00BFA5' }} />
         </Box>
       </BackgroundBox>
     );
   }
 
   const pendingOrganizers = organizers.filter(o => o.status === 'PENDING');
-  const approvedOrganizers = organizers.filter(o => o.status === 'APPROVED');
 
   return (
     <BackgroundBox>
-      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, py: 4 }}>
-        {/* Header ultra moderne */}
-        <GlassPaper sx={{ p: 3, mb: 4 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <IconWrapper>
-                <Shield sx={{ fontSize: 30, color: '#00BFA5' }} />
-              </IconWrapper>
-              <Box>
-                <Typography variant="h3" component="h1" fontWeight="800" sx={{
-                  background: 'linear-gradient(135deg, #00BFA5, #0D47A1, #667eea)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}>
-                  Control Tower
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem' }}>
-                  Administration de la plateforme TripBooking
-                </Typography>
-              </Box>
+      <Container maxWidth="xl" sx={{ py: 3 }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ 
+              width: 48, 
+              height: 48, 
+              borderRadius: 2,
+              bgcolor: alpha('#00BFA5', 0.1),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Shield sx={{ fontSize: 28, color: '#00BFA5' }} />
             </Box>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={refreshing ? <CircularProgress size={20} color="inherit" /> : <Refresh />}
-              onClick={refreshData}
-              disabled={refreshing}
-              sx={{
-                background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-                borderRadius: 3,
-                px: 4,
-                py: 1.5,
-                fontSize: '1rem',
-                fontWeight: 600,
-                boxShadow: '0 10px 20px rgba(0,191,165,0.3)',
-                '&:hover': {
-                  background: 'linear-gradient(90deg, #0D47A1, #00BFA5)',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 15px 30px rgba(0,191,165,0.4)',
-                },
-              }}
-            >
-              Actualiser
-            </Button>
+            <Box>
+              <Typography variant="h5" fontWeight="700" sx={{ color: '#0D47A1' }}>
+                Administration
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Gérez votre plateforme TripBooking
+              </Typography>
+            </Box>
           </Box>
-        </GlassPaper>
+          <Button
+            variant="outlined"
+            size="medium"
+            startIcon={refreshing ? <CircularProgress size={18} /> : <Refresh />}
+            onClick={refreshData}
+            disabled={refreshing}
+            sx={{ 
+              borderRadius: 2,
+              borderColor: '#00BFA5',
+              color: '#00BFA5',
+              '&:hover': {
+                borderColor: '#0D47A1',
+                backgroundColor: alpha('#00BFA5', 0.04),
+              },
+            }}
+          >
+            Actualiser
+          </Button>
+        </Box>
 
-        {/* KPIs Cards - Design ultra moderne avec dégradés */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid xs={10} sm={6} md={3}>
-            <ModernCard>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                  <Box sx={{ 
-                    width: 60, 
-                    height: 60, 
-                    borderRadius: 3,
-                    background: 'linear-gradient(135deg, #FF6B6B, #FFA07A)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <People sx={{ fontSize: 30, color: 'white' }} />
+        {/* KPIs Cards */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid xs={12} sm={6} md={3}>
+            <StyledCard>
+              <CardContent sx={{ p: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <IconBox color="#FF6B6B">
+                    <People sx={{ fontSize: 24 }} />
+                  </IconBox>
+                  <Box>
+                    <Typography variant="h4" fontWeight="700" sx={{ color: '#FF6B6B' }}>
+                      {stats.totalUsers}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                      Utilisateurs
+                    </Typography>
                   </Box>
-                  <Badge badgeContent={stats.totalUsers} color="primary" max={9999} sx={{ '& .MuiBadge-badge': { fontSize: '1rem', height: 24, minWidth: 24 } }} />
-                </Box>
-                <Typography variant="h3" fontWeight="800" sx={{ mb: 1, background: 'linear-gradient(135deg, #FF6B6B, #FFA07A)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  {stats.totalUsers}
-                </Typography>
-                <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Utilisateurs
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
-                  <TrendingUp sx={{ fontSize: 16, color: '#4CAF50' }} />
-                 
                 </Box>
               </CardContent>
-            </ModernCard>
+            </StyledCard>
           </Grid>
 
           <Grid xs={12} sm={6} md={3}>
-            <ModernCard>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                  <Box sx={{ 
-                    width: 60, 
-                    height: 60, 
-                    borderRadius: 3,
-                    background: 'linear-gradient(135deg, #FFD700, #FFA500)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <Business sx={{ fontSize: 30, color: 'white' }} />
+            <StyledCard>
+              <CardContent sx={{ p: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <IconBox color="#FFA500">
+                    <Business sx={{ fontSize: 24 }} />
+                  </IconBox>
+                  <Box>
+                    <Typography variant="h4" fontWeight="700" sx={{ color: '#FFA500' }}>
+                      {stats.totalOrganizers}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                      Organisateurs
+                    </Typography>
                   </Box>
-                  <Badge badgeContent={stats.pendingOrganizers} color="warning" sx={{ '& .MuiBadge-badge': { fontSize: '1rem', height: 24, minWidth: 24 } }} />
                 </Box>
-                <Typography variant="h3" fontWeight="800" sx={{ mb: 1, background: 'linear-gradient(135deg, #FFD700, #FFA500)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  {stats.totalOrganizers}
-                </Typography>
-                <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Organisateurs
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
-                  <People sx={{ fontSize: 16, color: '#FFA500' }} />
-                  <Typography variant="caption" fontWeight={600} color="warning.main">
-                    {stats.pendingOrganizers} en attente
-                  </Typography>
-                </Box>
+                {stats.pendingOrganizers > 0 && (
+                  <Chip
+                    size="small"
+                    label={`${stats.pendingOrganizers} en attente`}
+                    sx={{ 
+                      mt: 1,
+                      backgroundColor: alpha('#FFA500', 0.1),
+                      color: '#FFA500',
+                      fontWeight: 600,
+                      borderRadius: 1.5,
+                    }}
+                  />
+                )}
               </CardContent>
-            </ModernCard>
+            </StyledCard>
           </Grid>
 
           <Grid xs={12} sm={6} md={3}>
-            <ModernCard>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                  <Box sx={{ 
-                    width: 60, 
-                    height: 60, 
-                    borderRadius: 3,
-                    background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <FlightTakeoff sx={{ fontSize: 30, color: 'white' }} />
+            <StyledCard>
+              <CardContent sx={{ p: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <IconBox color="#00BFA5">
+                    <FlightTakeoff sx={{ fontSize: 24 }} />
+                  </IconBox>
+                  <Box>
+                    <Typography variant="h4" fontWeight="700" sx={{ color: '#00BFA5' }}>
+                      {stats.totalTrips}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                      Voyages
+                    </Typography>
                   </Box>
                 </Box>
-                <Typography variant="h3" fontWeight="800" sx={{ mb: 1, background: 'linear-gradient(135deg, #00BFA5, #0D47A1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  {stats.totalTrips}
-                </Typography>
-                <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Voyages
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
-                  <CheckCircle sx={{ fontSize: 16, color: '#00BFA5' }} />
-                  <Typography variant="caption" fontWeight={600} color="primary.main">
-                    {stats.completedBookings} réservations
-                  </Typography>
-                </Box>
               </CardContent>
-            </ModernCard>
+            </StyledCard>
           </Grid>
 
           <Grid xs={12} sm={6} md={3}>
-            <ModernCard>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                  <Box sx={{ 
-                    width: 60, 
-                    height: 60, 
-                    borderRadius: 3,
-                    background: 'linear-gradient(135deg, #4CAF50, #8BC34A)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <AttachMoney sx={{ fontSize: 30, color: 'white' }} />
+            <StyledCard>
+              <CardContent sx={{ p: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <IconBox color="#4CAF50">
+                    <AttachMoney sx={{ fontSize: 24 }} />
+                  </IconBox>
+                  <Box>
+                    <Typography variant="h4" fontWeight="700" sx={{ color: '#4CAF50' }}>
+                      {(stats.totalRevenue || 0).toFixed(0)} TND
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                      Revenus
+                    </Typography>
                   </Box>
                 </Box>
-                <Typography variant="h3" fontWeight="800" sx={{ mb: 1, background: 'linear-gradient(135deg, #4CAF50, #8BC34A)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  {(stats.totalRevenue || 0).toFixed(0)} TND
-                </Typography>
-                <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Revenus Totaux
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
-                  <TrendingUp sx={{ fontSize: 16, color: '#4CAF50' }} />
-                  
-                </Box>
               </CardContent>
-            </ModernCard>
+            </StyledCard>
           </Grid>
         </Grid>
 
-        {/* Deux gros boutons ultra modernes */}
+        {/* Boutons d'action - Design original */}
         <Grid container spacing={2} sx={{ mb: 4 }}>
           <Grid xs={12} md={6}>
             <Button
               fullWidth
               variant="contained"
               size="large"
-              startIcon={<People sx={{ fontSize: 28 }} />}
+              startIcon={<People />}
               onClick={() => navigate('/admin/users')}
               sx={{
-                py: 3,
-                borderRadius: 4,
+                py: 1.5,
+                borderRadius: 2,
                 background: 'linear-gradient(135deg, #00BFA5, #0D47A1, #667eea)',
-                fontSize: '1.3rem',
-                fontWeight: 700,
+                fontSize: '1rem',
+                fontWeight: 600,
                 textTransform: 'none',
-                boxShadow: '0 20px 40px rgba(0,191,165,0.3)',
-                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                boxShadow: '0 4px 12px rgba(0,191,165,0.2)',
+                transition: 'all 0.3s ease',
                 '&:hover': {
                   background: 'linear-gradient(135deg, #667eea, #0D47A1, #00BFA5)',
-                  transform: 'translateY(-8px) scale(1.02)',
-                  boxShadow: '0 30px 60px rgba(0,191,165,0.4)',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 20px rgba(0,191,165,0.3)',
                 },
               }}
             >
@@ -799,21 +622,21 @@ const AdminDashboard: React.FC = () => {
               fullWidth
               variant="contained"
               size="large"
-              startIcon={<Business sx={{ fontSize: 28 }} />}
+              startIcon={<Business />}
               onClick={() => navigate('/admin/organizers')}
               sx={{
-                py: 3,
-                borderRadius: 4,
+                py: 1.5,
+                borderRadius: 2,
                 background: 'linear-gradient(135deg, #FFD700, #FFA500, #FF6B6B)',
-                fontSize: '1.3rem',
-                fontWeight: 700,
+                fontSize: '1rem',
+                fontWeight: 600,
                 textTransform: 'none',
-                boxShadow: '0 20px 40px rgba(255,165,0,0.3)',
-                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                boxShadow: '0 4px 12px rgba(255,165,0,0.2)',
+                transition: 'all 0.3s ease',
                 '&:hover': {
                   background: 'linear-gradient(135deg, #FF6B6B, #FFA500, #FFD700)',
-                  transform: 'translateY(-8px) scale(1.02)',
-                  boxShadow: '0 30px 60px rgba(255,165,0,0.4)',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 20px rgba(255,165,0,0.3)',
                 },
               }}
             >
@@ -822,445 +645,394 @@ const AdminDashboard: React.FC = () => {
           </Grid>
         </Grid>
 
-        {/* Secondary KPIs */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* Stats secondaires */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid xs={6} sm={3}>
-            <GlassPaper sx={{ p: 3, textAlign: 'center' }}>
-              <CheckCircle sx={{ fontSize: 40, color: '#4CAF50', mb: 1 }} />
-              <Typography variant="h4" fontWeight="800" sx={{ color: '#4CAF50' }}>{stats.completedBookings}</Typography>
-              <Typography variant="body2" fontWeight={600} color="text.secondary">Réservations confirmées</Typography>
-            </GlassPaper>
+            <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 2, border: '1px solid #eef2f6' }}>
+              <Typography variant="h6" fontWeight="700" sx={{ color: '#4CAF50' }}>
+                {stats.completedBookings}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                Confirmées
+              </Typography>
+            </Paper>
           </Grid>
           <Grid xs={6} sm={3}>
-            <GlassPaper sx={{ p: 3, textAlign: 'center' }}>
-              <Warning sx={{ fontSize: 40, color: '#FF9800', mb: 1 }} />
-              <Typography variant="h4" fontWeight="800" sx={{ color: '#FF9800' }}>{stats.pendingBookings}</Typography>
-              <Typography variant="body2" fontWeight={600} color="text.secondary">En attente</Typography>
-            </GlassPaper>
+            <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 2, border: '1px solid #eef2f6' }}>
+              <Typography variant="h6" fontWeight="700" sx={{ color: '#FFA500' }}>
+                {stats.pendingBookings}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                En attente
+              </Typography>
+            </Paper>
           </Grid>
           <Grid xs={6} sm={3}>
-            <GlassPaper sx={{ p: 3, textAlign: 'center' }}>
-              <TrendingUp sx={{ fontSize: 40, color: '#00BFA5', mb: 1 }} />
-              <Typography variant="h4" fontWeight="800" sx={{ color: '#00BFA5' }}>{stats.conversionRate}%</Typography>
-              <Typography variant="body2" fontWeight={600} color="text.secondary">Taux de conversion</Typography>
-            </GlassPaper>
+            <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 2, border: '1px solid #eef2f6' }}>
+              <Typography variant="h6" fontWeight="700" sx={{ color: '#00BFA5' }}>
+                {stats.conversionRate}%
+              </Typography>
+              <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                Conversion
+              </Typography>
+            </Paper>
           </Grid>
           <Grid xs={6} sm={3}>
-            <GlassPaper sx={{ p: 3, textAlign: 'center' }}>
-              <Badge badgeContent={stats.pendingOrganizers} color="error">
-                <PendingActions sx={{ fontSize: 40, color: '#FF9800' }} />
-              </Badge>
-              <Typography variant="h4" fontWeight="800" sx={{ color: '#FF9800', mt: 1 }}>{stats.pendingOrganizers}</Typography>
-              <Typography variant="body2" fontWeight={600} color="text.secondary">Organisateurs en attente</Typography>
-            </GlassPaper>
+            <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 2, border: '1px solid #eef2f6' }}>
+              <Typography variant="h6" fontWeight="700" sx={{ color: '#FFA500' }}>
+                {stats.pendingOrganizers}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                En attente
+              </Typography>
+            </Paper>
           </Grid>
         </Grid>
 
         {/* Tabs */}
-        <GlassPaper sx={{ mb: 3, p: 0 }}>
+        <Paper sx={{ mb: 2, borderRadius: 2, border: '1px solid #eef2f6' }}>
           <Tabs
             value={tabValue}
             onChange={(_, newValue) => setTabValue(newValue)}
             variant="scrollable"
             scrollButtons="auto"
             sx={{
+              minHeight: 48,
               '& .MuiTabs-indicator': {
-                height: 4,
+                height: 3,
                 backgroundColor: '#00BFA5',
-                borderRadius: '4px 4px 0 0',
               },
             }}
           >
-            <StyledTab icon={<Shield />} label="Modération" />
-            <StyledTab icon={<Insights />} label="Insights" />
-            <StyledTab icon={<AccountBalance />} label="Financier" />
-            <StyledTab icon={<Category />} label="Contenu" />
-            <StyledTab icon={<Speed />} label="Système" />
+            <StyledTab icon={<Shield sx={{ fontSize: 18 }} />} iconPosition="start" label="Modération" />
+            <StyledTab icon={<Insights sx={{ fontSize: 18 }} />} iconPosition="start" label="Insights" />
+            <StyledTab icon={<AccountBalance sx={{ fontSize: 18 }} />} iconPosition="start" label="Financier" />
+            <StyledTab icon={<Category sx={{ fontSize: 18 }} />} iconPosition="start" label="Contenu" />
+            <StyledTab icon={<Speed sx={{ fontSize: 18 }} />} iconPosition="start" label="Système" />
           </Tabs>
-        </GlassPaper>
+        </Paper>
 
         {/* Panel Modération */}
         <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={3}>
-            {/* Barre de recherche */}
+          <Grid container spacing={2}>
             <Grid xs={12}>
-              <GlassPaper sx={{ p: 2 }}>
-                <TextField
-                  fullWidth
-                  placeholder="Rechercher un organisateur..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Search />
-                      </InputAdornment>
-                    ),
-                    sx: { borderRadius: 2, fontSize: '1.1rem' }
-                  }}
-                  variant="outlined"
-                />
-              </GlassPaper>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Rechercher un organisateur..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search fontSize="small" sx={{ color: '#00BFA5' }} />
+                    </InputAdornment>
+                  ),
+                  sx: { borderRadius: 2 }
+                }}
+              />
             </Grid>
 
-            {/* Pending Organizers - Agrandi et modernisé */}
             <Grid xs={12}>
-              <ModernCard>
-                <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h4" fontWeight="800" sx={{
-                      display: 'flex', alignItems: 'center', gap: 2,
-                      background: 'linear-gradient(135deg, #FF9800, #F44336)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}>
-                      <Badge badgeContent={pendingOrganizers.length} color="error">
-                        <Security sx={{ fontSize: 40 }} />
-                      </Badge>
+              <StyledCard>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="subtitle1" fontWeight="700" sx={{ color: '#0D47A1' }}>
                       Demandes d'organisation
+                      {pendingOrganizers.length > 0 && (
+                        <Chip
+                          size="small"
+                          label={pendingOrganizers.length}
+                          sx={{ 
+                            ml: 1, 
+                            backgroundColor: alpha('#FFA500', 0.1),
+                            color: '#FFA500',
+                            fontWeight: 600,
+                          }}
+                        />
+                      )}
                     </Typography>
-                    {pendingOrganizers.length > 0 && (
-                      <Chip 
-                        label={`${pendingOrganizers.length} en attente`}
-                        color="warning"
-                        size="medium"
-                        sx={{ fontWeight: 700, fontSize: '1rem', px: 2 }}
-                      />
-                    )}
                   </Box>
-                  
+
                   {pendingOrganizers.length === 0 ? (
                     <Alert 
                       severity="success" 
-                      icon={<CheckCircle fontSize="large" />}
-                      sx={{ 
-                        borderRadius: 3, 
-                        py: 3, 
-                        fontSize: '1.2rem',
-                        background: alpha('#4CAF50', 0.1),
-                        border: `1px solid ${alpha('#4CAF50', 0.3)}`,
-                      }}
+                      sx={{ borderRadius: 2 }}
+                      icon={<CheckCircle sx={{ color: '#4CAF50' }} />}
                     >
                       Aucune demande en attente
                     </Alert>
                   ) : (
-                    <List>
-                      {filteredOrganizers.filter(o => o.status === 'PENDING').map((organizer, idx) => (
-                        <Fade in timeout={500 + idx * 100} key={organizer.id}>
-                          <Paper
-                            elevation={0}
-                            sx={{
-                              mb: 2,
-                              p: 3,
-                              borderRadius: 3,
-                              border: '1px solid',
-                              borderColor: alpha('#FF9800', 0.3),
-                              background: alpha('#FF9800', 0.02),
-                              transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                              '&:hover': {
-                                borderColor: '#FF9800',
-                                boxShadow: '0 20px 40px rgba(255,152,0,0.2)',
-                                transform: 'translateY(-4px)',
-                              },
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                              <Avatar 
-                                sx={{ 
-                                  width: 80, 
-                                  height: 80, 
-                                  bgcolor: 'warning.main',
-                                  fontSize: '2rem',
-                                  boxShadow: '0 10px 20px rgba(255,152,0,0.3)',
-                                }}
-                              >
-                                {organizer.agency_name?.[0] || 'O'}
-                              </Avatar>
-                              <Box sx={{ flex: 1 }}>
-                                <Typography variant="h5" fontWeight={700} gutterBottom>
-                                  {organizer.agency_name}
-                                </Typography>
-                                <Typography variant="body1" color="text.secondary" gutterBottom>
-                                  {organizer.user?.first_name} {organizer.user?.last_name}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  📧 {organizer.user?.email} • 📍 {organizer.country} • 🏢 {organizer.registration_number}
-                                </Typography>
-                              </Box>
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Tooltip title="Approuver">
-                                  <IconButton
-                                    color="success"
-                                    size="large"
-                                    onClick={() => handleApproveOrganizer(organizer.id)}
-                                    sx={{ 
-                                      bgcolor: alpha('#4CAF50', 0.1),
-                                      '&:hover': { bgcolor: alpha('#4CAF50', 0.2), transform: 'scale(1.1)' },
-                                      transition: 'all 0.3s ease',
-                                    }}
-                                  >
-                                    <CheckCircle fontSize="large" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Rejeter">
-                                  <IconButton
-                                    color="error"
-                                    size="large"
-                                    onClick={() => handleRejectOrganizer(organizer.id)}
-                                    sx={{ 
-                                      bgcolor: alpha('#F44336', 0.1),
-                                      '&:hover': { bgcolor: alpha('#F44336', 0.2), transform: 'scale(1.1)' },
-                                      transition: 'all 0.3s ease',
-                                    }}
-                                  >
-                                    <Block fontSize="large" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
+                    <List disablePadding>
+                      {filteredOrganizers.filter(o => o.status === 'PENDING').map((organizer) => (
+                        <Paper
+                          key={organizer.id}
+                          variant="outlined"
+                          sx={{ 
+                            mb: 1, 
+                            p: 2, 
+                            borderRadius: 2,
+                            borderColor: alpha('#FFA500', 0.3),
+                            '&:hover': {
+                              borderColor: '#FFA500',
+                            },
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Avatar sx={{ 
+                              width: 40, 
+                              height: 40, 
+                              bgcolor: alpha('#FFA500', 0.1),
+                              color: '#FFA500',
+                              fontWeight: 600,
+                            }}>
+                              {organizer.agency_name?.[0] || 'O'}
+                            </Avatar>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="subtitle2" fontWeight="600">
+                                {organizer.agency_name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {organizer.user?.email}
+                              </Typography>
                             </Box>
-                          </Paper>
-                        </Fade>
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              <Tooltip title="Approuver">
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#4CAF50' }}
+                                  onClick={() => handleApproveOrganizer(organizer.id)}
+                                >
+                                  <CheckCircle fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Rejeter">
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#F44336' }}
+                                  onClick={() => handleRejectOrganizer(organizer.id)}
+                                >
+                                  <Block fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <IconButton size="small" onClick={(e) => handleMenuOpen(e, organizer)}>
+                                <MoreVert fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          </Box>
+                        </Paper>
                       ))}
                     </List>
                   )}
                 </CardContent>
-              </ModernCard>
+              </StyledCard>
             </Grid>
           </Grid>
         </TabPanel>
 
         {/* Panel Insights */}
         <TabPanel value={tabValue} index={1}>
-          <Grid container spacing={3}>
-            {/* Destinations populaires */}
+          <Grid container spacing={2}>
             <Grid xs={12} md={6}>
-              <ModernCard>
-                <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h4" fontWeight="800" gutterBottom sx={{
-                    display: 'flex', alignItems: 'center', gap: 2,
-                    background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}>
-                    <Public sx={{ fontSize: 40 }} />
+              <StyledCard>
+                <CardContent>
+                  <Typography variant="subtitle1" fontWeight="700" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#0D47A1' }}>
+                    <Public fontSize="small" sx={{ color: '#00BFA5' }} />
                     Destinations populaires
                   </Typography>
-                  
-                  <List>
+                  <List disablePadding>
                     {detailedStats?.topDestinations.map((dest, idx) => (
-                      <ListItem 
-                        key={idx}
-                        sx={{ 
-                          mb: 2, 
-                          borderRadius: 3,
-                          bgcolor: idx === 0 ? alpha('#FFD700', 0.1) : 'transparent',
-                          border: idx === 0 ? `1px solid ${alpha('#FFD700', 0.3)}` : 'none',
-                        }}
-                      >
-                        <ListItemAvatar>
-                          <Avatar 
-                            sx={{ 
-                              bgcolor: idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : idx === 2 ? '#CD7F32' : '#00BFA5',
-                              width: 48, height: 48,
-                              fontWeight: 'bold',
-                            }}
-                          >
-                            {idx + 1}
-                          </Avatar>
-                        </ListItemAvatar>
+                      <ListItem key={idx} disablePadding sx={{ py: 1 }}>
                         <ListItemText
-                          primary={<Typography variant="h6">{dest.destination}</Typography>}
-                          secondary={`${dest.country} • ${dest.tripCount} voyages`}
+                          primary={dest.destination}
+                          secondary={dest.country}
+                          primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
                         />
-                        <Chip
-                          label={`${Math.round((dest.tripCount / stats.totalTrips) * 100)}%`}
-                          color="primary"
-                          sx={{ fontWeight: 700 }}
+                        <Chip 
+                          size="small" 
+                          label={`${dest.tripCount} voyages`}
+                          sx={{ 
+                            backgroundColor: alpha('#00BFA5', 0.1),
+                            color: '#00BFA5',
+                            fontWeight: 600,
+                          }}
                         />
                       </ListItem>
                     ))}
                   </List>
                 </CardContent>
-              </ModernCard>
+              </StyledCard>
             </Grid>
 
-            {/* Meilleurs organisateurs */}
             <Grid xs={12} md={6}>
-              <ModernCard>
-                <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h4" fontWeight="800" gutterBottom sx={{
-                    display: 'flex', alignItems: 'center', gap: 2,
-                    background: 'linear-gradient(135deg, #FFD700, #FFA500)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}>
-                    <EmojiEvents sx={{ fontSize: 40 }} />
+              <StyledCard>
+                <CardContent>
+                  <Typography variant="subtitle1" fontWeight="700" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#0D47A1' }}>
+                    <EmojiEvents fontSize="small" sx={{ color: '#FFA500' }} />
                     Top Organisateurs
                   </Typography>
-                  
-                  <List>
+                  <List disablePadding>
                     {detailedStats?.topOrganizers.map((org, idx) => (
-                      <ListItem 
-                        key={idx}
-                        sx={{ 
-                          mb: 2, 
-                          borderRadius: 3,
-                          bgcolor: idx === 0 ? alpha('#FFD700', 0.1) : 'transparent',
-                          border: idx === 0 ? `1px solid ${alpha('#FFD700', 0.3)}` : 'none',
-                        }}
-                      >
-                        <ListItemAvatar>
-                          <Avatar 
-                            sx={{ 
-                              bgcolor: idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : '#CD7F32',
-                              width: 48, height: 48,
-                              fontWeight: 'bold',
-                            }}
-                          >
-                            {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
-                          </Avatar>
-                        </ListItemAvatar>
+                      <ListItem key={idx} disablePadding sx={{ py: 1 }}>
                         <ListItemText
-                          primary={<Typography variant="h6">{org.organizer}</Typography>}
-                          secondary={`${org.bookings} réservations • ${org.revenue.toFixed(2)} TND`}
+                          primary={org.organizer}
+                          secondary={`${org.bookings} réservations`}
+                          primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
                         />
+                        <Typography variant="body2" fontWeight="700" sx={{ color: '#00BFA5' }}>
+                          {org.revenue.toFixed(0)} TND
+                        </Typography>
                       </ListItem>
                     ))}
                   </List>
                 </CardContent>
-              </ModernCard>
+              </StyledCard>
             </Grid>
           </Grid>
         </TabPanel>
 
         {/* Panel Financier */}
         <TabPanel value={tabValue} index={2}>
-          <Grid container spacing={3}>
-            {/* Cartes financières */}
+          <Grid container spacing={2}>
             <Grid xs={12} md={3}>
-              <ModernCard sx={{ background: 'linear-gradient(135deg, #4CAF50, #2E7D32)' }}>
-                <CardContent sx={{ p: 3, color: 'white' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <AttachMoney sx={{ fontSize: 40 }} />
-                    <Typography variant="h6">Revenu Total</Typography>
-                  </Box>
-                  <Typography variant="h3" fontWeight="800">
-                    {(financialData?.totalRevenue || 0).toFixed(2)} TND
+              <StyledCard>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom fontWeight={500}>
+                    Revenu Total
                   </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
-                    <TrendingUp sx={{ fontSize: 20 }} />
-                    <Typography variant="body2">+15% ce mois</Typography>
-                  </Box>
-                </CardContent>
-              </ModernCard>
-            </Grid>
-
-            <Grid xs={12} md={3}>
-              <ModernCard sx={{ background: 'linear-gradient(135deg, #00BFA5, #0D47A1)' }}>
-                <CardContent sx={{ p: 3, color: 'white' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <AccountBalance sx={{ fontSize: 40 }} />
-                    <Typography variant="h6">Commission</Typography>
-                  </Box>
-                  <Typography variant="h3" fontWeight="800">
-                    {(financialData?.totalCommission || 0).toFixed(2)} TND
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 2 }}>Taux: {financialData?.commissionRate}%</Typography>
-                </CardContent>
-              </ModernCard>
-            </Grid>
-
-            <Grid xs={12} md={3}>
-              <ModernCard sx={{ background: 'linear-gradient(135deg, #FF9800, #F57C00)' }}>
-                <CardContent sx={{ p: 3, color: 'white' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <Business sx={{ fontSize: 40 }} />
-                    <Typography variant="h6">Paiements Org</Typography>
-                  </Box>
-                  <Typography variant="h3" fontWeight="800">
-                    {(financialData?.organizerPayouts || 0).toFixed(2)} TND
+                  <Typography variant="h6" fontWeight="700" sx={{ color: '#4CAF50' }}>
+                    {(financialData?.totalRevenue || 0).toFixed(0)} TND
                   </Typography>
                 </CardContent>
-              </ModernCard>
+              </StyledCard>
             </Grid>
-
             <Grid xs={12} md={3}>
-              <ModernCard sx={{ background: 'linear-gradient(135deg, #F44336, #D32F2F)' }}>
-                <CardContent sx={{ p: 3, color: 'white' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <PendingActions sx={{ fontSize: 40 }} />
-                    <Typography variant="h6">En attente</Typography>
-                  </Box>
-                  <Typography variant="h3" fontWeight="800">
+              <StyledCard>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom fontWeight={500}>
+                    Commission
+                  </Typography>
+                  <Typography variant="h6" fontWeight="700" sx={{ color: '#00BFA5' }}>
+                    {(financialData?.totalCommission || 0).toFixed(0)} TND
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Taux: {financialData?.commissionRate}%
+                  </Typography>
+                </CardContent>
+              </StyledCard>
+            </Grid>
+            <Grid xs={12} md={3}>
+              <StyledCard>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom fontWeight={500}>
+                    Paiements Organisateurs
+                  </Typography>
+                  <Typography variant="h6" fontWeight="700" sx={{ color: '#FFA500' }}>
+                    {(financialData?.organizerPayouts || 0).toFixed(0)} TND
+                  </Typography>
+                </CardContent>
+              </StyledCard>
+            </Grid>
+            <Grid xs={12} md={3}>
+              <StyledCard>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom fontWeight={500}>
+                    En attente
+                  </Typography>
+                  <Typography variant="h6" fontWeight="700" sx={{ color: '#F44336' }}>
                     {financialData?.pendingPayouts || 0}
                   </Typography>
-                  <Typography variant="body2" sx={{ mt: 2 }}>Paiements</Typography>
                 </CardContent>
-              </ModernCard>
+              </StyledCard>
             </Grid>
-
-            
           </Grid>
         </TabPanel>
 
-        {/* Panel Contenu */}
+        {/* Panel Contenu - Design original */}
         <TabPanel value={tabValue} index={3}>
-          <Grid container spacing={3}>
+          <Grid container spacing={2.5}>
             {/* Catégories */}
             <Grid xs={12} md={6}>
               <ModernCard>
-                <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h4" fontWeight="800" sx={{
-                      display: 'flex', alignItems: 'center', gap: 2,
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                    <Typography variant="h5" fontWeight="800" sx={{
+                      display: 'flex', alignItems: 'center', gap: 1.5,
                       background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                     }}>
-                      <Category sx={{ fontSize: 40 }} />
+                      <Category sx={{ fontSize: 32 }} />
                       Catégories ({categories.length})
                     </Typography>
                     <Button
                       variant="contained"
-                      size="large"
+                      size="medium"
                       startIcon={<Add />}
                       onClick={() => openDialog('category')}
                       sx={{
                         background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-                        borderRadius: 3,
-                        px: 4,
-                        py: 1.5,
+                        borderRadius: 2.5,
+                        px: 3,
+                        py: 1,
+                        fontWeight: 600,
+                        '&:hover': {
+                          background: 'linear-gradient(90deg, #0D47A1, #00BFA5)',
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 8px 20px rgba(0,191,165,0.3)',
+                        },
                       }}
                     >
                       Ajouter
                     </Button>
                   </Box>
                   
-                  <Grid container spacing={2}>
-                    {categories.map((cat, idx) => (
+                  <Grid container spacing={1.5}>
+                    {categories.map((cat) => (
                       <Grid xs={12} key={cat.id}>
                         <Paper
                           sx={{
-                            p: 3,
-                            borderRadius: 3,
+                            p: 2.5,
+                            borderRadius: 2.5,
                             border: '1px solid',
                             borderColor: alpha('#00BFA5', 0.2),
                             background: alpha('#00BFA5', 0.02),
                             transition: 'all 0.3s ease',
                             '&:hover': {
                               borderColor: '#00BFA5',
-                              boxShadow: '0 10px 30px rgba(0,191,165,0.1)',
+                              boxShadow: '0 8px 20px rgba(0,191,165,0.1)',
+                              transform: 'translateY(-2px)',
                             },
                           }}
                         >
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Box>
-                              <Typography variant="h6" fontWeight={700}>{cat.name}</Typography>
-                              <Typography variant="body2" color="text.secondary">{cat.description}</Typography>
+                              <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#0D47A1' }}>
+                                {cat.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {cat.description}
+                              </Typography>
                             </Box>
                             <Box>
-                              <IconButton size="large"><Edit fontSize="medium" /></IconButton>
-                              <IconButton size="large" color="error"><Delete fontSize="medium" /></IconButton>
+                              <IconButton 
+                                size="small" 
+                                sx={{ 
+                                  color: '#00BFA5',
+                                  '&:hover': { backgroundColor: alpha('#00BFA5', 0.1) }
+                                }}
+                              >
+                                <Edit fontSize="small" />
+                              </IconButton>
+                              <IconButton 
+                                size="small" 
+                                sx={{ 
+                                  color: '#F44336',
+                                  '&:hover': { backgroundColor: alpha('#F44336', 0.1) }
+                                }}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
                             </Box>
                           </Box>
                         </Paper>
@@ -1274,27 +1046,33 @@ const AdminDashboard: React.FC = () => {
             {/* Destinations */}
             <Grid xs={12} md={6}>
               <ModernCard>
-                <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h4" fontWeight="800" sx={{
-                      display: 'flex', alignItems: 'center', gap: 2,
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                    <Typography variant="h5" fontWeight="800" sx={{
+                      display: 'flex', alignItems: 'center', gap: 1.5,
                       background: 'linear-gradient(135deg, #FF6B6B, #FFA07A)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                     }}>
-                      <Public sx={{ fontSize: 40 }} />
+                      <Public sx={{ fontSize: 32 }} />
                       Destinations ({destinations.length})
                     </Typography>
                     <Button
                       variant="contained"
-                      size="large"
+                      size="medium"
                       startIcon={<Add />}
                       onClick={() => openDialog('destination')}
                       sx={{
                         background: 'linear-gradient(90deg, #FF6B6B, #FFA07A)',
-                        borderRadius: 3,
-                        px: 4,
-                        py: 1.5,
+                        borderRadius: 2.5,
+                        px: 3,
+                        py: 1,
+                        fontWeight: 600,
+                        '&:hover': {
+                          background: 'linear-gradient(90deg, #FFA07A, #FF6B6B)',
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 8px 20px rgba(255,107,107,0.3)',
+                        },
                       }}
                     >
                       Ajouter
@@ -1302,19 +1080,20 @@ const AdminDashboard: React.FC = () => {
                   </Box>
                   
                   <List>
-                    {destinations.map((dest, idx) => (
+                    {destinations.map((dest) => (
                       <ListItem 
                         key={dest.id}
                         sx={{ 
-                          mb: 2, 
-                          borderRadius: 3,
+                          mb: 1.5, 
+                          borderRadius: 2.5,
                           bgcolor: alpha('#FF6B6B', 0.02),
                           border: '1px solid',
                           borderColor: alpha('#FF6B6B', 0.2),
                           transition: 'all 0.3s ease',
                           '&:hover': {
                             borderColor: '#FF6B6B',
-                            transform: 'translateX(8px)',
+                            transform: 'translateX(4px)',
+                            boxShadow: '0 4px 12px rgba(255,107,107,0.1)',
                           },
                         }}
                       >
@@ -1322,22 +1101,42 @@ const AdminDashboard: React.FC = () => {
                           <Avatar 
                             src={dest.image} 
                             sx={{ 
-                              width: 60, 
-                              height: 60,
+                              width: 50, 
+                              height: 50,
                               border: '2px solid',
                               borderColor: '#FF6B6B',
                             }}
                           >
-                            <Place />
+                            <Place fontSize="small" />
                           </Avatar>
                         </ListItemAvatar>
                         <ListItemText
-                          primary={<Typography variant="h6">{dest.name}</Typography>}
+                          primary={
+                            <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#FF6B6B' }}>
+                              {dest.name}
+                            </Typography>
+                          }
                           secondary={`${dest.country} ${dest.region ? `- ${dest.region}` : ''}`}
                         />
                         <Box>
-                          <IconButton size="large"><Edit fontSize="medium" /></IconButton>
-                          <IconButton size="large" color="error"><Delete fontSize="medium" /></IconButton>
+                          <IconButton 
+                            size="small" 
+                            sx={{ 
+                              color: '#00BFA5',
+                              '&:hover': { backgroundColor: alpha('#00BFA5', 0.1) }
+                            }}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            sx={{ 
+                              color: '#F44336',
+                              '&:hover': { backgroundColor: alpha('#F44336', 0.1) }
+                            }}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
                         </Box>
                       </ListItem>
                     ))}
@@ -1348,289 +1147,168 @@ const AdminDashboard: React.FC = () => {
           </Grid>
         </TabPanel>
 
-        {/* Panel Santé Système */}
+        {/* Panel Système */}
         <TabPanel value={tabValue} index={4}>
-          <Grid container spacing={3}>
-            {/* Health Status */}
+          <Grid container spacing={2}>
             <Grid xs={12} md={4}>
-              <ModernCard>
-                <CardContent sx={{ p: 4, textAlign: 'center' }}>
+              <StyledCard>
+                <CardContent sx={{ textAlign: 'center' }}>
                   <Box
                     sx={{
-                      width: 150,
-                      height: 150,
+                      width: 80,
+                      height: 80,
                       borderRadius: '50%',
                       mx: 'auto',
-                      mb: 3,
+                      mb: 1,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: systemHealth?.status === 'operational' 
-                        ? 'linear-gradient(135deg, #4CAF50, #2E7D32)'
-                        : 'linear-gradient(135deg, #F44336, #D32F2F)',
-                      boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-                      animation: `${pulse} 2s infinite`,
+                      bgcolor: systemHealth?.status === 'operational' ? alpha('#4CAF50', 0.1) : alpha('#F44336', 0.1),
                     }}
                   >
                     {systemHealth?.status === 'operational' ? (
-                      <CheckCircle sx={{ fontSize: 80, color: 'white' }} />
+                      <CheckCircle sx={{ fontSize: 40, color: '#4CAF50' }} />
                     ) : (
-                      <Warning sx={{ fontSize: 80, color: 'white' }} />
+                      <Warning sx={{ fontSize: 40, color: '#F44336' }} />
                     )}
                   </Box>
-                  <Typography variant="h4" fontWeight="800" gutterBottom>
-                    {systemHealth?.status === 'operational' ? 'Système Opérationnel' : 'Système Dégradé'}
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    Dernière vérification: {new Date().toLocaleString()}
+                  <Typography variant="subtitle1" fontWeight="700" sx={{ color: '#0D47A1' }}>
+                    {systemHealth?.status === 'operational' ? 'Système OK' : 'Système dégradé'}
                   </Typography>
                 </CardContent>
-              </ModernCard>
+              </StyledCard>
             </Grid>
 
-            {/* Services Status */}
             <Grid xs={12} md={8}>
-              <ModernCard>
-                <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h4" fontWeight="800" gutterBottom sx={{
-                    display: 'flex', alignItems: 'center', gap: 2,
-                    background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}>
-                    <Speed sx={{ fontSize: 40 }} />
+              <StyledCard>
+                <CardContent>
+                  <Typography variant="subtitle1" fontWeight="700" gutterBottom sx={{ color: '#0D47A1' }}>
                     Services
                   </Typography>
-                  
-                  <Grid container spacing={2}>
+                  <Grid container spacing={1}>
                     {systemHealth?.services?.map((service, idx) => (
                       <Grid xs={12} sm={6} key={idx}>
-                        <Paper
-                          sx={{
-                            p: 3,
-                            borderRadius: 3,
-                            border: '1px solid',
-                            borderColor: service.status === 'operational' ? alpha('#4CAF50', 0.3) : alpha('#F44336', 0.3),
-                            bgcolor: service.status === 'operational' ? alpha('#4CAF50', 0.05) : alpha('#F44336', 0.05),
-                          }}
-                        >
+                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Typography variant="h6" fontWeight={600}>
+                            <Typography variant="body2" fontWeight={600}>
                               {service.name}
                             </Typography>
                             <Chip
                               size="small"
                               label={service.status}
                               color={service.status === 'operational' ? 'success' : 'error'}
+                              sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600 }}
                             />
                           </Box>
-                          <Typography variant="body2" color="text.secondary">
-                            Latence: {service.latency}ms
+                          <Typography variant="caption" color="text.secondary">
+                            {service.latency}ms
                           </Typography>
                         </Paper>
                       </Grid>
                     ))}
                   </Grid>
                 </CardContent>
-              </ModernCard>
-            </Grid>
-
-           
-
-            {/* Analyse IA */}
-            <Grid xs={12}>
-              <ModernCard sx={{ background: 'linear-gradient(135deg, #00BFA5, #0D47A1, #667eea)' }}>
-                <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
-                    <AutoAwesome sx={{ fontSize: 60, color: 'white' }} />
-                    <Box>
-                      <Typography variant="h3" fontWeight="800" color="white">
-                        Analyse IA
-                      </Typography>
-                    
-                    </Box>
-                  </Box>
-                  
-                  <Grid container spacing={3}>
-                    <Grid xs={12} md={4}>
-                      <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 3, backdropFilter: 'blur(10px)' }}>
-                        <Typography variant="h6" color="white" gutterBottom>Score de santé</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                          <Typography variant="h2" fontWeight="800" color="white">
-                            {systemHealth?.status === 'operational' ? '95' : '70'}
-                          </Typography>
-                          <Typography variant="h5" color="rgba(255,255,255,0.6)">/100</Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={systemHealth?.status === 'operational' ? 95 : 70}
-                          sx={{ mt: 2, height: 10, borderRadius: 5, bgcolor: 'rgba(255,255,255,0.2)' }}
-                        />
-                      </Paper>
-                    </Grid>
-                    
-                    <Grid xs={12} md={4}>
-                      <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 3, backdropFilter: 'blur(10px)' }}>
-                        <Typography variant="h6" color="white" gutterBottom>Recommandation</Typography>
-                        <Typography variant="h5" color="white" fontWeight="600">
-                          {systemHealth?.pending.organizers && systemHealth.pending.organizers > 3
-                            ? ' Traiter les demandes en attente'
-                            : ' Plateforme stable'}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                    
-                    <Grid xs={12} md={4}>
-                      <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 3, backdropFilter: 'blur(10px)' }}>
-                        <Typography variant="h6" color="white" gutterBottom>Tendance</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <TrendingUp sx={{ fontSize: 40, color: 'white' }} />
-                          <Typography variant="h4" color="white" fontWeight="700">+12%</Typography>
-                        </Box>
-                      </Paper>
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </ModernCard>
+              </StyledCard>
             </Grid>
           </Grid>
         </TabPanel>
 
-        {/* Dialog pour ajouter catégorie/destination */}
+        {/* Dialog */}
         <Dialog
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}
           maxWidth="sm"
           fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 4,
-              background: 'rgba(255,255,255,0.95)',
-              backdropFilter: 'blur(20px)',
-              boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
-            }
-          }}
+          PaperProps={{ sx: { borderRadius: 2 } }}
         >
           <DialogTitle sx={{ 
-            background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
-            color: 'white',
-            py: 3,
-            fontSize: '1.5rem',
+            pb: 1, 
+            fontSize: '1.1rem', 
             fontWeight: 700,
+            color: '#0D47A1',
           }}>
-            {dialogType === 'category' ? 'Ajouter une catégorie' : 'Ajouter une destination'}
+            {dialogType === 'category' ? 'Nouvelle catégorie' : 'Nouvelle destination'}
           </DialogTitle>
-          <DialogContent sx={{ p: 4 }}>
+          <DialogContent>
             {dialogType === 'category' ? (
-              <Stack spacing={3}>
+              <Stack spacing={2}>
                 <TextField
                   fullWidth
+                  size="small"
                   label="Nom"
                   value={newCategory.name}
                   onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                  variant="outlined"
-                  InputProps={{ sx: { borderRadius: 2, py: 1 } }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
                 <TextField
                   fullWidth
+                  size="small"
                   label="Description"
                   value={newCategory.description}
                   onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
                   multiline
-                  rows={3}
-                  variant="outlined"
-                  InputProps={{ sx: { borderRadius: 2 } }}
+                  rows={2}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
               </Stack>
             ) : (
-              <Stack spacing={3}>
+              <Stack spacing={2}>
                 <TextField
                   fullWidth
+                  size="small"
                   label="Nom"
                   value={newDestination.name}
                   onChange={(e) => setNewDestination({ ...newDestination, name: e.target.value })}
-                  variant="outlined"
-                  InputProps={{ sx: { borderRadius: 2 } }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
                 <TextField
                   fullWidth
+                  size="small"
                   label="Pays"
                   value={newDestination.country}
                   onChange={(e) => setNewDestination({ ...newDestination, country: e.target.value })}
-                  variant="outlined"
-                  InputProps={{ sx: { borderRadius: 2 } }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
                 <TextField
                   fullWidth
+                  size="small"
                   label="Région"
                   value={newDestination.region}
                   onChange={(e) => setNewDestination({ ...newDestination, region: e.target.value })}
-                  variant="outlined"
-                  InputProps={{ sx: { borderRadius: 2 } }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
-                
                 <Button
                   variant="outlined"
                   component="label"
                   startIcon={<CloudUpload />}
+                  size="small"
                   sx={{ 
-                    borderRadius: 2, 
-                    py: 2,
-                    border: '2px dashed',
+                    borderRadius: 2,
                     borderColor: '#00BFA5',
-                    '&:hover': { borderColor: '#0D47A1' },
+                    color: '#00BFA5',
+                    '&:hover': {
+                      borderColor: '#0D47A1',
+                    },
                   }}
                 >
-                  Télécharger une image
+                  Image
                   <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
                 </Button>
-                
-                {newDestination.image && (
-                  <Box sx={{ position: 'relative' }}>
-                    <img
-                      src={newDestination.image}
-                      alt="Aperçu"
-                      style={{
-                        width: '100%',
-                        height: 200,
-                        objectFit: 'cover',
-                        borderRadius: 12,
-                      }}
-                    />
-                    <IconButton
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        bgcolor: 'rgba(255,255,255,0.9)',
-                        '&:hover': { bgcolor: 'white' },
-                      }}
-                      onClick={() => setNewDestination({ ...newDestination, image: '' })}
-                    >
-                      <Delete />
-                    </IconButton>
-                  </Box>
-                )}
               </Stack>
             )}
           </DialogContent>
-          <DialogActions sx={{ p: 4, pt: 0 }}>
-            <Button 
-              onClick={() => setDialogOpen(false)} 
-              variant="outlined"
-              size="large"
-              sx={{ borderRadius: 2, px: 4 }}
-            >
+          <DialogActions sx={{ p: 2, pt: 0 }}>
+            <Button size="small" onClick={() => setDialogOpen(false)} sx={{ color: '#666' }}>
               Annuler
             </Button>
             <Button
+              size="small"
               variant="contained"
-              size="large"
               onClick={dialogType === 'category' ? handleCreateCategory : handleCreateDestination}
               sx={{
+                backgroundColor: '#00BFA5',
+                '&:hover': { backgroundColor: '#0D47A1' },
                 borderRadius: 2,
-                px: 4,
-                background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
               }}
             >
               Ajouter
@@ -1638,32 +1316,21 @@ const AdminDashboard: React.FC = () => {
           </DialogActions>
         </Dialog>
 
-        {/* Organizer Actions Menu */}
+        {/* Menu */}
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
           onClose={handleMenuClose}
-          PaperProps={{
-            sx: {
-              mt: 1,
-              minWidth: 200,
-              borderRadius: 2,
-              boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
-            },
-          }}
+          PaperProps={{ sx: { minWidth: 160, borderRadius: 2 } }}
         >
-          <MenuItem onClick={() => { navigate(`/admin/organizers/${selectedOrganizer?.id}`); handleMenuClose(); }}>
-            <ListItemIcon><RemoveRedEye fontSize="small" /></ListItemIcon>
-            <ListItemText>Voir les détails</ListItemText>
-          </MenuItem>
-          <MenuItem onClick={handleMenuClose}>
-            <ListItemIcon><Payment fontSize="small" /></ListItemIcon>
-            <ListItemText>Voir les paiements</ListItemText>
+          <MenuItem onClick={handleMenuClose} dense>
+            <ListItemIcon><RemoveRedEye fontSize="small" sx={{ color: '#00BFA5' }} /></ListItemIcon>
+            <ListItemText>Voir détails</ListItemText>
           </MenuItem>
           <Divider />
-          <MenuItem onClick={() => { handleRejectOrganizer(selectedOrganizer?.id); handleMenuClose(); }} sx={{ color: 'error.main' }}>
-            <ListItemIcon><Block fontSize="small" color="error" /></ListItemIcon>
-            <ListItemText>Bloquer</ListItemText>
+          <MenuItem onClick={handleMenuClose} dense>
+            <ListItemIcon><Block fontSize="small" sx={{ color: '#F44336' }} /></ListItemIcon>
+            <ListItemText sx={{ color: '#F44336' }}>Bloquer</ListItemText>
           </MenuItem>
         </Menu>
       </Container>

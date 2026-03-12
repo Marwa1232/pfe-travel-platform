@@ -41,6 +41,14 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import { logout } from '../store/authSlice';
 import { RootState } from '../store';
 
+interface MenuItem {
+  label: string;
+  path: string;
+  icon: React.ReactNode;
+  key: string;
+  scrollTo?: string;
+}
+
 // Styled components (les mêmes que précédemment)
 const StyledAppBar = styled(AppBar, {
   shouldForwardProp: (prop) => prop !== 'scrolled' && prop !== 'isTransparent',
@@ -195,18 +203,19 @@ const Navbar: React.FC = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const handleMenuItemClick = (item: typeof menuItems[0]) => {
-    if (item.scrollTo) {
+  const handleMenuItemClick = (item: MenuItem) => {
+    const scrollTarget = item.scrollTo;
+    if (scrollTarget) {
       if (location.pathname !== '/') {
         navigate('/');
         setTimeout(() => {
-          const element = document.getElementById(item.scrollTo);
+          const element = document.getElementById(scrollTarget);
           if (element) {
             element.scrollIntoView({ behavior: 'smooth' });
           }
         }, 100);
       } else {
-        const element = document.getElementById(item.scrollTo);
+        const element = document.getElementById(scrollTarget);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth' });
         }
@@ -228,15 +237,14 @@ const Navbar: React.FC = () => {
       label: 'À propos', 
       path: '/about', 
       icon: <InfoIcon />, 
-      key: 'about',
-      scrollTo: 'about' 
+      key: 'about'
     },
     { 
       label: 'Contact', 
-      path: '/contact', 
+      path: '/', 
       icon: <ContactMailIcon />, 
       key: 'contact',
-      scrollTo: 'footer' 
+      scrollTo: 'footer'
     },
   ];
 
@@ -637,7 +645,7 @@ const Navbar: React.FC = () => {
                   
                   {/* Pour utilisateur normal */}
                   {!user?.roles?.includes('ROLE_ORGANIZER') && !user?.roles?.includes('ROLE_ADMIN') && (
-                    <>
+                    <Box>
                       <StyledMenuItem onClick={() => { navigate('/dashboard'); handleClose(); }}>
                         <ListItemIcon><DashboardIcon fontSize="small" sx={{ color: '#00BFA5' }} /></ListItemIcon>
                         <ListItemText>Tableau de bord</ListItemText>
@@ -657,12 +665,12 @@ const Navbar: React.FC = () => {
                         <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} /></ListItemIcon>
                         <ListItemText>Paramètres</ListItemText>
                       </StyledMenuItem>
-                    </>
+                    </Box>
                   )}
 
                   {/* Pour organisateur */}
                   {user?.roles?.includes('ROLE_ORGANIZER') && (
-                    <>
+                    <Box>
                       <StyledMenuItem onClick={() => { navigate('/organizer/dashboard'); handleClose(); }}>
                         <ListItemIcon><DashboardIcon fontSize="small" sx={{ color: '#00BFA5' }} /></ListItemIcon>
                         <ListItemText>Dashboard organisateur</ListItemText>
@@ -682,12 +690,12 @@ const Navbar: React.FC = () => {
                         <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} /></ListItemIcon>
                         <ListItemText>Paramètres</ListItemText>
                       </StyledMenuItem>
-                    </>
+                    </Box>
                   )}
 
                   {/* Pour admin */}
                   {user?.roles?.includes('ROLE_ADMIN') && (
-                    <>
+                    <Box>
                       <StyledMenuItem onClick={() => { navigate('/admin/dashboard'); handleClose(); }}>
                         <ListItemIcon><AdminPanelSettingsIcon fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon>
                         <ListItemText>Dashboard admin</ListItemText>
@@ -707,7 +715,7 @@ const Navbar: React.FC = () => {
                         <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} /></ListItemIcon>
                         <ListItemText>Paramètres</ListItemText>
                       </StyledMenuItem>
-                    </>
+                    </Box>
                   )}
 
                   <Divider sx={{ my: 1 }} />

@@ -44,8 +44,11 @@ import {
   Cancel,
   ArrowBack,
   Visibility,
+  InsertDriveFile,
+  PictureAsPdf,
+  Download,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 
 // Styled components (même thème que AdminDashboard)
@@ -98,6 +101,21 @@ const StatusChip = styled(Chip)(({ theme }) => ({
   },
 }));
 
+const DocumentCard = styled(Paper)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  padding: theme.spacing(1.5),
+  marginBottom: theme.spacing(1),
+  backgroundColor: alpha(theme.palette.primary.main, 0.03),
+  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+  borderRadius: theme.spacing(1),
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+    transform: 'translateX(4px)',
+  },
+}));
+
 const ActionButton = styled(Button)(({ theme }) => ({
   borderRadius: theme.spacing(1.5),
   textTransform: 'none',
@@ -126,6 +144,7 @@ const StatsCard = styled(Card)(({ theme }) => ({
 
 const AdminOrganizers: React.FC = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id?: string }>();
   const [organizers, setOrganizers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,9 +159,333 @@ const AdminOrganizers: React.FC = () => {
     action: null,
   });
 
+  // Get selected organizer for detail view
+  const organizerId = id ? parseInt(id) : null;
+  
+  // Show detail view if we have an ID, regardless of whether data is loaded yet
+  const showDetailView = !!organizerId;
+  
+  // Try to find the organizer from loaded data
+  const selectedOrganizer = organizerId ? organizers.find(o => o.id === organizerId) : null;
+
   useEffect(() => {
     loadOrganizers();
   }, []);
+
+  // Render detail view BEFORE the main table if we have an ID
+  if (showDetailView) {
+    // Show loading while data is being fetched
+    if (loading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+    
+    // If no organizer found, show error
+    if (!selectedOrganizer) {
+      return (
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <Alert severity="error">
+            Organisateur non trouvé. <Button onClick={() => navigate('/admin/organizers')}>Retour</Button>
+          </Alert>
+        </Container>
+      );
+    }
+    
+    // Show the detail view...
+    return (
+      <Box sx={{ 
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
+        py: 4,
+      }}>
+        <Container maxWidth="lg">
+          <Fade in timeout={500}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <IconButton 
+                  onClick={() => navigate('/admin/organizers')}
+                  sx={{ 
+                    bgcolor: 'white',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                    '&:hover': { bgcolor: 'white', transform: 'translateX(-2px)' },
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  <ArrowBack />
+                </IconButton>
+                <Box>
+                  <Typography variant="h4" fontWeight={700}>Détails de la demande</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Demande d'organisation de {selectedOrganizer.agency_name}
+                  </Typography>
+                </Box>
+              </Box>
+              <StatusChip
+                label={selectedOrganizer.status === 'APPROVED' ? 'Approuvé' : selectedOrganizer.status === 'PENDING' ? 'En attente' : selectedOrganizer.status === 'REJECTED' ? 'Rejeté' : 'Bloqué'}
+                className={selectedOrganizer.status === 'APPROVED' ? 'approved' : selectedOrganizer.status === 'PENDING' ? 'pending' : selectedOrganizer.status === 'BLOCKED' ? 'blocked' : ''}
+                size="small"
+              />
+            </Box>
+          </Fade>
+
+          <Grid container spacing={3}>
+            {/* Agency Information */}
+            <Grid item xs={12} md={6}>
+              <GlassPaper>
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  🏢 Informations de l'agence
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="body2" color="text.secondary">Nom de l'agence</Typography>
+                  <Typography variant="body1" fontWeight={600}>{selectedOrganizer.agency_name}</Typography>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Numéro de licence</Typography>
+                  <Typography variant="body1">{selectedOrganizer.license_number || 'Non fourni'}</Typography>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Description</Typography>
+                  <Typography variant="body1">{selectedOrganizer.description || 'Non fourni'}</Typography>
+                </Box>
+              </GlassPaper>
+            </Grid>
+
+            {/* Contact Information */}
+            <Grid item xs={12} md={6}>
+              <GlassPaper>
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  👤 Informations du contact
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="body2" color="text.secondary">Nom complet</Typography>
+                  <Typography variant="body1" fontWeight={600}>
+                    {selectedOrganizer.user?.first_name} {selectedOrganizer.user?.last_name}
+                  </Typography>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Email</Typography>
+                  <Typography variant="body1">{selectedOrganizer.user?.email}</Typography>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Téléphone</Typography>
+                  <Typography variant="body1">{selectedOrganizer.user?.phone || 'Non fourni'}</Typography>
+                </Box>
+              </GlassPaper>
+            </Grid>
+
+            {/* Location */}
+            <Grid item xs={12} md={6}>
+              <GlassPaper>
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  📍 Localisation
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="body2" color="text.secondary">Adresse</Typography>
+                  <Typography variant="body1">{selectedOrganizer.address || 'Non fournie'}</Typography>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Pays</Typography>
+                  <Typography variant="body1">{selectedOrganizer.country || 'Non fourni'}</Typography>
+                </Box>
+              </GlassPaper>
+            </Grid>
+
+            {/* Experience */}
+            <Grid item xs={12} md={6}>
+              <GlassPaper>
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  💼 Expérience
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="body1">{selectedOrganizer.experience || 'Non fournie'}</Typography>
+                </Box>
+              </GlassPaper>
+            </Grid>
+
+            {/* Social Media */}
+            <Grid item xs={12} md={6}>
+              <GlassPaper>
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  🔗 Réseaux sociaux
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="body2" color="text.secondary">Site web</Typography>
+                  <Typography variant="body1">
+                    {selectedOrganizer.website ? (
+                      <a href={selectedOrganizer.website} target="_blank" rel="noopener noreferrer">
+                        {selectedOrganizer.website}
+                      </a>
+                    ) : 'Non fourni'}
+                  </Typography>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Facebook</Typography>
+                  <Typography variant="body1">{selectedOrganizer.facebook || 'Non fourni'}</Typography>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Instagram</Typography>
+                  <Typography variant="body1">{selectedOrganizer.instagram || 'Non fourni'}</Typography>
+                </Box>
+              </GlassPaper>
+            </Grid>
+
+            {/* Documents */}
+            <Grid item xs={12} md={6}>
+              <GlassPaper>
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  📎 Documents
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  {selectedOrganizer.documents && selectedOrganizer.documents.length > 0 ? (
+                    selectedOrganizer.documents.map((doc: string, index: number) => {
+                      const fileName = doc.split('/').pop() || 'Document';
+                      const isPdf = doc.toLowerCase().includes('.pdf');
+                      return (
+                        <DocumentCard key={index}>
+                          {isPdf ? 
+                            <PictureAsPdf sx={{ color: '#ef5350', mr: 2 }} /> : 
+                            <InsertDriveFile sx={{ color: '#1976d2', mr: 2 }} />
+                          }
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" fontWeight={600}>
+                              {fileName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {isPdf ? 'Document PDF' : 'Fichier'}
+                            </Typography>
+                          </Box>
+                          <IconButton 
+                            component="a" 
+                            href={`http://localhost:8000${doc}`} 
+                            target="_blank"
+                            size="small"
+                            sx={{ color: 'primary.main' }}
+                          >
+                            <Download />
+                          </IconButton>
+                        </DocumentCard>
+                      );
+                    })
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Aucun document téléchargé.
+                    </Typography>
+                  )}
+                </Box>
+              </GlassPaper>
+            </Grid>
+
+            {/* Action Buttons */}
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
+                {selectedOrganizer.status === 'PENDING' && (
+                  <>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="large"
+                      startIcon={<CheckCircle />}
+                      onClick={() => {
+                        setActionDialog({
+                          open: true,
+                          organizer: selectedOrganizer,
+                          action: 'approve',
+                        });
+                      }}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      Approuver
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      size="large"
+                      startIcon={<Block />}
+                      onClick={() => {
+                        setActionDialog({
+                          open: true,
+                          organizer: selectedOrganizer,
+                          action: 'block',
+                        });
+                      }}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      Rejeter
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="outlined"
+                  size="large"
+                  onClick={() => navigate('/admin/organizers')}
+                  sx={{ borderRadius: 2 }}
+                >
+                  Retour
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
+        </Container>
+
+        {/* Action Dialog */}
+        <Dialog
+          open={actionDialog.open}
+          onClose={() => setActionDialog({ open: false, organizer: null, action: null })}
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              minWidth: 400,
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            background: actionDialog.action === 'approve' 
+              ? 'linear-gradient(135deg, #4CAF50, #2E7D32)'
+              : 'linear-gradient(135deg, #F44336, #D32F2F)',
+            color: 'white',
+            py: 2,
+          }}>
+            {actionDialog.action === 'approve' ? '✅ Approuver' : '⛔ Rejeter'} la demande
+          </DialogTitle>
+          <DialogContent sx={{ pt: 3 }}>
+            <Typography variant="body1" gutterBottom>
+              Êtes-vous sûr de vouloir <strong>{actionDialog.action === 'approve' ? 'approuver' : 'rejeter'}</strong> 
+              {' '}{actionDialog.organizer?.agency_name} ?
+            </Typography>
+            {actionDialog.action === 'approve' ? (
+              <Alert severity="success" sx={{ mt: 2 }}>
+                Cette personne pourra créer des voyages et gérer des réservations.
+              </Alert>
+            ) : (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                Cette personne ne pourra pas créer de voyages.
+              </Alert>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setActionDialog({ open: false, organizer: null, action: null })}>
+              Annuler
+            </Button>
+            <Button
+              variant="contained"
+              color={actionDialog.action === 'approve' ? 'success' : 'error'}
+              onClick={async () => {
+                try {
+                  if (actionDialog.action === 'approve') {
+                    await adminAPI.approveOrganizer(actionDialog.organizer.id);
+                  } else if (actionDialog.action === 'block') {
+                    await adminAPI.blockOrganizer(actionDialog.organizer.id);
+                  }
+                  setActionDialog({ open: false, organizer: null, action: null });
+                  navigate('/admin/organizers');
+                } catch (error) {
+                  console.error('Error performing action:', error);
+                }
+              }}
+            >
+              Confirmer
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    );
+  }
 
   const loadOrganizers = async () => {
     try {
@@ -398,6 +741,8 @@ const AdminOrganizers: React.FC = () => {
                     <StyledTableCell>Agence</StyledTableCell>
                     <StyledTableCell>Contact</StyledTableCell>
                     <StyledTableCell>Email</StyledTableCell>
+                    <StyledTableCell>Description</StyledTableCell>
+                    <StyledTableCell>Expérience</StyledTableCell>
                     <StyledTableCell>Pays</StyledTableCell>
                     <StyledTableCell>Statut</StyledTableCell>
                     <StyledTableCell align="center">Actions</StyledTableCell>
@@ -441,6 +786,16 @@ const AdminOrganizers: React.FC = () => {
                           <Email sx={{ fontSize: 16, color: 'text.secondary' }} />
                           <Typography variant="body2">{organizer.user?.email}</Typography>
                         </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ maxWidth: 200 }} noWrap>
+                          {organizer.description || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {organizer.experience || '-'}
+                        </Typography>
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
