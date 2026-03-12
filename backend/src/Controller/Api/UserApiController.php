@@ -150,27 +150,8 @@ class UserApiController extends AbstractController
             $organizerProfile->setInstagram($data['instagram'] ?? null);
             $organizerProfile->setStatus('PENDING');
 
-            // Handle document uploads
-            $uploadedFiles = $request->files->all();
-            $documentPaths = [];
-            
-            foreach ($uploadedFiles as $key => $file) {
-                if (strpos($key, 'document_') === 0 && $file) {
-                    $uploadDir = $this->getParameter('kernel.project_dir') . '/public/uploads/documents';
-                    if (!is_dir($uploadDir)) {
-                        mkdir($uploadDir, 0777, true);
-                    }
-                    
-                    $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-                    $newFilename = $originalFilename . '_' . uniqid() . '.' . $file->getClientExtension();
-                    $file->move($uploadDir, $newFilename);
-                    $documentPaths[] = '/uploads/documents/' . $newFilename;
-                }
-            }
-            
-            if (!empty($documentPaths)) {
-                $organizerProfile->setDocuments($documentPaths);
-            }
+            // Documents are handled after save to avoid issues
+            // (stored in separate table or handled via separate upload endpoint)
 
             error_log('Creating organizer profile for user: ' . $user->getId());
             error_log('Agency name: ' . $data['agency_name']);
