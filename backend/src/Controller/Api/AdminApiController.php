@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Entity\User;
 use App\Entity\OrganizerProfile;
+use App\Entity\Role;
 use App\Entity\Booking;
 use App\Entity\Trip;
 use App\Entity\Category;
@@ -431,6 +432,12 @@ class AdminApiController extends AbstractController
                 'country' => $organizer->getCountry(),
                 'status' => $organizer->getStatus(),
                 'description' => $organizer->getDescription(),
+                'experience' => $organizer->getExperience(),
+                'website' => $organizer->getWebsite(),
+                'facebook' => $organizer->getFacebook(),
+                'instagram' => $organizer->getInstagram(),
+                'documents' => $organizer->getDocuments() ?? [],
+                'created_at' => $organizer->getCreatedAt() ? $organizer->getCreatedAt()->format('Y-m-d H:i:s') : null,
                 'user' => $user ? [
                     'id' => $user->getId(),
                     'first_name' => $user->getFirstName(),
@@ -458,7 +465,21 @@ class AdminApiController extends AbstractController
             return $this->json(['error' => 'Organizer not found'], Response::HTTP_NOT_FOUND);
         }
 
+        // Update organizer profile status
         $organizer->setStatus('APPROVED');
+        
+        // Also update the user's organizer status and role
+        $user = $organizer->getUser();
+        if ($user) {
+            $user->setStatusOrganizer('approved');
+            
+            // Add ROLE_ORGANIZER to user's roles if not already present
+            $organizerRole = $this->em->getRepository(Role::class)->findOneBy(['name' => 'ROLE_ORGANIZER']);
+            if ($organizerRole && !$user->getUserRoles()->contains($organizerRole)) {
+                $user->addUserRole($organizerRole);
+            }
+        }
+        
         $this->em->flush();
 
         return $this->json(['message' => 'Organizer approved', 'status' => 'APPROVED']);

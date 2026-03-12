@@ -54,6 +54,9 @@ class OrganizerProfile
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $instagram = null;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $documents = null;
+
     #[ORM\Column]
     private ?\DateTimeImmutable $created_at = null;
 
@@ -189,6 +192,17 @@ class OrganizerProfile
     public function setInstagram(?string $instagram): static
     {
         $this->instagram = $instagram;
+        return $this;
+    }
+
+    public function getDocuments(): ?array
+    {
+        return $this->documents;
+    }
+
+    public function setDocuments(?array $documents): static
+    {
+        $this->documents = $documents;
         return $this;
     }
 

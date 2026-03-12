@@ -101,51 +101,99 @@ class UserApiController extends AbstractController
     #[Route('/organizer-request', name: 'api_organizer_request', methods: ['POST'])]
     public function requestOrganizer(Request $request): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user instanceof User) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        // Check if already an organizer or has pending request
-        if ($user->getStatusOrganizer() === 'approved') {
-            return $this->json(['error' => 'You are already an organizer'], Response::HTTP_CONFLICT);
-        }
-
-        if ($user->getStatusOrganizer() === 'pending') {
-            return $this->json(['error' => 'You already have a pending request'], Response::HTTP_CONFLICT);
-        }
-
-        $data = json_decode($request->getContent(), true);
-
-        // Validate required fields
-        $requiredFields = ['agency_name', 'description', 'experience'];
-        foreach ($requiredFields as $field) {
-            if (!isset($data[$field]) || empty($data[$field])) {
-                return $this->json(['error' => "Field '$field' is required"], Response::HTTP_BAD_REQUEST);
+        try {
+            $user = $this->getUser();
+            if (!$user instanceof User) {
+                return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
             }
+
+            // Check if already an organizer or has pending request
+            if ($user->getStatusOrganizer() === 'approved') {
+                return $this->json(['error' => 'You are already an organizer'], Response::HTTP_CONFLICT);
+            }
+
+            if ($user->getStatusOrganizer() === 'PENDING') {
+                return $this->json(['error' => 'You already have a pending request'], Response::HTTP_CONFLICT);
+            }
+
+            // Support both JSON and FormData
+            $contentType = $request->headers->get('Content-Type', '');
+            
+            if (strpos($contentType, 'application/json') !== false) {
+                $data = json_decode($request->getContent(), true);
+            } else {
+                $data = $request->request->all();
+            }
+
+            // Validate required fields
+            $requiredFields = ['agency_name', 'description', 'experience'];
+            foreach ($requiredFields as $field) {
+                if (!isset($data[$field]) || empty($data[$field])) {
+                    return $this->json(['error' => "Field '$field' is required"], Response::HTTP_BAD_REQUEST);
+                }
+            }
+
+            // Update user status to PENDING
+            $user->setStatusOrganizer('PENDING');
+
+            // Create organizer profile with the request data
+            $organizerProfile = new OrganizerProfile();
+            $organizerProfile->setUser($user);
+            $organizerProfile->setAgencyName($data['agency_name']);
+            $organizerProfile->setDescription($data['description']);
+            $organizerProfile->setExperience($data['experience']);
+            $organizerProfile->setLicenseNumber($data['license_number'] ?? null);
+            $organizerProfile->setCountry($data['country'] ?? 'Tunisia');
+            $organizerProfile->setAddress($data['address'] ?? null);
+            $organizerProfile->setWebsite($data['website'] ?? null);
+            $organizerProfile->setFacebook($data['facebook'] ?? null);
+            $organizerProfile->setInstagram($data['instagram'] ?? null);
+            $organizerProfile->setStatus('PENDING');
+
+            // Handle document uploads
+            $uploadedFiles = $request->files->all();
+            $documentPaths = [];
+            
+            foreach ($uploadedFiles as $key => $file) {
+                if (strpos($key, 'document_') === 0 && $file) {
+                    $uploadDir = $this->getParameter('kernel.project_dir') . '/public/uploads/documents';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0777, true);
+                    }
+                    
+                    $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                    $newFilename = $originalFilename . '_' . uniqid() . '.' . $file->getClientExtension();
+                    $file->move($uploadDir, $newFilename);
+                    $documentPaths[] = '/uploads/documents/' . $newFilename;
+                }
+            }
+            
+            if (!empty($documentPaths)) {
+                $organizerProfile->setDocuments($documentPaths);
+            }
+
+            error_log('Creating organizer profile for user: ' . $user->getId());
+            error_log('Agency name: ' . $data['agency_name']);
+            error_log('Status: PENDING');
+
+            $this->em->persist($organizerProfile);
+            $this->em->persist($user);
+            
+            try {
+                $this->em->flush();
+                
+                // Return success response
+                return $this->json([
+                    'message' => 'Organizer request submitted successfully. Your request will be reviewed by an administrator within 24 hours.',
+                    'status_organizer' => 'PENDING',
+                    'organizer_id' => $organizerProfile->getId()
+                ]);
+            } catch (\Exception $e) {
+                return $this->json(['error' => 'Database error: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        // Update user status to pending
-        $user->setStatusOrganizer('pending');
-
-        // Create organizer profile with the request data
-        $organizerProfile = new OrganizerProfile();
-        $organizerProfile->setUser($user);
-        $organizerProfile->setAgencyName($data['agency_name']);
-        $organizerProfile->setDescription($data['description']);
-        $organizerProfile->setExperience($data['experience']);
-        $organizerProfile->setWebsite($data['website'] ?? null);
-        $organizerProfile->setFacebook($data['facebook'] ?? null);
-        $organizerProfile->setInstagram($data['instagram'] ?? null);
-        $organizerProfile->setStatus('pending');
-
-        $this->em->persist($organizerProfile);
-        $this->em->flush();
-
-        return $this->json([
-            'message' => 'Organizer request submitted successfully. Your request will be reviewed by an administrator within 24 hours.',
-            'status_organizer' => 'pending'
-        ]);
     }
 
     #[Route('/bookings/upcoming', name: 'api_user_upcoming_bookings', methods: ['GET'])]
