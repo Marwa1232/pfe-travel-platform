@@ -1,0 +1,53 @@
+security:
+
+    password_hashers:
+        App\Entity\User:
+            algorithm: auto
+
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+
+        # كل auth endpoints مفتوحة
+        auth:
+            pattern: ^/api/auth
+            stateless: true
+            security: false
+
+        # باقي الـ API يحتاج JWT
+        api:
+            pattern: ^/api
+            stateless: true
+            jwt: ~
+
+    access_control:
+        # Login & Register مفتوحين
+        - { path: ^/api/auth, roles: PUBLIC_ACCESS }
+
+        # CORS preflight - allow OPTIONS without auth
+        - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
+
+        # Public trips - GET only (without $ to allow query strings)
+        - { path: ^/api/trips, roles: PUBLIC_ACCESS, methods: [GET] }
+
+        # Public categories and destinations (without $ to allow sub-paths like /popular)
+        - { path: ^/api/destinations, roles: PUBLIC_ACCESS }
+        - { path: ^/api/categories, roles: PUBLIC_ACCESS }
+        - { path: ^/api/recommendations/trending, roles: PUBLIC_ACCESS }
+        - { path: ^/api/recommendations/status, roles: PUBLIC_ACCESS }
+
+        # AI Search is public
+        - { path: ^/api/ai/search, roles: PUBLIC_ACCESS }
+
+        # Organizer trips - needs authentication
+        - { path: ^/api/trips$, roles: IS_AUTHENTICATED_FULLY, methods: [POST, PUT, DELETE] }
+
+        # باقي الـ API يحتاج JWT
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
