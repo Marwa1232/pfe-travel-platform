@@ -255,6 +255,33 @@ const AdminDashboard: React.FC = () => {
   const [newDestination, setNewDestination] = useState({ name: '', country: '', region: '', image: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<'category' | 'destination'>('category');
+
+  const [newDestErrors, setNewDestErrors] = useState({ name: '', country: '', region: '' });
+  const [newCatErrors, setNewCatErrors] = useState({ name: '', description: '' });
+  const [editDestErrors, setEditDestErrors] = useState({ name: '', country: '', region: '' });
+  const [editCatErrors, setEditCatErrors] = useState({ name: '', description: '' });
+
+  const validateAlphabetic = (value: string): string => {
+    if (value && !/^[a-zA-Z\s'-]+$/.test(value)) {
+      return 'Fields must be alphabetic';
+    }
+    return '';
+  };
+
+  const validateFirstUppercase = (value: string): string => {
+    if (value && value.length > 0 && value[0] !== value[0].toUpperCase()) {
+      return 'First character must be uppercase';
+    }
+    return '';
+  };
+
+  const validateAlphaField = (value: string): string => {
+    const alphaErr = validateAlphabetic(value);
+    if (alphaErr) return alphaErr;
+    const upperErr = validateFirstUppercase(value);
+    if (upperErr) return upperErr;
+    return '';
+  };
   
   // Editing state
   const [editingCategory, setEditingCategory] = useState<any>(null);
@@ -396,9 +423,16 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleCreateCategory = async () => {
+    const nameErr = validateAlphaField(newCategory.name);
+    const descErr = validateAlphaField(newCategory.description);
+    if (nameErr || descErr) {
+      setNewCatErrors({ name: nameErr, description: descErr });
+      return;
+    }
     try {
       await adminAPI.createCategory(newCategory);
       setNewCategory({ name: '', description: '' });
+      setNewCatErrors({ name: '', description: '' });
       loadCategories();
       setDialogOpen(false);
     } catch (error) {
@@ -407,6 +441,13 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleCreateDestination = async () => {
+    const nameErr = validateAlphaField(newDestination.name);
+    const countryErr = validateAlphaField(newDestination.country);
+    const regionErr = newDestination.region ? validateAlphaField(newDestination.region) : '';
+    if (nameErr || countryErr || regionErr) {
+      setNewDestErrors({ name: nameErr, country: countryErr, region: regionErr });
+      return;
+    }
     try {
       // If a file is selected, use FormData
       if (newDestinationImageFile) {
@@ -422,6 +463,7 @@ const AdminDashboard: React.FC = () => {
       }
       setNewDestination({ name: '', country: '', region: '', image: '' });
       setNewDestinationImageFile(null);
+      setNewDestErrors({ name: '', country: '', region: '' });
       loadDestinations();
       setDialogOpen(false);
     } catch (error) {
@@ -434,9 +476,16 @@ const AdminDashboard: React.FC = () => {
     setEditingCategory({ id: category.id, name: category.name, description: category.description });
     setEditType('category');
     setEditDialogOpen(true);
+    setEditCatErrors({ name: '', description: '' });
   };
 
   const handleUpdateCategory = async () => {
+    const nameErr = validateAlphaField(editingCategory.name);
+    const descErr = validateAlphaField(editingCategory.description);
+    if (nameErr || descErr) {
+      setEditCatErrors({ name: nameErr, description: descErr });
+      return;
+    }
     try {
       await adminAPI.updateCategory(editingCategory.id, editingCategory);
       setEditingCategory(null);
@@ -469,9 +518,17 @@ const AdminDashboard: React.FC = () => {
     setSelectedImageFile(null);
     setEditType('destination');
     setEditDialogOpen(true);
+    setEditDestErrors({ name: '', country: '', region: '' });
   };
 
   const handleUpdateDestination = async () => {
+    const nameErr = validateAlphaField(editingDestination.name);
+    const countryErr = validateAlphaField(editingDestination.country);
+    const regionErr = editingDestination.region ? validateAlphaField(editingDestination.region) : '';
+    if (nameErr || countryErr || regionErr) {
+      setEditDestErrors({ name: nameErr, country: countryErr, region: regionErr });
+      return;
+    }
     try {
       // If a file is selected, use FormData
       if (selectedImageFile) {
@@ -517,6 +574,11 @@ const AdminDashboard: React.FC = () => {
   const openDialog = (type: 'category' | 'destination') => {
     setDialogType(type);
     setDialogOpen(true);
+    if (type === 'category') {
+      setNewCatErrors({ name: '', description: '' });
+    } else {
+      setNewDestErrors({ name: '', country: '', region: '' });
+    }
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, organizer: any) => {
@@ -1350,7 +1412,12 @@ const AdminDashboard: React.FC = () => {
                   size="small"
                   label="Nom"
                   value={newCategory.name}
-                  onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                  onChange={(e) => {
+                    setNewCategory({ ...newCategory, name: e.target.value });
+                    setNewCatErrors(prev => ({ ...prev, name: validateAlphaField(e.target.value) }));
+                  }}
+                  error={!!newCatErrors.name}
+                  helperText={newCatErrors.name}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
                 <TextField
@@ -1358,7 +1425,12 @@ const AdminDashboard: React.FC = () => {
                   size="small"
                   label="Description"
                   value={newCategory.description}
-                  onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                  onChange={(e) => {
+                    setNewCategory({ ...newCategory, description: e.target.value });
+                    setNewCatErrors(prev => ({ ...prev, description: validateAlphaField(e.target.value) }));
+                  }}
+                  error={!!newCatErrors.description}
+                  helperText={newCatErrors.description}
                   multiline
                   rows={2}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
@@ -1371,7 +1443,12 @@ const AdminDashboard: React.FC = () => {
                   size="small"
                   label="Nom"
                   value={newDestination.name}
-                  onChange={(e) => setNewDestination({ ...newDestination, name: e.target.value })}
+                  onChange={(e) => {
+                    setNewDestination({ ...newDestination, name: e.target.value });
+                    setNewDestErrors(prev => ({ ...prev, name: validateAlphaField(e.target.value) }));
+                  }}
+                  error={!!newDestErrors.name}
+                  helperText={newDestErrors.name}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
                 <TextField
@@ -1379,7 +1456,12 @@ const AdminDashboard: React.FC = () => {
                   size="small"
                   label="Pays"
                   value={newDestination.country}
-                  onChange={(e) => setNewDestination({ ...newDestination, country: e.target.value })}
+                  onChange={(e) => {
+                    setNewDestination({ ...newDestination, country: e.target.value });
+                    setNewDestErrors(prev => ({ ...prev, country: validateAlphaField(e.target.value) }));
+                  }}
+                  error={!!newDestErrors.country}
+                  helperText={newDestErrors.country}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
                 <TextField
@@ -1387,7 +1469,12 @@ const AdminDashboard: React.FC = () => {
                   size="small"
                   label="Région"
                   value={newDestination.region}
-                  onChange={(e) => setNewDestination({ ...newDestination, region: e.target.value })}
+                  onChange={(e) => {
+                    setNewDestination({ ...newDestination, region: e.target.value });
+                    setNewDestErrors(prev => ({ ...prev, region: validateAlphaField(e.target.value) }));
+                  }}
+                  error={!!newDestErrors.region}
+                  helperText={newDestErrors.region}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
                 <Box sx={{ mt: 1, mb: 1 }}>
@@ -1470,14 +1557,24 @@ const AdminDashboard: React.FC = () => {
                 <TextField
                   label="Nom"
                   value={editingCategory?.name || ''}
-                  onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                  onChange={(e) => {
+                    setEditingCategory({ ...editingCategory, name: e.target.value });
+                    setEditCatErrors(prev => ({ ...prev, name: validateAlphaField(e.target.value) }));
+                  }}
+                  error={!!editCatErrors.name}
+                  helperText={editCatErrors.name}
                   size="small"
                   fullWidth
                 />
                 <TextField
                   label="Description"
                   value={editingCategory?.description || ''}
-                  onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
+                  onChange={(e) => {
+                    setEditingCategory({ ...editingCategory, description: e.target.value });
+                    setEditCatErrors(prev => ({ ...prev, description: validateAlphaField(e.target.value) }));
+                  }}
+                  error={!!editCatErrors.description}
+                  helperText={editCatErrors.description}
                   size="small"
                   fullWidth
                   multiline
@@ -1489,21 +1586,36 @@ const AdminDashboard: React.FC = () => {
                 <TextField
                   label="Nom"
                   value={editingDestination?.name || ''}
-                  onChange={(e) => setEditingDestination({ ...editingDestination, name: e.target.value })}
+                  onChange={(e) => {
+                    setEditingDestination({ ...editingDestination, name: e.target.value });
+                    setEditDestErrors(prev => ({ ...prev, name: validateAlphaField(e.target.value) }));
+                  }}
+                  error={!!editDestErrors.name}
+                  helperText={editDestErrors.name}
                   size="small"
                   fullWidth
                 />
                 <TextField
                   label="Pays"
                   value={editingDestination?.country || ''}
-                  onChange={(e) => setEditingDestination({ ...editingDestination, country: e.target.value })}
+                  onChange={(e) => {
+                    setEditingDestination({ ...editingDestination, country: e.target.value });
+                    setEditDestErrors(prev => ({ ...prev, country: validateAlphaField(e.target.value) }));
+                  }}
+                  error={!!editDestErrors.country}
+                  helperText={editDestErrors.country}
                   size="small"
                   fullWidth
                 />
                 <TextField
                   label="Région"
                   value={editingDestination?.region || ''}
-                  onChange={(e) => setEditingDestination({ ...editingDestination, region: e.target.value })}
+                  onChange={(e) => {
+                    setEditingDestination({ ...editingDestination, region: e.target.value });
+                    setEditDestErrors(prev => ({ ...prev, region: validateAlphaField(e.target.value) }));
+                  }}
+                  error={!!editDestErrors.region}
+                  helperText={editDestErrors.region}
                   size="small"
                   fullWidth
                 />

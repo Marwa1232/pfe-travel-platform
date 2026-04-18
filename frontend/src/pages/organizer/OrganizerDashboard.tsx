@@ -22,6 +22,7 @@ import {
   Add,
   CalendarMonth,
   Receipt,
+  Star,
 } from '@mui/icons-material';
 import { RootState } from '../../store';
 import api from '../../services/api';
@@ -64,6 +65,7 @@ const OrganizerDashboard: React.FC = () => {
     totalBookings: 0,
     totalRevenue: 0,
     pendingBookings: 0,
+    pendingReviews: 0,
   });
 
   const [loading, setLoading] = useState(true);
@@ -87,7 +89,21 @@ const OrganizerDashboard: React.FC = () => {
     try {
       setLoading(true);
       const response = await api.get('/organizer/stats');
-      setStats(response.data);
+      setStats(prev => ({
+        ...prev,
+        ...response.data,
+      }));
+      
+      // Get pending reviews count
+      try {
+        const reviewsResponse = await api.get('/organizer/reviews?status=pending');
+        setStats(prev => ({
+          ...prev,
+          pendingReviews: reviewsResponse.data.pending_count || 0,
+        }));
+      } catch (reviewErr) {
+        console.log('Could not load reviews:', reviewErr);
+      }
     } catch (err: any) {
       setError(
         err.response?.data?.error ||
@@ -387,7 +403,61 @@ const OrganizerDashboard: React.FC = () => {
                       Historique des paiements
                     </Typography>
                   </Box>
-                  <TrendingUp sx={{ color: '#F44336', fontSize: 20 }} />
+                    <TrendingUp sx={{ color: '#F44336', fontSize: 20 }} />
+                </Box>
+              </CardContent>
+            </StyledCard>
+          </Grid>
+
+          <Grid xs={12} md={6}>
+            <StyledCard 
+              sx={{ 
+                cursor: 'pointer',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                }
+              }}
+              onClick={() => navigate('/organizer/reviews')}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ 
+                    width: 56, 
+                    height: 56, 
+                    borderRadius: 2,
+                    bgcolor: alpha('#FF9800', 0.1),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Star sx={{ fontSize: 32, color: '#FF9800' }} />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h6" fontWeight="600" sx={{ color: '#0D47A1' }}>
+                      Avis clients
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {stats.pendingReviews > 0 
+                        ? `${stats.pendingReviews} avis en attente`
+                        : 'Gérer les avis'}
+                    </Typography>
+                  </Box>
+                  {stats.pendingReviews > 0 && (
+                    <Box sx={{ 
+                      bgcolor: '#FF9800', 
+                      color: 'white',
+                      borderRadius: '50%',
+                      width: 24,
+                      height: 24,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 12,
+                      fontWeight: 'bold',
+                    }}>
+                      {stats.pendingReviews}
+                    </Box>
+                  )}
                 </Box>
               </CardContent>
             </StyledCard>

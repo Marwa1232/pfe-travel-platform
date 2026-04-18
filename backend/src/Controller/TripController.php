@@ -12,6 +12,8 @@ use App\Entity\TripProgram;
 use App\Repository\TripRepository;
 use App\Service\JwtService;
 use App\Service\ImageStorageService;
+use App\Service\CancellationPolicyService;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -29,7 +31,9 @@ class TripController extends AbstractController
         private TripRepository $tripRepo,
         private EntityManagerInterface $em,
         private JwtService $jwtService,
-        private ImageStorageService $imageStorage
+        private ImageStorageService $imageStorage,
+        private CancellationPolicyService $policyService,
+        private NotificationService $notificationService
     ) {}
 
     private function getCurrentUser(Request $request): ?User
@@ -87,6 +91,34 @@ class TripController extends AbstractController
         }
 
         return $this->json($trip, Response::HTTP_OK, [], ['groups' => 'trip:read']);
+    }
+
+    #[Route('/{id}/policy', name: 'api_trips_policy', methods: ['GET'])]
+    public function getPolicy(int $id): JsonResponse
+    {
+        $trip = $this->tripRepo->find($id);
+
+        if (!$trip) {
+            return $this->json(['error' => 'Trip not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $policy = $trip->getCancellationPolicy();
+
+        if (!$policy) {
+            return $this->json([
+                'rules' => [
+                    ['days' => 0, 'refund' => 0],
+                ],
+                'allowVoucher' => true,
+                'allowRebooking' => true,
+            ]);
+        }
+
+        return $this->json([
+            'rules' => $policy->getRulesJson(),
+            'allowVoucher' => $policy->isAllowVoucher(),
+            'allowRebooking' => $policy->isAllowRebooking(),
+        ]);
     }
 
     #[Route('', name: 'api_trips_create', methods: ['POST'])]
@@ -224,6 +256,14 @@ class TripController extends AbstractController
         }
 
         $this->em->persist($trip);
+        
+        // Create cancellation policy if provided
+        if (isset($data['policyType']) && in_array($data['policyType'], ['flexible', 'moderate', 'strict'])) {
+            $allowVoucher = $data['allowVoucher'] ?? true;
+            $allowRebooking = $data['allowRebooking'] ?? true;
+            $this->policyService->createPolicy($trip, $data['policyType'], $allowVoucher, $allowRebooking);
+        }
+        
         try {
             $this->em->flush();
         } catch(\Exception $e) {
@@ -364,17 +404,26 @@ class TripController extends AbstractController
 
         // Update session if dates provided
         if(isset($data['start_date']) && isset($data['end_date'])){
-            // Remove existing sessions and create new one
-            foreach($trip->getSessions() as $existingSession){
-                $this->em->remove($existingSession);
-            }
+            // Create the new session first
+            $newSession = new TripSession();
+            $newSession->setStartDate(new \DateTime($data['start_date']));
+            $newSession->setEndDate(new \DateTime($data['end_date']));
+            $newSession->setMaxCapacity($data['max_places'] ?? $data['capacity'] ?? 10);
+            $newSession->setStatus('OPEN');
+            $trip->addSession($newSession);
+            $this->em->flush(); // flush new session to get its ID
             
-            $session = new TripSession();
-            $session->setStartDate(new \DateTime($data['start_date']));
-            $session->setEndDate(new \DateTime($data['end_date']));
-            $session->setMaxCapacity($data['max_places'] ?? $data['capacity'] ?? 10);
-            $session->setStatus('OPEN');
-            $trip->addSession($session);
+            // Reassign bookings from old sessions to the new one, then remove old sessions
+            $oldSessions = $trip->getSessions()->toArray();
+            foreach($oldSessions as $existingSession){
+                if ($existingSession->getId() !== $newSession->getId()) {
+                    // Move bookings to new session
+                    foreach ($existingSession->getBookings() as $booking) {
+                        $booking->setTripSession($newSession);
+                    }
+                    $this->em->remove($existingSession);
+                }
+            }
         }
 
         // Update destinations
@@ -446,10 +495,71 @@ class TripController extends AbstractController
             return $this->json(['error' => 'Access denied'], Response::HTTP_FORBIDDEN);
         }
 
+        // Delete all related entities in the correct order
+        
+        // 1. Delete sessions
+        $sessions = $trip->getSessions();
+        foreach ($sessions as $session) {
+            $this->em->remove($session);
+        }
+        
+        // 2. Delete trip images
+        $images = $trip->getImages();
+        foreach ($images as $image) {
+            $this->em->remove($image);
+        }
+        
+        // 3. Delete trip programs
+        $programs = $trip->getPrograms();
+        foreach ($programs as $program) {
+            $this->em->remove($program);
+        }
+        
+        // 4. Delete cancellation policy
+        $policy = $trip->getCancellationPolicy();
+        if ($policy) {
+            $this->em->remove($policy);
+        }
+        
+        // 5. Delete the trip
         $this->em->remove($trip);
         $this->em->flush();
 
         return $this->json(['message' => 'Trip deleted'], Response::HTTP_OK);
+    }
+
+    #[Route('/{tripId}/sessions/{sessionId}/cancel', name: 'api_trips_session_cancel', methods: ['POST'])]
+    public function cancelSession(int $tripId, int $sessionId, Request $request): JsonResponse
+    {
+        $user = $this->getCurrentUser($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $trip = $this->tripRepo->find($tripId);
+        if (!$trip) {
+            return $this->json(['error' => 'Trip not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Check ownership
+        if (!$trip->getOrganizer() || $trip->getOrganizer()->getUser()->getId() !== $user->getId()) {
+            return $this->json(['error' => 'Access denied'], Response::HTTP_FORBIDDEN);
+        }
+
+        $session = $this->em->getRepository(\App\Entity\TripSession::class)->find($sessionId);
+        if (!$session || $session->getTrip()->getId() !== $tripId) {
+            return $this->json(['error' => 'Session not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Mark session as cancelled
+        $session->setStatus('CANCELLED');
+        
+        $this->em->flush();
+
+        // Notify all booked users for this session
+        $this->notificationService->notifySessionCancelled($session);
+
+        return $this->json(['message' => 'Session cancelled', 'session_id' => $sessionId]);
     }
 
     // Helper pour générer slug

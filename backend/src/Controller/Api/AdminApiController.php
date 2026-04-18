@@ -11,6 +11,7 @@ use App\Entity\Category;
 use App\Entity\Destination;
 use App\Entity\Payment;
 use App\Service\JwtService;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -23,7 +24,8 @@ class AdminApiController extends AbstractController
 {
     public function __construct(
         private EntityManagerInterface $em,
-        private JwtService $jwtService
+        private JwtService $jwtService,
+        private NotificationService $notificationService
     ) {}
 
     private function getAuthenticatedUser(Request $request): ?User
@@ -481,6 +483,9 @@ class AdminApiController extends AbstractController
         }
         
         $this->em->flush();
+
+        // Send notification to organizer
+        $this->notificationService->notifyOrganizerApproved($organizer);
 
         return $this->json(['message' => 'Organizer approved', 'status' => 'APPROVED']);
     }

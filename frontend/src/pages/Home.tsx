@@ -39,7 +39,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { styled, alpha, keyframes } from '@mui/material/styles';
-import { tripAPI, destinationAPI, searchAI, recommendationAPI, fixImageUrl } from '../services/api';
+import { tripAPI, destinationAPI, searchAI, recommendationAPI, reviewAPI, fixImageUrl } from '../services/api';
 import { RootState } from '../store/index';
 import TripCard from '../components/TripCard';
 
@@ -57,7 +57,7 @@ const slowZoom = keyframes`
 // Hero images for infinite scroll
 const HERO_IMAGES = [
   {
-    url: 'https://images.unsplash.com/photo-1539650116574-8efeb43e2750?w=1920&q=80',
+    url: 'https://images.unsplash.com/photo-1771325676184-44d8035e3cd1?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     title: 'Aventure en Montagne',
     location: 'Atlas, Maroc',
   },
@@ -82,7 +82,7 @@ const HERO_IMAGES = [
 const HorizontalScroll = styled(Box)(({ theme }) => ({
   display: 'flex',
   overflowX: 'auto',
-  gap: theme.spacing(3),
+  gap: theme.spacing(6),
   padding: theme.spacing(2, 1),
   scrollBehavior: 'smooth',
   '&::-webkit-scrollbar': {
@@ -102,9 +102,9 @@ const HorizontalScroll = styled(Box)(({ theme }) => ({
 }));
 
 const DestinationCard = styled(Card)(({ theme }) => ({
-  minWidth: 280,
-  maxWidth: 280,
-  height: 320,
+  minWidth: 260,
+  maxWidth: 260,
+  height: 300,
   position: 'relative',
   overflow: 'hidden',
   cursor: 'pointer',
@@ -188,7 +188,30 @@ interface Trip {
   currency: string;
   duration_days: number;
   images: Array<{ url: string; is_cover: boolean }>;
+  organizer?: { id: number; agency_name?: string };
+  avg_rating?: number;
+  total_reviews?: number;
+  agency_name?: string;
 }
+
+const normalizeTripImages = (images: any): Array<{ url: string; is_cover: boolean }> => {
+  if (Array.isArray(images)) {
+    return images
+      .filter((img: any) => img && img.url)
+      .map((img: any) => ({ url: img.url, is_cover: Boolean(img.is_cover) }));
+  }
+  if (images && typeof images === 'object') {
+    if (Array.isArray(images['hydra:member'])) {
+      return images['hydra:member']
+        .filter((img: any) => img && img.url)
+        .map((img: any) => ({ url: img.url, is_cover: Boolean(img.is_cover) }));
+    }
+    return (Object.values(images) as any[])
+      .filter((img: any) => img && typeof img === 'object' && img.url)
+      .map((img: any) => ({ url: img.url, is_cover: Boolean(img.is_cover) }));
+  }
+  return [];
+};
 
 // Destination icons
 const getDestinationIcon = (name: string) => {
@@ -241,9 +264,14 @@ const Home: React.FC = () => {
       const response = await tripAPI.list({ limit: 10 });
       console.log('Featured trips response:', response.data);
       // Handle both Hydra format and regular array response
-      setFeaturedTrips(response.data['hydra:member'] || response.data);
+      let trips = response.data;
+      if (trips && typeof trips === 'object') {
+        trips = trips['hydra:member'] || trips;
+      }
+      setFeaturedTrips(Array.isArray(trips) ? trips : []);
     } catch (error) {
       console.error('Error loading trips:', error);
+      setFeaturedTrips([]);
     } finally {
       setLoading(false);
     }
@@ -252,7 +280,8 @@ const Home: React.FC = () => {
   const loadDestinations = async () => {
     try {
       const response = await destinationAPI.list();
-      setDestinations(response.data);
+      const data = response.data;
+      setDestinations(Array.isArray(data) ? data : data['hydra:member'] || []);
     } catch (error) {
       console.error('Error loading destinations:', error);
     } finally {
@@ -265,19 +294,42 @@ const Home: React.FC = () => {
       const response = await recommendationAPI.getTrending(4);
       const data = response.data;
       console.log('Trending response:', data);
-      if (data.trending && data.trending.length > 0) {
-        const tripIds = data.trending.map((r: any) => r.trip.id);
-        console.log('Trip IDs:', tripIds);
-        const trips = await Promise.all(
-          tripIds.map((id: number) => tripAPI.get(id).then((res) => res.data))
+      if (data.trending && Array.isArray(data.trending) && data.trending.length > 0) {
+        const tripsWithReviews = await Promise.all(
+          data.trending.map(async (item: any) => {
+            const trip = item.trip;
+            try {
+              const reviewRes = await reviewAPI.getTripReviews(trip.id);
+              const reviewData = reviewRes.data || {};
+
+              return {
+                ...trip,
+                images: trip.images || [],
+                avg_rating: Number(reviewData.avg_rating ?? 0),
+                total_reviews: Number(reviewData.total ?? 0),
+                agency_name: trip.organizer?.agency_name || trip.organizer?.agencyName || `Agence #${trip.organizer?.id ?? '-'}`,
+              };
+            } catch (reviewError) {
+              console.warn(`Could not load reviews for trip ${trip.id}:`, reviewError);
+              return {
+                ...trip,
+                images: trip.images || [],
+                avg_rating: 0,
+                total_reviews: 0,
+                agency_name: trip.organizer?.agency_name || trip.organizer?.agencyName || `Agence #${trip.organizer?.id ?? '-'}`,
+              };
+            }
+          })
         );
-        console.log('Loaded trips:', trips);
-        setRecommendations(trips);
+        console.log('Loaded trips with reviews:', tripsWithReviews);
+        setRecommendations(tripsWithReviews);
       } else {
         console.log('No trending trips found');
+        setRecommendations([]);
       }
     } catch (error) {
       console.error('Error loading recommendations:', error);
+      setRecommendations([]);
     }
   };
 
@@ -413,15 +465,20 @@ const Home: React.FC = () => {
 
   return (
     <Box sx={{ overflow: 'hidden' }}>
-      {/* Hero Section avec arrière-plan qui change seulement */}
-      <Box
-        sx={{
-          position: 'relative',
-          height: '100vh',
-          minHeight: 700,
-          overflow: 'hidden',
-        }}
-      >
+     {/* Hero Section avec arrière-plan qui change seulement */}
+        <Box
+          sx={{
+            position: 'relative',
+            width: 'min(1200px, calc(100% - 24px))', 
+            mx: 'auto',
+            mt: { xs: 10, md: 12 },
+            height: { xs: '62vh', md: '70vh' },
+            minHeight: { xs: 300, md: 380 },
+            maxHeight: 600,
+            borderRadius: { xs: '46px', md: '54px' },
+            overflow: 'hidden',
+          }}
+        >
         {/* Images d'arrière-plan avec transition en fondu */}
         {HERO_IMAGES.map((image, index) => (
           <HeroBackground
@@ -520,10 +577,13 @@ const Home: React.FC = () => {
               component="form"
               onSubmit={(e) => { e.preventDefault(); handleSmartSearch(); }}
               sx={{
-                maxWidth: 700,
+                maxWidth: 1100,
+                width: '100%',
                 mx: 'auto',
-                p: 1,
-                borderRadius: 4,
+                minHeight: { xs: 64, md: 74 },
+                px: { xs: 1.2, md: 1.6 },
+                py: { xs: 0.6, md: 0.8 },
+                borderRadius: '999px',
                 backgroundColor: 'rgba(255,255,255,0.95)',
                 backdropFilter: 'blur(20px)',
                 display: 'flex',
@@ -549,7 +609,8 @@ const Home: React.FC = () => {
                   disableUnderline: true,
                   sx: { 
                     fontSize: { xs: '1rem', md: '1.1rem' },
-                    py: 1,
+                    py: { xs: 1.1, md: 1.4 },
+
                   }
                 }}
               />
@@ -558,9 +619,9 @@ const Home: React.FC = () => {
                 variant="contained"
                 sx={{
                   mx: 1,
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: 3,
+                  px: { xs: 3, md: 4.5 },
+                  py: { xs: 1.2, md: 1.5 },
+                  borderRadius: '999px',
                   background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
                   whiteSpace: 'nowrap',
                 }}
@@ -603,41 +664,6 @@ const Home: React.FC = () => {
             </Fade>
           </Box>
         </Container>
-
-        {/* Hero Navigation Buttons */}
-        <IconButton
-          onClick={handleHeroPrev}
-          sx={{
-            position: 'absolute',
-            left: 20,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            backdropFilter: 'blur(10px)',
-            color: 'white',
-            '&:hover': { backgroundColor: 'rgba(255,255,255,0.3)' },
-            zIndex: 4,
-          }}
-        >
-          <ChevronLeftIcon fontSize="large" />
-        </IconButton>
-        
-        <IconButton
-          onClick={handleHeroNext}
-          sx={{
-            position: 'absolute',
-            right: 20,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            backdropFilter: 'blur(10px)',
-            color: 'white',
-            '&:hover': { backgroundColor: 'rgba(255,255,255,0.3)' },
-            zIndex: 4,
-          }}
-        >
-          <ChevronRightIcon fontSize="large" />
-        </IconButton>
 
         {/* Hero Indicators */}
         <Box
@@ -732,7 +758,7 @@ const Home: React.FC = () => {
                       maxWidth: 300,
                       height: 360,
                       cursor: 'pointer',
-                      borderRadius: 4,
+                      borderRadius: 2,
                       overflow: 'hidden',
                       flexShrink: 0,
                       position: 'relative',
@@ -750,46 +776,85 @@ const Home: React.FC = () => {
                       style={{
                         width: '100%', height: '100%',
                         objectFit: 'cover', display: 'block',
-                        borderRadius: 16,
+                        borderRadius: 8,
                       }}
                     />
 
-                    {/* Always-visible dark gradient at bottom (subtle) */}
+                    {/* Overlay gradient to match reference-style card readability */}
                     <Box sx={{
-                      position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%',
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)',
-                      borderRadius: '0 0 16px 16px',
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.08) 35%, rgba(0,0,0,0.7) 100%)',
+                      borderRadius: 2,
                     }} />
 
                     {/* Info overlay — hidden by default, revealed when card is center */}
                     <Box
                       data-card-info
                       sx={{
-                        position: 'absolute', bottom: 0, left: 0, right: 0,
-                        p: 2.5,
+                        position: 'absolute',
+                        inset: 0,
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
                         opacity: index === 0 ? 1 : 0,
                         transform: index === 0 ? 'translateY(0)' : 'translateY(10px)',
                         transition: 'opacity 0.4s ease, transform 0.4s ease',
                       }}
                     >
-                      <Typography variant="h6" fontWeight={700} sx={{ color: 'white', lineHeight: 1.2, mb: 0.3 }}>
-                        {destination.name}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}>
-                        {destination.country}
-                      </Typography>
                       <Chip
                         label={`${destination.trips_count ?? 0} voyages`}
                         size="small"
                         sx={{
-                          bgcolor: 'rgba(0,191,165,0.25)',
-                          color: '#00BFA5',
-                          fontWeight: 600,
-                          fontSize: '0.7rem',
-                          height: 22,
-                          border: '1px solid rgba(0,191,165,0.5)',
+                          alignSelf: 'flex-start',
+                          bgcolor: 'rgba(0,0,0,0.28)',
+                          color: '#fff',
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                          height: 30,
+                          px: 0.8,
+                          borderRadius: '999px',
+                          border: '1px solid rgba(255,255,255,0.5)',
+                          backdropFilter: 'blur(4px)',
                         }}
                       />
+                      <Box sx={{ mt: 1.2 }}>
+                        <Typography
+                          variant="h3"
+                          fontWeight={700}
+                          sx={{
+                            color: 'white',
+                            lineHeight: 1.05,
+                            letterSpacing: '-0.02em',
+                            fontSize: { xs: '2rem', md: '2.2rem' },
+                            mb: 1,
+                            textShadow: '0 2px 10px rgba(0,0,0,0.45)',
+                          }}
+                        >
+                          {destination.name}
+                        </Typography>
+                        <Box
+                          sx={{
+                            width: 62,
+                            height: 2,
+                            borderRadius: 999,
+                            backgroundColor: 'rgba(255,255,255,0.95)',
+                            mb: 1.1,
+                          }}
+                        />
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            color: 'rgba(255,255,255,0.95)',
+                            fontWeight: 600,
+                            textTransform: 'capitalize',
+                            textShadow: '0 2px 8px rgba(0,0,0,0.45)',
+                          }}
+                        >
+                          {destination.country}
+                        </Typography>
+                      </Box>
                     </Box>
                   </Box>
                 ))}
@@ -799,98 +864,184 @@ const Home: React.FC = () => {
         </Container>
       </Box>
       {/* AI Recommendations Section */}
-      {token && recommendations.length > 0 && (
+      {recommendations.length > 0 && (
         <Box
           sx={{
-            py: { xs: 6, md: 10 },
-            background: 'linear-gradient(135deg, #0D47A1 0%, #00BFA5 100%)',
-            position: 'relative',
-            overflow: 'hidden',
+            py: { xs: 5, md: 8 },
+            backgroundColor: '#F8FAFC',
           }}
         >
-          <AnimatedBackground
-            sx={{
-              top: -50,
-              right: -50,
-              width: 400,
-              height: 400,
-              animation: `${float} 20s ease-in-out infinite`,
-            }}
-          />
-          
-          <AnimatedBackground
-            sx={{
-              bottom: -50,
-              left: -50,
-              width: 300,
-              height: 300,
-              animation: `${float} 15s ease-in-out infinite reverse`,
-            }}
-          />
-
-          <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+          <Container maxWidth="lg">
             <Slide direction="down" in={true} timeout={1000}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
-                  <AutoAwesomeIcon sx={{ fontSize: 30 }} />
-                </Avatar>
-                <Box>
-                  <Typography variant="h3" sx={{ fontWeight: 700, color: 'white' }}>
-                    Recommandations pour vous
+              <Box
+                sx={{
+                  background: 'linear-gradient(180deg,rgb(83, 149, 159) 0%,rgb(32, 54, 90) 100%)',
+                  borderRadius: 1,
+                  p: { xs: 2, md: 3 },
+                  boxShadow: '0 16px 38px rgba(17, 24, 39, 0.24)',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+                  <AutoAwesomeIcon sx={{ color: '#BBD4FF', fontSize: 26 }} />
+                  <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>
+                    {token ? 'Recommandations pour vous' : 'Tendances du moment qui inspirent nos voyageurs'}
                   </Typography>
-                  <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                    Basé sur vos préférences de voyage
-                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.78)', mb: 2.5 }}>
+                  {token ? 'Basé sur vos préférences de voyage' : 'Découvrez des expériences recommandées cette semaine'}
+                </Typography>
+
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 2,
+                    overflowX: 'auto',
+                    pb: 0.5,
+                    scrollbarWidth: 'none',
+                    '&::-webkit-scrollbar': { display: 'none' },
+                  }}
+                >
+                  {recommendations.map((trip: any, index) => {
+                    return (
+                      <Zoom in={true} timeout={1000} style={{ transitionDelay: `${index * 90}ms` }} key={trip.id}>
+                        <Card
+                          sx={{
+                            minWidth: { xs: 320, md: 335 },
+                            maxWidth: { xs: 320, md: 335 },
+                            borderRadius: 1,
+                            p: 2,
+                            bgcolor: 'rgba(255,255,255,0.98)',
+                            boxShadow: '0 8px 24px rgba(6, 12, 24, 0.2)',
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: '0.97rem',
+                              color: '#0F172A',
+                              lineHeight: 1.25,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              mb: 0.8,
+                              textDecoration: 'underline',
+                              textUnderlineOffset: '2px',
+                            }}
+                          >
+                            {trip.title}
+                          </Typography>
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.2 }}>
+                            <Rating
+                              value={Number(trip.avg_rating || 0)}
+                              precision={0.1}
+                              readOnly
+                              size="small"
+                            />
+                            <Typography sx={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
+                              {(trip.avg_rating || 0).toFixed(1)} ({trip.total_reviews || 0} avis)
+                            </Typography>
+                          </Box>
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.1 }}>
+                            <Avatar sx={{ width: 28, height: 28, bgcolor: '#FF5A36', fontSize: '0.82rem', fontWeight: 700 }}>
+                              {(trip.agency_name || 'A').charAt(0).toUpperCase()}
+                            </Avatar>
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.88rem', color: '#0F172A' }}>
+                              {trip.agency_name || 'Agence'}
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.76rem', color: '#64748B' }}>
+                              - {trip.duration_days} jours
+                            </Typography>
+                          </Box>
+
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: '#1F2937',
+                              minHeight: 72,
+                              mb: 1.2,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 4,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {trip.short_description || 'Expérience recommandée par notre communauté de voyageurs.'}
+                          </Typography>
+                         {/* Images with +N overlay + placeholder fallback */}
+                            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                              {(() => {
+                                const PLACEHOLDERS = [
+                                  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=120&q=60',
+                                  'https://images.unsplash.com/photo-1528127269322-539801943592?w=120&q=60',
+                                  'https://images.unsplash.com/photo-1548013146-72479768bada?w=120&q=60',
+                                ];
+
+                                const nonCoverImages = trip.images?.filter((img: any) => !img.is_cover) || [];
+                                const allImages = nonCoverImages.length > 0 ? nonCoverImages : (trip.images || []);
+
+                                const finalImages = allImages.length > 0
+                                  ? allImages.map((img: any) => ({ url: fixImageUrl(img?.url), real: true }))
+                                  : PLACEHOLDERS.map(url => ({ url, real: false }));
+
+                                const MAX_VISIBLE = 3;
+                                const visible = finalImages.slice(0, MAX_VISIBLE);
+                                const hiddenCount = Math.max(0, allImages.length - MAX_VISIBLE);
+
+                                return visible.map((img: any, i: number) => {
+                                  const isLast = i === MAX_VISIBLE - 1 && hiddenCount > 0;
+                                  return (
+                                    <Box
+                                      key={i}
+                                      sx={{
+                                        position: 'relative',
+                                        width: 60,
+                                        height: 60,
+                                        borderRadius: 0.5,
+                                        overflow: 'hidden',
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      <Box
+                                        component="img"
+                                        src={img.url}
+                                        alt={`${trip.title} ${i + 1}`}
+                                        sx={{
+                                          width: '100%',
+                                          height: '100%',
+                                          objectFit: 'cover',
+                                          display: 'block',
+                                          filter: img.real ? 'none' : 'brightness(0.85) saturate(0.7)',
+                                        }}
+                                      />
+                                      {isLast && (
+                                        <Box sx={{
+                                          position: 'absolute',
+                                          inset: 0,
+                                          bgcolor: 'rgba(0,0,0,0.52)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                        }}>
+                                          <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
+                                            +{hiddenCount}
+                                          </Typography>
+                                        </Box>
+                                      )}
+                                    </Box>
+                                  );
+                                });
+                              })()}
+                            </Box>
+                        </Card>
+                      </Zoom>
+                    );
+                  })}
                 </Box>
               </Box>
             </Slide>
-
-            <Grid container spacing={3} sx={{ mt: 2 }}>
-              {recommendations.map((trip: any, index) => (
-                <Grid item xs={12} sm={6} md={3} key={trip.id}>
-                  <Zoom in={true} timeout={1000} style={{ transitionDelay: `${index * 100}ms` }}>
-                    <Card
-                      sx={{
-                        height: '100%',
-                        borderRadius: 3,
-                        overflow: 'hidden',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-                        transition: 'transform 0.3s ease',
-                        '&:hover': {
-                          transform: 'scale(1.05)',
-                        },
-                      }}
-                    >
-                      <CardMedia
-                        component="img"
-                        height="200"
-                        image={fixImageUrl(trip.images?.find((img: any) => img.is_cover)?.url || trip.images?.[0]?.url) || '/placeholder.jpg'}
-                        alt={trip.title}
-                        sx={{ transition: 'transform 0.3s ease', '&:hover': { transform: 'scale(1.1)' } }}
-                      />
-                      <CardContent>
-                        <Typography gutterBottom variant="h6" component="h2" fontWeight={600} noWrap>
-                          {trip.title}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, height: 40, overflow: 'hidden' }}>
-                          {trip.short_description}
-                        </Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="h6" color="primary" fontWeight={700}>
-                            {trip.base_price} {trip.currency}
-                          </Typography>
-                          <Chip 
-                            label={`${trip.duration_days} jours`} 
-                            size="small"
-                            sx={{ backgroundColor: 'rgba(0,191,165,0.1)' }}
-                          />
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Zoom>
-                </Grid>
-              ))}
-            </Grid>
           </Container>
         </Box>
       )}
@@ -937,7 +1088,7 @@ const Home: React.FC = () => {
             </Box>
           ) : (
             <HorizontalScroll>
-              {featuredTrips.map((trip: any, index) => (
+              {(Array.isArray(featuredTrips) ? featuredTrips : []).map((trip: any, index) => (
                 <Grow
                   key={trip.id}
                   in={true}

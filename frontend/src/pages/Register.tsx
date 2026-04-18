@@ -30,15 +30,13 @@ import {
   Email,
   Lock,
   Person,
-  Phone,
-  Public,
-  Language,
   CheckCircle,
   ArrowForward,
   ArrowBack,
   FlightTakeoff,
 } from '@mui/icons-material';
 import { register } from '../store/authSlice';
+import PhoneNumberInput from '../components/PhoneNumberInput';
 
 // Styled components
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -172,29 +170,104 @@ const Register: React.FC = () => {
     preferred_language: 'fr',
   });
 
-  const countries = ['Tunisia', 'Algeria', 'Morocco', 'Libya', 'Egypt'];
-  const languages = [
-    { value: 'fr', label: 'Français' },
-    { value: 'ar', label: 'العربية' },
-    { value: 'en', label: 'English' },
-  ];
+  const [fieldErrors, setFieldErrors] = useState({
+    email: '',
+    password: '',
+    phone: '',
+    first_name: '',
+    last_name: '',
+  });
 
-  const steps = ['Informations personnelles', 'Sécurité', 'Préférences'];
+  const validateName = (value: string) => {
+    if (value && !/^[a-zA-Z\s'-]+$/.test(value)) {
+      return 'Fields must be alphabetic';
+    }
+    return '';
+  };
+
+  const validateEmail = (value: string) => {
+    if (value && !value.includes('@gmail.com')) {
+      return 'Invalid email';
+    }
+    return '';
+  };
+
+
+
+  const validatePassword = (value: string) => {
+    if (value && value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+    if (value && !/\d/.test(value)) {
+      return 'Password must contain numeric characters';
+    }
+    if (value && !/[A-Z]/.test(value)) {
+      return 'Uppercase required';
+    }
+    return '';
+  };
+
+  const validatePhone = (value: string) => {
+    if (!value || value.trim() === '') {
+      return 'Le numéro de téléphone est obligatoire';
+    }
+    const phoneRegex = /^\+?[1-9]\d{7,14}$/;
+    if (!phoneRegex.test(value.replace(/\s/g, ''))) {
+      return 'Numéro de téléphone invalide';
+    }
+    return '';
+  };
+
+  const countries = ['Tunisia', 'Algeria', 'Morocco', 'Libya', 'Egypt'];
+  const steps = ['Informations personnelles', 'Sécurité'];
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
     setError(null);
+
+    if (name === 'email') {
+      setFieldErrors(prev => ({ ...prev, email: validateEmail(value) }));
+    }
+    if (name === 'password') {
+      setFieldErrors(prev => ({ ...prev, password: validatePassword(value) }));
+    }
+    if (name === 'phone') {
+      setFieldErrors(prev => ({ ...prev, phone: validatePhone(value) }));
+    }
+    if (name === 'first_name') {
+      setFieldErrors(prev => ({ ...prev, first_name: validateName(value) }));
+    }
+    if (name === 'last_name') {
+      setFieldErrors(prev => ({ ...prev, last_name: validateName(value) }));
+    }
   };
 
   const handleNext = () => {
     if (activeStep === 0) {
       if (!formData.first_name || !formData.last_name || !formData.email) {
         setError('Veuillez remplir tous les champs obligatoires');
+        return;
+      }
+      const firstNameErr = validateName(formData.first_name);
+      if (firstNameErr) {
+        setFieldErrors(prev => ({ ...prev, first_name: firstNameErr }));
+        return;
+      }
+      const lastNameErr = validateName(formData.last_name);
+      if (lastNameErr) {
+        setFieldErrors(prev => ({ ...prev, last_name: lastNameErr }));
+        return;
+      }
+    
+      const phoneErr = validatePhone(formData.phone);
+      if (phoneErr) {
+        setFieldErrors(prev => ({ ...prev, phone: phoneErr }));
         return;
       }
     }
@@ -205,6 +278,11 @@ const Register: React.FC = () => {
       }
       if (formData.password.length < 6) {
         setError('Le mot de passe doit contenir au moins 6 caractères');
+        return;
+      }
+      const passErr = validatePassword(formData.password);
+      if (passErr) {
+        setFieldErrors(prev => ({ ...prev, password: passErr }));
         return;
       }
     }
@@ -234,6 +312,12 @@ const Register: React.FC = () => {
 
     if (formData.password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+
+    const passErr = validatePassword(formData.password);
+    if (passErr) {
+      setFieldErrors(prev => ({ ...prev, password: passErr }));
       return;
     }
 
@@ -273,6 +357,8 @@ const Register: React.FC = () => {
                     value={formData.first_name}
                     onChange={handleChange}
                     required
+                    error={!!fieldErrors.first_name}
+                    helperText={fieldErrors.first_name}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -291,6 +377,8 @@ const Register: React.FC = () => {
                     value={formData.last_name}
                     onChange={handleChange}
                     required
+                    error={!!fieldErrors.last_name}
+                    helperText={fieldErrors.last_name}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -311,6 +399,8 @@ const Register: React.FC = () => {
                     onChange={handleChange}
                     required
                     autoComplete="email"
+                    error={!!fieldErrors.email}
+                    helperText={fieldErrors.email}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -322,20 +412,14 @@ const Register: React.FC = () => {
                 </Grid>
 
                 <Grid xs={12} sm={6}>
-                  <StyledTextField
-                    fullWidth
-                    label="Téléphone"
-                    name="phone"
+                  <PhoneNumberInput
                     value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="+216 XX XXX XXX"
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Phone sx={{ color: '#00BFA5' }} />
-                        </InputAdornment>
-                      ),
-                    }}
+                    onChange={(value) => setFormData(prev => ({ ...prev, phone: value || '' }))}
+                    label="Téléphone"
+                    error={!!fieldErrors.phone}
+                    helperText={fieldErrors.phone}
+                    required
+                    defaultCountry={formData.country || 'Tunisia'}
                   />
                 </Grid>
               </Grid>
@@ -358,6 +442,8 @@ const Register: React.FC = () => {
                     onChange={handleChange}
                     required
                     autoComplete="new-password"
+                    error={!!fieldErrors.password}
+                    helperText={fieldErrors.password}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -409,7 +495,6 @@ const Register: React.FC = () => {
                   />
                 </Grid>
 
-                {/* Password strength indicator */}
                 <Grid xs={12}>
                   <Box sx={{ mt: 1 }}>
                     <Typography variant="caption" color="text.secondary" gutterBottom>
@@ -424,7 +509,7 @@ const Register: React.FC = () => {
                             height: 4,
                             borderRadius: 2,
                             backgroundColor:
-                              formData.password.length >= level * 2
+                              (formData.password?.length || 0) >= level * 2
                                 ? level === 1
                                   ? '#f44336'
                                   : level === 2
@@ -437,73 +522,13 @@ const Register: React.FC = () => {
                     </Box>
                   </Box>
                 </Grid>
-              </Grid>
-            </Box>
-          </Fade>
-        );
 
-      case 2:
-        return (
-          <Fade in timeout={500}>
-            <Box>
-              <Grid container spacing={2}>
-                <Grid xs={12} sm={6}>
-                  <StyledTextField
-                    fullWidth
-                    select
-                    label="Pays"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleChange}
-                    required
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Public sx={{ color: '#00BFA5' }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  >
-                    {countries.map((country) => (
-                      <MenuItem key={country} value={country}>
-                        {country}
-                      </MenuItem>
-                    ))}
-                  </StyledTextField>
-                </Grid>
-
-                <Grid xs={12} sm={6}>
-                  <StyledTextField
-                    fullWidth
-                    select
-                    label="Langue préférée"
-                    name="preferred_language"
-                    value={formData.preferred_language}
-                    onChange={handleChange}
-                    required
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Language sx={{ color: '#00BFA5' }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  >
-                    {languages.map((lang) => (
-                      <MenuItem key={lang.value} value={lang.value}>
-                        {lang.label}
-                      </MenuItem>
-                    ))}
-                  </StyledTextField>
-                </Grid>
-
-                {/* Benefits card */}
                 <Grid xs={12}>
                   <Card sx={{ mt: 2, backgroundColor: alpha('#00BFA5', 0.05), borderRadius: 2 }}>
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom fontWeight={600}>
                         <CheckCircle sx={{ fontSize: 16, color: '#00BFA5', mr: 0.5, verticalAlign: 'middle' }} />
-                        En créant un compte, vous bénéficiez :
+                        En créant un compte, vous bénéficieriez :
                       </Typography>
                       <Box component="ul" sx={{ pl: 2, mt: 1 }}>
                         <Typography component="li" variant="caption" color="text.secondary">
@@ -580,8 +605,7 @@ const Register: React.FC = () => {
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {activeStep === 0 && "Parlez-nous un peu de vous"}
-                    {activeStep === 1 && "Sécurisez votre compte"}
-                    {activeStep === 2 && "Finalisons votre inscription"}
+                    {activeStep === 1 && "Finalisons votre inscription"}
                   </Typography>
                 </Box>
 

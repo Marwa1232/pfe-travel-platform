@@ -42,30 +42,42 @@ import {
   CheckCircle,
   Warning,
   Info,
-  Star,
-  PhotoCamera,
-  AttachMoney,
-  CalendarMonth,
+  Schedule,
+  PriceCheck,
+  PhotoLibrary,
+  Analytics,
+  TipsAndUpdates,
   LocationOn,
-  Description,
-  Lightbulb,
+  Nature,
+  Landscape,
+  BeachAccess,
+  Terrain,
+  Museum,
+  Hiking,
+  FamilyRestroom,
+  Favorite,
+  Diamond,
+  Celebration,
+  AcUnit,
+  SportsSoccer,
 } from '@mui/icons-material';
 import { tripAPI } from '../../services/api';
+import { styled, alpha } from '@mui/material/styles';
 
-// Available tags
+// Available tags with professional icons
 const availableTags = [
-  { value: 'nature', label: '#Nature', icon: '🌿' },
-  { value: 'montagne', label: '#Montagne', icon: '🏔️' },
-  { value: 'plage', label: '#Plage', icon: '🏖️' },
-  { value: 'desert', label: '#Désert', icon: '🏜️' },
-  { value: 'culture', label: '#Culture', icon: '🏛️' },
-  { value: 'aventure', label: '#Aventure', icon: '🎒' },
-  { value: 'famille', label: '#Famille', icon: '👨‍👩‍👧' },
-  { value: 'romantique', label: '#Romantique', icon: '💕' },
-  { value: 'luxe', label: '#Luxe', icon: '💎' },
-  { value: 'jeunes', label: '#Jeunes', icon: '🎉' },
-  { value: 'froid', label: '#Froid', icon: '❄️' },
-  { value: 'sport', label: '#Sport', icon: '⚽' },
+  { value: 'nature', label: 'Nature', icon: <Nature fontSize="small" /> },
+  { value: 'montagne', label: 'Montagne', icon: <Landscape fontSize="small" /> },
+  { value: 'plage', label: 'Plage', icon: <BeachAccess fontSize="small" /> },
+  { value: 'desert', label: 'Désert', icon: <Terrain fontSize="small" /> },
+  { value: 'culture', label: 'Culture', icon: <Museum fontSize="small" /> },
+  { value: 'aventure', label: 'Aventure', icon: <Hiking fontSize="small" /> },
+  { value: 'famille', label: 'Famille', icon: <FamilyRestroom fontSize="small" /> },
+  { value: 'romantique', label: 'Romantique', icon: <Favorite fontSize="small" /> },
+  { value: 'luxe', label: 'Luxe', icon: <Diamond fontSize="small" /> },
+  { value: 'jeunes', label: 'Jeunes', icon: <Celebration fontSize="small" /> },
+  { value: 'froid', label: 'Froid', icon: <AcUnit fontSize="small" /> },
+  { value: 'sport', label: 'Sport', icon: <SportsSoccer fontSize="small" /> },
 ];
 
 // Inclusion options
@@ -107,10 +119,39 @@ const TripForm: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [destinations, setDestinations] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categoriesState, setCategoriesState] = useState<any[]>([]);
   const [visibilityScore, setVisibilityScore] = useState(0);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
-  const [previewMode, setPreviewMode] = useState(false);
+
+  const [fieldErrors, setFieldErrors] = useState({
+    title: '',
+    start_date: '',
+    end_date: '',
+  });
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const validateAlphabetic = (value: string): string => {
+    if (value && !/^[a-zA-Z\s'-]+$/.test(value)) {
+      return 'Fields must be alphabetic';
+    }
+    return '';
+  };
+
+  const validateFirstUppercase = (value: string): string => {
+    if (value && value.length > 0 && value[0] !== value[0].toUpperCase()) {
+      return 'First letter must be uppercase';
+    }
+    return '';
+  };
+
+  const validateTitle = (value: string): string => {
+    const alphaErr = validateAlphabetic(value);
+    if (alphaErr) return alphaErr;
+    const upperErr = validateFirstUppercase(value);
+    if (upperErr) return upperErr;
+    return '';
+  };
 
   const [formData, setFormData] = useState({
     // Step 1: General Info
@@ -144,14 +185,19 @@ const TripForm: React.FC = () => {
     
     // Status
     status: 'draft',
+    
+    // Cancellation Policy
+    policyType: 'moderate',
+    allowVoucher: true,
+    allowRebooking: true,
   });
 
   const steps = [
-    { label: 'Informations', icon: <Description /> },
-    { label: 'Planning', icon: <CalendarMonth /> },
-    { label: 'Prix', icon: <AttachMoney /> },
-    { label: 'Photos', icon: <PhotoCamera /> },
-    { label: 'Validation', icon: <Lightbulb /> },
+    { label: 'Informations', icon: <Info /> },
+    { label: 'Planning', icon: <Schedule /> },
+    { label: 'Prix', icon: <PriceCheck /> },
+    { label: 'Photos', icon: <PhotoLibrary /> },
+    { label: 'Validation', icon: <Analytics /> },
   ];
 
   useEffect(() => {
@@ -171,7 +217,7 @@ const TripForm: React.FC = () => {
       // Load categories
       const catRes = await fetch('http://localhost:8000/api/categories');
       const catData = await catRes.json();
-      setCategories(catData['hydra:member'] || catData);
+      setCategoriesState(catData['hydra:member'] || catData);
     } catch (error) {
       console.error('Error loading options:', error);
     }
@@ -183,14 +229,9 @@ const TripForm: React.FC = () => {
       const response = await tripAPI.get(Number(id));
       const trip = response.data;
 
-      // Extract category and destination IDs from relationships
       const categoryId = trip.categories?.[0]?.id || '';
       const destinationId = trip.destinations?.[0]?.id || '';
-      
-      // Extract session data
       const session = trip.sessions?.[0] || {};
-      
-      // Extract images
       const coverImage = trip.images?.find((img: any) => img.is_cover);
       const galleryImages = trip.images?.filter((img: any) => !img.is_cover) || [];
 
@@ -227,14 +268,32 @@ const TripForm: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Auto-generate slug from title
     if (name === 'title') {
       const slug = value
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
       setFormData(prev => ({ ...prev, slug }));
+      setFieldErrors(prev => ({ ...prev, title: validateTitle(value) }));
+    }
+    if (name === 'start_date') {
+      if (value && value < today) {
+        setFieldErrors(prev => ({ ...prev, start_date: 'Insufficient date' }));
+      } else {
+        setFieldErrors(prev => ({ ...prev, start_date: '' }));
+      }
+      if (formData.end_date && value && formData.end_date < value) {
+        setFieldErrors(prev => ({ ...prev, end_date: 'Insufficient date' }));
+      } else if (formData.end_date && value && formData.end_date >= value) {
+        setFieldErrors(prev => ({ ...prev, end_date: '' }));
+      }
+    }
+    if (name === 'end_date') {
+      if (value && formData.start_date && value < formData.start_date) {
+        setFieldErrors(prev => ({ ...prev, end_date: 'Insufficient date' }));
+      } else {
+        setFieldErrors(prev => ({ ...prev, end_date: '' }));
+      }
     }
   };
 
@@ -321,19 +380,16 @@ const TripForm: React.FC = () => {
     }));
   };
 
-  // Calculate visibility score
   useEffect(() => {
     let score = 0;
     const suggestions: string[] = [];
 
-    // Description (15 points)
     if (formData.long_description.length >= 150) {
       score += 15;
     } else if (formData.long_description.length > 0) {
       suggestions.push('Ajoutez une description plus détaillée (minimum 150 caractères)');
     }
 
-    // Photos (20 points)
     const totalPhotos = (formData.cover_image ? 1 : formData.cover_image_preview ? 1 : 0) + formData.gallery.length;
     if (totalPhotos >= 3) {
       score += 20;
@@ -341,21 +397,18 @@ const TripForm: React.FC = () => {
       suggestions.push(`Ajoutez ${3 - totalPhotos} photo(s) supplémentaire(s)`);
     }
 
-    // Tags (10 points)
     if (formData.tags.length >= 3) {
       score += 10;
     } else if (formData.tags.length > 0) {
       suggestions.push('Ajoutez plus de tags pour améliorer la visibilité');
     }
 
-    // Program (15 points)
     if (formData.program.length >= 3) {
       score += 15;
     } else if (formData.program.length > 0) {
       suggestions.push('Ajoutez plus de jours au programme');
     }
 
-    // Image HD - simplified check
     if (formData.cover_image || formData.cover_image_preview) {
       score += 20;
     }
@@ -364,15 +417,12 @@ const TripForm: React.FC = () => {
     setAiSuggestions(suggestions);
   }, [formData]);
 
-  // AI Consistency Check
   const getAIConsistencyCheck = () => {
     const checks: string[] = [];
     
-    // Winter check for mountain/camping
-    if ((formData.category === 'camping' || formData.category === 'randonnee') && 
-        formData.start_date) {
+    if ((formData.category === 'camping' || formData.category === 'randonnee') && formData.start_date) {
       const month = new Date(formData.start_date).getMonth();
-      if (month >= 10 || month <= 2) { // Nov-Feb
+      if (month >= 10 || month <= 2) {
         if (!formData.long_description.toLowerCase().includes('froid') && 
             !formData.long_description.toLowerCase().includes('hiver') &&
             !formData.tags.includes('froid')) {
@@ -381,7 +431,6 @@ const TripForm: React.FC = () => {
       }
     }
 
-    // Beach in summer
     if (formData.category === 'detente' && formData.destination) {
       if (formData.destination.toLowerCase().includes('djerba') || 
           formData.destination.toLowerCase().includes('hammamet')) {
@@ -404,13 +453,26 @@ const TripForm: React.FC = () => {
     setSaving(true);
     setError(null);
 
-    // Client-side validation
     const validationErrors: string[] = [];
     if (!formData.title.trim()) validationErrors.push('Le titre est requis');
     if (!formData.short_description.trim()) validationErrors.push('La description courte est requise');
     if (!formData.base_price || parseFloat(formData.base_price) <= 0) validationErrors.push('Le prix de base doit être supérieur à 0');
     if (!formData.category) validationErrors.push('Veuillez sélectionner une catégorie');
     if (!formData.destination) validationErrors.push('Veuillez sélectionner une destination');
+
+    const titleErr = validateTitle(formData.title);
+    if (titleErr) {
+      setFieldErrors(prev => ({ ...prev, title: titleErr }));
+      validationErrors.push(titleErr);
+    }
+    if (formData.start_date && formData.start_date < today) {
+      setFieldErrors(prev => ({ ...prev, start_date: 'Insufficient date' }));
+      validationErrors.push('Insufficient date');
+    }
+    if (formData.end_date && formData.start_date && formData.end_date < formData.start_date) {
+      setFieldErrors(prev => ({ ...prev, end_date: 'Insufficient date' }));
+      validationErrors.push('Insufficient date');
+    }
     
     if (validationErrors.length > 0) {
       setError(validationErrors.join('. \n'));
@@ -419,50 +481,35 @@ const TripForm: React.FC = () => {
     }
 
     try {
-      // Format dates to YYYY-MM-DD for Symfony
       const formatDate = (dateStr: string) => {
         if (!dateStr) return null;
         const date = new Date(dateStr);
         return date.toISOString().split('T')[0];
       };
 
-      // Upload cover image first if exists
-      console.log('[DEBUG] === SUBMIT TRIP STARTED ===');
-      console.log('[DEBUG] formData:', formData);
-      console.log('[DEBUG] Cover image file:', formData?.cover_image);
-      console.log('[DEBUG] Cover image preview:', formData?.cover_image_preview);
       let coverImageUrl = formData?.cover_image_preview || '';
       if (formData?.cover_image) {
         try {
-          console.log('[DEBUG] Uploading cover image...');
           const coverResponse = await tripAPI.uploadImages([formData.cover_image], undefined, true);
-          console.log('[DEBUG] Cover upload response:', coverResponse.data);
           coverImageUrl = coverResponse.data.urls?.[0] || null;
-          console.log('[DEBUG] Cover image URL after upload:', coverImageUrl);
         } catch (uploadErr) {
-          console.error('[DEBUG] Cover image upload failed:', uploadErr);
+          console.error('Cover image upload failed:', uploadErr);
         }
       }
 
-      // Upload gallery images
       let galleryUrls: string[] = [];
       const galleryFiles = formData.gallery?.filter((img: any) => img.file) || [];
-      console.log('[DEBUG] Gallery files:', galleryFiles.length);
       if (galleryFiles.length > 0) {
         try {
           const files = galleryFiles.map((img: any) => img.file);
-          console.log('[DEBUG] Uploading gallery images:', files.length);
           const galleryResponse = await tripAPI.uploadImages(files, undefined, false);
-          console.log('[DEBUG] Gallery upload response:', galleryResponse.data);
           galleryUrls = galleryResponse.data.urls || [];
         } catch (uploadErr) {
-          console.error('[DEBUG] Gallery upload failed:', uploadErr);
+          console.error('Gallery upload failed:', uploadErr);
         }
       }
 
-      // Build submit data matching Symfony Entity field names
       const submitData = {
-        // Basic trip info
         title: formData.title.trim(),
         slug: formData.slug.trim() || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
         short_description: formData.short_description.trim(),
@@ -472,31 +519,22 @@ const TripForm: React.FC = () => {
         duration_days: formData.program.length || 1,
         difficulty_level: formData.difficulty_level || 'medium',
         status: status,
-        
-        // JSON fields - Symfony will handle these as JSON arrays
         tags: formData.tags || [],
         inclusions: formData.inclusions || [],
         exclusions: formData.exclusions || [],
-        
-        // Location
         meeting_point: formData.meeting_point?.trim() || null,
         meeting_address: formData.meeting_address?.trim() || null,
-        
-        // Relationships - send IDs as integers
         category: formData.category ? parseInt(formData.category) : null,
         destination: formData.destination ? parseInt(formData.destination) : null,
-        
-        // Session dates - format as YYYY-MM-DD
         start_date: formatDate(formData.start_date),
         end_date: formatDate(formData.end_date),
         max_places: formData.max_places ? parseInt(formData.max_places) : null,
-        
-        // Program - array of {day, title, description}
         program: formData.program.length > 0 ? formData.program : null,
-        
-        // Images - uploaded URLs
-        cover_image: (console.log('[DEBUG] Submit data - cover_image:', coverImageUrl), coverImageUrl || null),
-        gallery: (console.log('[DEBUG] Submit data - gallery:', galleryUrls), galleryUrls.length > 0 ? galleryUrls : null),
+        cover_image: coverImageUrl || null,
+        gallery: galleryUrls.length > 0 ? galleryUrls : null,
+        policyType: formData.policyType,
+        allowVoucher: formData.allowVoucher,
+        allowRebooking: formData.allowRebooking,
       };
 
       if (isEdit) {
@@ -513,16 +551,38 @@ const TripForm: React.FC = () => {
     }
   };
 
+  // Styles pour le thème
+  const primaryGradient = 'linear-gradient(90deg, #00BFA5, #0D47A1)';
+  const primaryColor = '#00BFA5';
+  const secondaryColor = '#0D47A1';
+
+  const CustomStepIcon = ({ active, completed, icon }: { active?: boolean; completed?: boolean; icon?: number }) => (
+    <Box
+      sx={{
+        width: 32,
+        height: 32,
+        borderRadius: '50%',
+        bgcolor: active || completed ? primaryColor : 'grey.300',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: active || completed ? 'white' : 'grey.600',
+        boxShadow: active ? `0 0 0 3px ${alpha(primaryColor, 0.2)}` : 'none',
+      }}
+    >
+      {completed ? <CheckCircle sx={{ fontSize: 18 }} /> : icon}
+    </Box>
+  );
+
   const renderStepContent = () => {
     switch (activeStep) {
-      case 0: // General Info
+      case 0:
         return (
           <Box>
             <Typography variant="h6" gutterBottom>Informations générales</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Définissez l'identité et l'ambiance de votre voyage
             </Typography>
-
             <Grid container spacing={3}>
               <Grid xs={12}>
                 <TextField
@@ -532,11 +592,11 @@ const TripForm: React.FC = () => {
                   value={formData.title}
                   onChange={handleChange}
                   required
-                  helperText={`${formData.title.length}/80 caractères`}
+                  error={!!fieldErrors.title}
+                  helperText={fieldErrors.title || `${formData.title.length}/80 caractères`}
                   inputProps={{ maxLength: 80 }}
                 />
               </Grid>
-
               <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -547,7 +607,6 @@ const TripForm: React.FC = () => {
                   helperText="URL automatique basée sur le titre"
                 />
               </Grid>
-
               <Grid xs={12} sm={6}>
                 <FormControl fullWidth>
                   <InputLabel>Catégorie</InputLabel>
@@ -557,13 +616,12 @@ const TripForm: React.FC = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                     label="Catégorie"
                   >
-                    {categories.map((cat) => (
+                    {categoriesState.map((cat) => (
                       <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
               </Grid>
-
               <Grid xs={12} sm={6}>
                 <FormControl fullWidth>
                   <InputLabel>Destination</InputLabel>
@@ -579,7 +637,6 @@ const TripForm: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-
               <Grid xs={12} sm={6}>
                 <FormControl fullWidth>
                   <InputLabel>Niveau de difficulté</InputLabel>
@@ -595,7 +652,6 @@ const TripForm: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-
               <Grid xs={12}>
                 <TextField
                   fullWidth
@@ -608,7 +664,6 @@ const TripForm: React.FC = () => {
                   required
                 />
               </Grid>
-
               <Grid xs={12}>
                 <TextField
                   fullWidth
@@ -621,17 +676,28 @@ const TripForm: React.FC = () => {
                   helperText="Décrivez l'ambiance, les activités, le public cible (minimum 150 caractères)"
                 />
               </Grid>
-
               <Grid xs={12}>
                 <Typography variant="body1" gutterBottom>Tags (mots-clés)</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {availableTags.map((tag) => (
                     <Chip
                       key={tag.value}
-                      label={`${tag.icon} ${tag.label}`}
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          {tag.icon}
+                          <span>{tag.label}</span>
+                        </Box>
+                      }
                       onClick={() => handleTagToggle(tag.value)}
                       color={formData.tags.includes(tag.value) ? 'primary' : 'default'}
                       variant={formData.tags.includes(tag.value) ? 'filled' : 'outlined'}
+                      sx={{
+                        '& .MuiChip-label': { display: 'flex', alignItems: 'center', gap: 0.5 },
+                        '&.MuiChip-filled': {
+                          backgroundColor: primaryColor,
+                          color: 'white',
+                        },
+                      }}
                     />
                   ))}
                 </Box>
@@ -640,14 +706,13 @@ const TripForm: React.FC = () => {
           </Box>
         );
 
-      case 1: // Planning
+      case 1:
         return (
           <Box>
             <Typography variant="h6" gutterBottom>Planning & Logistique</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Définissez le cadre organisationnel du voyage
             </Typography>
-
             <Grid container spacing={3}>
               <Grid xs={12} sm={6}>
                 <TextField
@@ -658,9 +723,11 @@ const TripForm: React.FC = () => {
                   value={formData.start_date}
                   onChange={handleChange}
                   InputLabelProps={{ shrink: true }}
+                  error={!!fieldErrors.start_date}
+                  helperText={fieldErrors.start_date}
+                  inputProps={{ min: today }}
                 />
               </Grid>
-
               <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -670,9 +737,11 @@ const TripForm: React.FC = () => {
                   value={formData.end_date}
                   onChange={handleChange}
                   InputLabelProps={{ shrink: true }}
+                  error={!!fieldErrors.end_date}
+                  helperText={fieldErrors.end_date}
+                  inputProps={{ min: formData.start_date || today }}
                 />
               </Grid>
-
               <Grid xs={12}>
                 <TextField
                   fullWidth
@@ -683,7 +752,6 @@ const TripForm: React.FC = () => {
                   placeholder="Ex: Agence de voyage, Gare..."
                 />
               </Grid>
-
               <Grid xs={12}>
                 <TextField
                   fullWidth
@@ -695,7 +763,6 @@ const TripForm: React.FC = () => {
                   rows={2}
                 />
               </Grid>
-
               <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -706,18 +773,28 @@ const TripForm: React.FC = () => {
                   onChange={handleChange}
                 />
               </Grid>
-
               <Grid xs={12}>
                 <Divider sx={{ my: 2 }} />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6">Programme détaillé</Typography>
-                  <Button startIcon={<Add />} onClick={addProgramDay} variant="outlined">
+                  <Button 
+                    startIcon={<Add />} 
+                    onClick={addProgramDay} 
+                    variant="outlined"
+                    sx={{
+                      borderColor: alpha(primaryColor, 0.5),
+                      color: primaryColor,
+                      '&:hover': {
+                        borderColor: primaryColor,
+                        backgroundColor: alpha(primaryColor, 0.04),
+                      },
+                    }}
+                  >
                     Ajouter un jour
                   </Button>
                 </Box>
-
                 {formData.program.map((day, index) => (
-                  <Card key={index} sx={{ mb: 2, p: 2 }}>
+                  <Card key={index} sx={{ mb: 2, p: 2, border: `1px solid ${alpha(primaryColor, 0.1)}` }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="subtitle1" fontWeight={600}>Jour {day.day}</Typography>
                       <IconButton onClick={() => removeProgramDay(index)} color="error">
@@ -741,7 +818,6 @@ const TripForm: React.FC = () => {
                     />
                   </Card>
                 ))}
-
                 {formData.program.length === 0 && (
                   <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
                     Cliquez sur "Ajouter un jour" pour créer votre programme
@@ -752,14 +828,13 @@ const TripForm: React.FC = () => {
           </Box>
         );
 
-      case 2: // Pricing
+      case 2:
         return (
           <Box>
             <Typography variant="h6" gutterBottom>Prix & Inclusions</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Définissez clairement votre offre financière
             </Typography>
-
             <Grid container spacing={3}>
               <Grid xs={12} sm={6}>
                 <TextField
@@ -772,7 +847,6 @@ const TripForm: React.FC = () => {
                   required
                 />
               </Grid>
-
               <Grid xs={12} sm={6}>
                 <FormControl fullWidth>
                   <InputLabel>Devise</InputLabel>
@@ -788,11 +862,9 @@ const TripForm: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-
-              {/* Price estimation */}
               {formData.base_price && (
                 <Grid xs={12}>
-                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                  <Paper sx={{ p: 2, bgcolor: alpha(primaryColor, 0.02), border: `1px solid ${alpha(primaryColor, 0.1)}` }}>
                     <Typography variant="subtitle2" gutterBottom>Estimation des revenus</Typography>
                     <Grid container spacing={2}>
                       <Grid xs={4}>
@@ -817,7 +889,6 @@ const TripForm: React.FC = () => {
                   </Paper>
                 </Grid>
               )}
-
               <Grid xs={12}>
                 <Divider sx={{ my: 2 }} />
                 <Typography variant="subtitle1" gutterBottom>Ce qui est inclus</Typography>
@@ -830,11 +901,16 @@ const TripForm: React.FC = () => {
                       color={formData.inclusions.includes(item.value) ? 'primary' : 'default'}
                       variant={formData.inclusions.includes(item.value) ? 'filled' : 'outlined'}
                       icon={formData.inclusions.includes(item.value) ? <CheckCircle /> : undefined}
+                      sx={{
+                        '&.MuiChip-filled': formData.inclusions.includes(item.value) ? {
+                          backgroundColor: primaryColor,
+                          color: 'white',
+                        } : {},
+                      }}
                     />
                   ))}
                 </Box>
               </Grid>
-
               <Grid xs={12}>
                 <Typography variant="subtitle1" gutterBottom>Ce qui n'est pas inclus</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -850,18 +926,60 @@ const TripForm: React.FC = () => {
                   ))}
                 </Box>
               </Grid>
+              <Grid xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle1" gutterBottom>Politique d'annulation</Typography>
+                <Grid container spacing={2}>
+                  <Grid xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Politique</InputLabel>
+                      <Select
+                        name="policyType"
+                        value={formData.policyType}
+                        onChange={(e) => setFormData(prev => ({ ...prev, policyType: e.target.value }))}
+                        label="Politique"
+                      >
+                        <MenuItem value="flexible">Flexible - Remboursement total jusqu'à 24h avant</MenuItem>
+                        <MenuItem value="moderate">Modérée - Remboursement variable selon le délai</MenuItem>
+                        <MenuItem value="strict">Stricte - Remboursement limité</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid xs={12} sm={6}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.allowVoucher}
+                          onChange={(e) => setFormData(prev => ({ ...prev, allowVoucher: e.target.checked }))}
+                          color="primary"
+                        />
+                      }
+                      label="Permettre voucher"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.allowRebooking}
+                          onChange={(e) => setFormData(prev => ({ ...prev, allowRebooking: e.target.checked }))}
+                          color="primary"
+                        />
+                      }
+                      label="Permettre rebooking"
+                    />
+                  </Grid>
+                </Grid>
+              </Grid>
             </Grid>
           </Box>
         );
 
-      case 3: // Media
+      case 3:
         return (
           <Box>
             <Typography variant="h6" gutterBottom>Galerie Photos</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Valorisez visuellement votre voyage
             </Typography>
-
             <Grid container spacing={3}>
               <Grid xs={12}>
                 <Typography variant="subtitle1" gutterBottom>Image de couverture (obligatoire)</Typography>
@@ -874,13 +992,12 @@ const TripForm: React.FC = () => {
                 />
                 <Box
                   sx={{
-                    border: '2px dashed',
-                    borderColor: 'divider',
+                    border: `2px dashed ${alpha(primaryColor, 0.3)}`,
                     borderRadius: 2,
                     p: 4,
                     textAlign: 'center',
                     cursor: 'pointer',
-                    bgcolor: formData.cover_image_preview ? 'transparent' : 'grey.50',
+                    bgcolor: formData.cover_image_preview ? 'transparent' : alpha(primaryColor, 0.02),
                     backgroundImage: formData.cover_image_preview ? `url(${formData.cover_image_preview})` : undefined,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
@@ -890,24 +1007,30 @@ const TripForm: React.FC = () => {
                 >
                   {formData.cover_image_preview ? (
                     <Box>
-                      <Button variant="contained" startIcon={<CloudUpload />}>
+                      <Button 
+                        variant="contained" 
+                        startIcon={<CloudUpload />}
+                        sx={{
+                          background: primaryGradient,
+                          '&:hover': { background: `linear-gradient(90deg, ${alpha(primaryColor, 0.9)}, ${alpha(secondaryColor, 0.9)})` },
+                        }}
+                      >
                         Changer l'image
                       </Button>
                     </Box>
                   ) : (
                     <Box>
-                      <CloudUpload sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+                      <CloudUpload sx={{ fontSize: 48, color: primaryColor, mb: 1 }} />
                       <Typography>Cliquez pour télécharger une image de couverture</Typography>
                     </Box>
                   )}
                 </Box>
               </Grid>
-
               <Grid xs={12}>
                 <Typography variant="subtitle1" gutterBottom>Galerie d'images (minimum 3 recommandées)</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                   {formData.gallery.map((img, index) => (
-                    <Card key={index} sx={{ width: 150, position: 'relative' }}>
+                    <Card key={index} sx={{ width: 150, position: 'relative', border: `1px solid ${alpha(primaryColor, 0.1)}` }}>
                       <CardMedia
                         component="img"
                         height={100}
@@ -926,8 +1049,7 @@ const TripForm: React.FC = () => {
                     sx={{
                       width: 150,
                       height: 100,
-                      border: '2px dashed',
-                      borderColor: 'divider',
+                      border: `2px dashed ${alpha(primaryColor, 0.3)}`,
                       borderRadius: 1,
                       display: 'flex',
                       alignItems: 'center',
@@ -944,7 +1066,7 @@ const TripForm: React.FC = () => {
                       hidden
                       onChange={handleGalleryImageChange}
                     />
-                    <Add sx={{ color: 'text.secondary' }} />
+                    <Add sx={{ color: primaryColor }} />
                   </Box>
                 </Box>
               </Grid>
@@ -952,20 +1074,17 @@ const TripForm: React.FC = () => {
           </Box>
         );
 
-      case 4: // AI Validation
+      case 4:
         const consistencyChecks = getAIConsistencyCheck();
-        
         return (
           <Box>
             <Typography variant="h6" gutterBottom>Vérification intelligente</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Notre IA analyse votre voyage pour vous donner des recommandations
             </Typography>
-
-            {/* Consistency Check */}
-            <Paper sx={{ p: 3, mb: 3, bgcolor: 'warning.light' }}>
+            <Paper sx={{ p: 3, mb: 3, bgcolor: alpha(primaryColor, 0.02), border: `1px solid ${alpha(primaryColor, 0.1)}` }}>
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                🔍 Vérification de cohérence
+                 Vérification de cohérence
               </Typography>
               {consistencyChecks.length > 0 ? (
                 <List dense>
@@ -977,21 +1096,21 @@ const TripForm: React.FC = () => {
                   ))}
                 </List>
               ) : (
-                <Alert severity="success">Votre voyage semble cohérent !</Alert>
+                <Alert severity="success" sx={{ borderRadius: 2, borderLeft: `4px solid ${primaryColor}` }}>
+                  Votre voyage semble cohérent !
+                </Alert>
               )}
             </Paper>
-
-            {/* Visibility Score */}
-            <Paper sx={{ p: 3, mb: 3 }}>
+            <Paper sx={{ p: 3, mb: 3, border: `1px solid ${alpha(primaryColor, 0.1)}` }}>
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                📊 Score de visibilité
+                 Score de visibilité
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                 <Box sx={{ flexGrow: 1 }}>
                   <LinearProgress 
                     variant="determinate" 
                     value={visibilityScore} 
-                    sx={{ height: 10, borderRadius: 5 }}
+                    sx={{ height: 10, borderRadius: 5, backgroundColor: alpha(primaryColor, 0.2) }}
                     color={visibilityScore >= 80 ? 'success' : visibilityScore >= 50 ? 'warning' : 'error'}
                   />
                 </Box>
@@ -999,9 +1118,8 @@ const TripForm: React.FC = () => {
                   {visibilityScore}%
                 </Typography>
               </Box>
-              
               {aiSuggestions.length > 0 && (
-                <Alert severity="info" icon={<Lightbulb />}>
+                <Alert severity="info" icon={<TipsAndUpdates />} sx={{ borderRadius: 2, borderLeft: `4px solid ${primaryColor}` }}>
                   <Typography variant="subtitle2" gutterBottom>Conseils pour améliorer :</Typography>
                   <List dense>
                     {aiSuggestions.map((suggestion, i) => (
@@ -1012,42 +1130,6 @@ const TripForm: React.FC = () => {
                     ))}
                   </List>
                 </Alert>
-              )}
-            </Paper>
-
-            {/* Preview Mode */}
-            <Paper sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="subtitle1" fontWeight={600}>
-                  👁️ Aperçu
-                </Typography>
-                <Button 
-                  variant="outlined" 
-                  startIcon={<Visibility />}
-                  onClick={() => setPreviewMode(!previewMode)}
-                >
-                  {previewMode ? 'Masquer' : 'Voir'} l'aperçu
-                </Button>
-              </Box>
-              
-              {previewMode && (
-                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}>
-                  <Typography variant="h5" fontWeight={700}>{formData.title || 'Titre du voyage'}</Typography>
-                  <Typography color="text.secondary" gutterBottom>
-                    {formData.category} - {formData.destination}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 2 }}>
-                    {formData.short_description || 'Description courte...'}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {formData.tags.map(tag => (
-                      <Chip key={tag} label={`#${tag}`} size="small" />
-                    ))}
-                  </Box>
-                  <Typography variant="h5" color="primary" sx={{ mt: 2 }}>
-                    {formData.base_price} {formData.currency}
-                  </Typography>
-                </Box>
               )}
             </Paper>
           </Box>
@@ -1061,37 +1143,59 @@ const TripForm: React.FC = () => {
   if (loading) {
     return (
       <Container maxWidth="md" sx={{ mt: 4, textAlign: 'center' }}>
-        <CircularProgress />
+        <CircularProgress sx={{ color: primaryColor }} />
       </Container>
     );
   }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        {isEdit ? 'Modifier le voyage' : 'Créer un nouveau voyage'}
-      </Typography>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2.5, md: 3.5 },
+          mb: 3,
+          borderRadius: 3,
+          color: 'white',
+          background: 'linear-gradient(100deg, #0D47A1 0%, #00BFA5 100%)',
+          boxShadow: '0 14px 34px rgba(13, 71, 161, 0.28)',
+        }}
+      >
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 800 }}>
+          {isEdit ? 'Modifier le voyage' : 'Créer un nouveau voyage'}
+        </Typography>
+        <Typography variant="body1" sx={{ opacity: 0.92 }}>
+          Remplissez les informations étape par étape pour publier une fiche claire et attractive.
+        </Typography>
+      </Paper>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert 
+          severity="error" 
+          sx={{ mb: 2, borderRadius: 2, borderLeft: `4px solid ${primaryColor}` }}
+        >
+          {error}
+        </Alert>
+      )}
 
-      {/* Stepper */}
-      <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 1.5, md: 2 },
+          mb: 3,
+          borderRadius: 3,
+          border: `1px solid ${alpha(primaryColor, 0.14)}`,
+          backgroundColor: '#fff',
+        }}
+      >
+      <Stepper activeStep={activeStep} sx={{ mb: 0 }}>
         {steps.map((step, index) => (
-          <Step key={step.label} onClick={() => setActiveStep(index)} sx={{ cursor: 'pointer' }}>
-            <StepLabel StepIconComponent={() => (
-              <Box sx={{ 
-                width: 32, 
-                height: 32, 
-                borderRadius: '50%', 
-                bgcolor: activeStep >= index ? 'primary.main' : 'grey.300',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: activeStep >= index ? 'white' : 'grey.600'
-              }}>
-                {index + 1}
-              </Box>
-            )}>
+          <Step
+            key={step.label}
+            onClick={() => setActiveStep(index)}
+            sx={{ cursor: 'pointer' }}
+          >
+            <StepLabel StepIconComponent={(props) => <CustomStepIcon {...props} icon={index + 1} />}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 {step.icon}
                 {step.label}
@@ -1100,16 +1204,33 @@ const TripForm: React.FC = () => {
           </Step>
         ))}
       </Stepper>
+      </Paper>
 
-      <Paper elevation={0} sx={{ p: 4, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2.5, md: 4 },
+          border: `1px solid ${alpha(primaryColor, 0.14)}`,
+          borderRadius: 3,
+          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.08)',
+          backgroundColor: '#fff',
+        }}
+      >
         {renderStepContent()}
 
-        {/* Navigation */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4, pt: 3, borderTop: `1px solid ${alpha(primaryColor, 0.1)}` }}>
           <Button
             disabled={activeStep === 0}
             onClick={() => setActiveStep(prev => prev - 1)}
             variant="outlined"
+            sx={{
+              borderColor: alpha(primaryColor, 0.5),
+              color: primaryColor,
+              '&:hover': {
+                borderColor: primaryColor,
+                backgroundColor: alpha(primaryColor, 0.04),
+              },
+            }}
           >
             Retour
           </Button>
@@ -1120,6 +1241,14 @@ const TripForm: React.FC = () => {
               startIcon={<Save />}
               onClick={handleSaveDraft}
               disabled={saving}
+              sx={{
+                borderColor: alpha(primaryColor, 0.5),
+                color: primaryColor,
+                '&:hover': {
+                  borderColor: primaryColor,
+                  backgroundColor: alpha(primaryColor, 0.04),
+                },
+              }}
             >
               Sauvegarder brouillon
             </Button>
@@ -1128,6 +1257,13 @@ const TripForm: React.FC = () => {
               <Button
                 variant="contained"
                 onClick={() => setActiveStep(prev => prev + 1)}
+                sx={{
+                  background: primaryGradient,
+                  color: 'white',
+                  '&:hover': {
+                    background: `linear-gradient(90deg, ${alpha(primaryColor, 0.9)}, ${alpha(secondaryColor, 0.9)})`,
+                  },
+                }}
               >
                 Suivant
               </Button>
@@ -1138,8 +1274,14 @@ const TripForm: React.FC = () => {
                 startIcon={<Send />}
                 onClick={handlePublish}
                 disabled={saving}
+                sx={{
+                  background: primaryGradient,
+                  '&:hover': {
+                    background: `linear-gradient(90deg, ${alpha(primaryColor, 0.9)}, ${alpha(secondaryColor, 0.9)})`,
+                  },
+                }}
               >
-                {saving ? <CircularProgress size={24} /> : 'Publier'}
+                {saving ? <CircularProgress size={24} color="inherit" /> : 'Publier'}
               </Button>
             )}
           </Box>

@@ -9,6 +9,8 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
+use App\Entity\CancellationPolicy;
+
 #[ORM\Entity(repositoryClass: TripRepository::class)]
 #[ORM\Table(name: 'trips')]
 class Trip
@@ -126,6 +128,20 @@ class Trip
     #[ORM\OneToMany(mappedBy: 'trip', targetEntity: Booking::class)]
     private Collection $bookings;
 
+    #[ORM\OneToMany(mappedBy: 'trip', targetEntity: Review::class, cascade: ['persist', 'remove'])]
+    #[Groups(['trip:read'])]
+    private Collection $reviews;
+
+    #[ORM\OneToMany(mappedBy: 'trip', targetEntity: Moment::class, cascade: ['persist', 'remove'])]
+    private Collection $moments;
+
+    #[ORM\OneToMany(mappedBy: 'trip', targetEntity: Favorite::class, cascade: ['persist', 'remove'])]
+    private Collection $favorites;
+
+    #[ORM\OneToOne(targetEntity: CancellationPolicy::class, mappedBy: 'trip', cascade: ['persist', 'remove'])]
+    #[Groups(['trip:read'])]
+    private ?CancellationPolicy $cancellationPolicy = null;
+
     public function __construct()
     {
         $this->destinations = new ArrayCollection();
@@ -134,6 +150,9 @@ class Trip
         $this->images = new ArrayCollection();
         $this->programs = new ArrayCollection();
         $this->bookings = new ArrayCollection();
+        $this->reviews = new ArrayCollection();
+        $this->moments = new ArrayCollection();
+        $this->favorites = new ArrayCollection();
         $this->created_at = new \DateTimeImmutable();
     }
 
@@ -530,6 +549,92 @@ class Trip
         if ($this->bookings->removeElement($booking)) {
             if ($booking->getTrip() === $this) {
                 $booking->setTrip(null);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Review>
+     */
+    public function getReviews(): Collection
+    {
+        return $this->reviews;
+    }
+
+    public function addReview(Review $review): static
+    {
+        if (!$this->reviews->contains($review)) {
+            $this->reviews->add($review);
+            $review->setTrip($this);
+        }
+        return $this;
+    }
+
+    public function removeReview(Review $review): static
+    {
+        if ($this->reviews->removeElement($review)) {
+            if ($review->getTrip() === $this) {
+                $review->setTrip(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getCancellationPolicy(): ?CancellationPolicy
+    {
+        return $this->cancellationPolicy;
+    }
+
+    public function setCancellationPolicy(?CancellationPolicy $cancellationPolicy): static
+    {
+        $this->cancellationPolicy = $cancellationPolicy;
+        return $this;
+    }
+
+    public function getMoments(): Collection
+    {
+        return $this->moments;
+    }
+
+    public function addMoment(Moment $moment): static
+    {
+        if (!$this->moments->contains($moment)) {
+            $this->moments->add($moment);
+            $moment->setTrip($this);
+        }
+        return $this;
+    }
+
+    public function removeMoment(Moment $moment): static
+    {
+        if ($this->moments->removeElement($moment)) {
+            if ($moment->getTrip() === $this) {
+                $moment->setTrip(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getFavorites(): Collection
+    {
+        return $this->favorites;
+    }
+
+    public function addFavorite(Favorite $favorite): static
+    {
+        if (!$this->favorites->contains($favorite)) {
+            $this->favorites->add($favorite);
+            $favorite->setTrip($this);
+        }
+        return $this;
+    }
+
+    public function removeFavorite(Favorite $favorite): static
+    {
+        if ($this->favorites->removeElement($favorite)) {
+            if ($favorite->getTrip() === $this) {
+                $favorite->setTrip(null);
             }
         }
         return $this;

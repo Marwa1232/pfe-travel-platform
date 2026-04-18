@@ -22,6 +22,11 @@ import {
   Zoom,
   LinearProgress,
   Autocomplete,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import {
@@ -140,6 +145,14 @@ const tripTypes = [
   { value: 'religieux', label: 'Religieux', icon: '🕊️', color: '#C0C0C0' },
 ];
 
+const COUNTRIES = [
+  { code: 'TN', name: 'Tunisie', licenseFormat: 'TN-XXXX/YYYY', licensePattern: '^TN-\\d{4}/\\d{4}$', licenseExample: 'TN-1234/2024', taxFormat: '8 chiffres', taxPattern: '^\\d{8}$', taxExample: '12345678' },
+  { code: 'DZ', name: 'Algérie', licenseFormat: 'DZ-XXXXX', licensePattern: '^DZ-\\d{5}$', licenseExample: 'DZ-12345', taxFormat: '15 chiffres', taxPattern: '^\\d{15}$', taxExample: '123456789012345' },
+  { code: 'LY', name: 'Libye', licenseFormat: 'LY-XXXXX', licensePattern: '^LY-\\d{5}$', licenseExample: 'LY-56789', taxFormat: '9-12 chiffres', taxPattern: '^\\d{9,12}$', taxExample: '123456789' },
+  { code: 'MA', name: 'Maroc', licenseFormat: 'MA-XXXX', licensePattern: '^MA-\\d{4}$', licenseExample: 'MA-1234', taxFormat: '9 chiffres', taxPattern: '^\\d{9}$', taxExample: '123456789' },
+  { code: 'EG', name: 'Égypte', licenseFormat: 'EG-XXXXX', licensePattern: '^EG-\\d{5}$', licenseExample: 'EG-12345', taxFormat: '9 chiffres', taxPattern: '^\\d{9}$', taxExample: '123456789' },
+];
+
 interface Document {
   id: string;
   name: string;
@@ -149,6 +162,15 @@ interface Document {
   preview?: string;
 }
 
+interface ValidationErrors {
+  agency_name?: string;
+  license_number?: string;
+  tax_number?: string;
+  country?: string;
+  experience?: string;
+  trip_types?: string;
+}
+
 const OrganizerRequest: React.FC = () => {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
@@ -156,14 +178,7 @@ const OrganizerRequest: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [documents, setDocuments] = useState<Document[]>([]);
-
-  const countries = [
-    'Tunisia', 'Algeria', 'Morocco', 'Egypt', 'Libya', 'Sudan', 'Mauritania', 'Jordan',
-    'Lebanon', 'Syria', 'Iraq', 'Kuwait', 'Bahrain', 'Qatar', 'UAE', 'Saudi Arabia',
-    'Yemen', 'Oman', 'Turkey', 'France', 'Spain', 'Italy', 'Germany', 'United Kingdom',
-    'United States', 'Canada', 'Brazil', 'Argentina', 'Mexico', 'Australia', 'Japan', 'China',
-    'India', 'Thailand', 'Vietnam', 'Indonesia', 'Malaysia', 'Singapore', 'Greece', 'Portugal'
-  ];
+  const [errors, setErrors] = useState<ValidationErrors>({});
 
   const [formData, setFormData] = useState({
     agency_name: '',
@@ -181,18 +196,90 @@ const OrganizerRequest: React.FC = () => {
 
   const steps = ['Informations', 'Expérience', 'Documents', 'Réseaux sociaux'];
 
+  const validateAgencyName = (value: string): string | undefined => {
+    if (!value.trim()) return 'Le nom de l\'agence est obligatoire';
+    if (!/^[a-zA-ZÀ-ÿ\s]+$/.test(value)) return 'Le nom doit contenir uniquement des lettres';
+    if (value.length < 2) return 'Le nom doit contenir au moins 2 caractères';
+    return undefined;
+  };
+
+  const validateCountry = (value: string): string | undefined => {
+    if (!value) return 'Le pays est obligatoire';
+    return undefined;
+  };
+
+  const validateLicenseNumber = (value: string, country: string): string | undefined => {
+    if (!value.trim()) return 'Le numéro de licence est obligatoire';
+    
+    const countryConfig = COUNTRIES.find(c => c.code === country);
+    if (!countryConfig) return undefined;
+    
+    const regex = new RegExp(countryConfig.licensePattern);
+    if (!regex.test(value)) {
+      return `Format invalide. Exemple: ${countryConfig.licenseExample}`;
+    }
+    return undefined;
+  };
+
+  const validateTaxNumber = (value: string, country: string): string | undefined => {
+    if (!value.trim()) return undefined;
+    
+    const countryConfig = COUNTRIES.find(c => c.code === country);
+    if (!countryConfig) return undefined;
+    
+    const regex = new RegExp(countryConfig.taxPattern);
+    if (!regex.test(value)) {
+      return `Format invalide. Exemple: ${countryConfig.taxExample}`;
+    }
+    return undefined;
+  };
+
+  const validateExperience = (value: string): string | undefined => {
+    if (!value.trim()) return 'L\'expérience est obligatoire';
+    if (value.length < 20) return 'Veuillez fournir plus de détails (minimum 20 caractères)';
+    return undefined;
+  };
+
+  const validateTripTypes = (types: string[]): string | undefined => {
+    if (types.length === 0) return 'Sélectionnez au moins un type de voyage';
+    return undefined;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
+    
+    if (name === 'agency_name') {
+      setErrors(prev => ({ ...prev, agency_name: validateAgencyName(value) }));
+    } else if (name === 'experience') {
+      setErrors(prev => ({ ...prev, experience: validateExperience(value) }));
+    }
+  };
+
+  const handleCountryChange = (countryCode: string | null) => {
+    const country = countryCode || '';
+    setFormData(prev => ({ ...prev, country }));
+    setErrors(prev => ({ 
+      ...prev, 
+      country: validateCountry(country),
+      license_number: formData.license_number ? validateLicenseNumber(formData.license_number, country) : undefined,
+      tax_number: formData.tax_number ? validateTaxNumber(formData.tax_number, country) : undefined,
+    }));
   };
 
   const handleTripTypeToggle = (value: string) => {
+    const newTripTypes = formData.trip_types.includes(value)
+      ? formData.trip_types.filter(t => t !== value)
+      : [...formData.trip_types, value];
+    
     setFormData(prev => ({
       ...prev,
-      trip_types: prev.trip_types.includes(value)
-        ? prev.trip_types.filter(t => t !== value)
-        : [...prev.trip_types, value]
+      trip_types: newTripTypes
+    }));
+    setErrors(prev => ({ 
+      ...prev, 
+      trip_types: validateTripTypes(newTripTypes)
     }));
   };
 
@@ -222,23 +309,36 @@ const OrganizerRequest: React.FC = () => {
   };
 
   const handleNext = () => {
-    // Validate current step
+    const stepErrors: ValidationErrors = {};
+    
     if (activeStep === 0) {
-      if (!formData.agency_name || !formData.description) {
-        setError('Veuillez remplir tous les champs obligatoires');
+      stepErrors.agency_name = validateAgencyName(formData.agency_name) || undefined;
+      stepErrors.country = validateCountry(formData.country) || undefined;
+      stepErrors.license_number = validateLicenseNumber(formData.license_number, formData.country) || undefined;
+      stepErrors.tax_number = validateTaxNumber(formData.tax_number, formData.country) || undefined;
+      
+      if (!formData.description) {
+        setError('La description est obligatoire');
+        setActiveStep(0);
         return;
       }
     } else if (activeStep === 1) {
-      if (!formData.experience || formData.trip_types.length === 0) {
-        setError('Veuillez remplir tous les champs obligatoires');
-        return;
-      }
+      stepErrors.experience = validateExperience(formData.experience) || undefined;
+      stepErrors.trip_types = validateTripTypes(formData.trip_types) || undefined;
     } else if (activeStep === 2) {
       if (documents.length === 0) {
         setError('Veuillez télécharger au moins un document professionnel');
         return;
       }
     }
+    
+    const hasErrors = Object.values(stepErrors).some(e => e);
+    if (hasErrors) {
+      setErrors(stepErrors);
+      setError('Veuillez corriger les erreurs avant de continuer');
+      return;
+    }
+    
     setActiveStep(prev => prev + 1);
     setError('');
   };
@@ -466,20 +566,64 @@ const OrganizerRequest: React.FC = () => {
                       value={formData.agency_name}
                       onChange={handleChange}
                       placeholder="Ex: Sahara Adventures, Travel Tunisia..."
+                      error={!!errors.agency_name}
+                      helperText={errors.agency_name}
                       InputProps={{ sx: { borderRadius: 2 } }}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Numéro de licence (optionnel)"
-                      name="license_number"
-                      value={formData.license_number}
-                      onChange={handleChange}
-                      placeholder="Ex: TA-123456"
-                      InputProps={{ sx: { borderRadius: 2 } }}
+                    <Autocomplete
+                      options={COUNTRIES.map(c => c.code)}
+                      value={formData.country || null}
+                      onChange={(_, newValue) => handleCountryChange(newValue)}
+                      getOptionLabel={(option) => COUNTRIES.find(c => c.code === option)?.name || option}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          required
+                          label="Pays"
+                          placeholder="Sélectionnez un pays"
+                          error={!!errors.country}
+                          helperText={errors.country}
+                          InputProps={{
+                            ...params.InputProps,
+                            startAdornment: <LocationOn sx={{ mr: 1, color: '#00BFA5' }} />,
+                          }}
+                        />
+                      )}
                     />
                   </Grid>
+                  {formData.country && (
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        required
+                        label="Numéro de licence"
+                        name="license_number"
+                        value={formData.license_number}
+                        onChange={handleChange}
+                        placeholder={`Ex: ${COUNTRIES.find(c => c.code === formData.country)?.licenseExample}`}
+                        error={!!errors.license_number}
+                        helperText={errors.license_number || `Format: ${COUNTRIES.find(c => c.code === formData.country)?.licenseFormat}`}
+                        InputProps={{ sx: { borderRadius: 2 } }}
+                      />
+                    </Grid>
+                  )}
+                  {formData.country && (
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Numéro fiscal (optionnel)"
+                        name="tax_number"
+                        value={formData.tax_number}
+                        onChange={handleChange}
+                        placeholder={COUNTRIES.find(c => c.code === formData.country)?.taxExample || ''}
+                        error={!!errors.tax_number}
+                        helperText={errors.tax_number || `Format: ${COUNTRIES.find(c => c.code === formData.country)?.taxFormat}`}
+                        InputProps={{ sx: { borderRadius: 2 } }}
+                      />
+                    </Grid>
+                  )}
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
@@ -508,7 +652,7 @@ const OrganizerRequest: React.FC = () => {
                       }}
                     />
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid item xs={12}>
                     <TextField
                       fullWidth
                       label="Adresse"
@@ -522,26 +666,21 @@ const OrganizerRequest: React.FC = () => {
                       }}
                     />
                   </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Autocomplete
-                      options={countries}
-                      value={formData.country || null}
-                      onChange={(_, newValue) => {
-                        setFormData(prev => ({ ...prev, country: newValue || '' }));
-                      }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Pays"
-                          placeholder="Sélectionnez un pays"
-                          InputProps={{
-                            ...params.InputProps,
-                            startAdornment: <LocationOn sx={{ mr: 1, color: '#00BFA5' }} />,
-                          }}
-                        />
-                      )}
-                    />
-                  </Grid>
+                  {formData.country && (
+                    <Grid item xs={12}>
+                      <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 2 }}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Formats acceptés pour {COUNTRIES.find(c => c.code === formData.country)?.name}:
+                        </Typography>
+                        <Typography variant="body2" fontWeight={600}>
+                          Licence: {COUNTRIES.find(c => c.code === formData.country)?.licenseFormat}
+                        </Typography>
+                        <Typography variant="body2" fontWeight={600}>
+                          Fiscal: {COUNTRIES.find(c => c.code === formData.country)?.taxFormat}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  )}
                 </Grid>
               </Box>
             </Fade>
@@ -569,6 +708,8 @@ const OrganizerRequest: React.FC = () => {
                       name="experience"
                       value={formData.experience}
                       onChange={handleChange}
+                      error={!!errors.experience}
+                      helperText={errors.experience}
                       placeholder="Décrivez votre expérience, vos qualifications, depuis combien de temps vous organisez des voyages..."
                       InputProps={{ sx: { borderRadius: 2 } }}
                     />
@@ -598,17 +739,11 @@ const OrganizerRequest: React.FC = () => {
                         />
                       ))}
                     </Box>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Numéro fiscal (optionnel)"
-                      name="tax_number"
-                      value={formData.tax_number}
-                      onChange={handleChange}
-                      placeholder="Ex: 12345678/A"
-                      InputProps={{ sx: { borderRadius: 2 } }}
-                    />
+                    {errors.trip_types && (
+                      <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                        {errors.trip_types}
+                      </Typography>
+                    )}
                   </Grid>
                 </Grid>
               </Box>

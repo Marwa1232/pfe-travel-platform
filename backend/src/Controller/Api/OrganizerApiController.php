@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 #[Route('/api/organizer')]
 class OrganizerApiController extends AbstractController
@@ -23,8 +24,35 @@ class OrganizerApiController extends AbstractController
         private EntityManagerInterface $em,
         private BookingRepository $bookingRepo,
         private TripRepository $tripRepo,
-        private JwtService $jwtService
+        private JwtService $jwtService,
+        private RequestStack $requestStack
     ) {}
+
+    private function JWTgetToken(): ?string
+    {
+        $request = $this->requestStack->getCurrentRequest();
+        if (!$request) return null;
+        
+        $authHeader = $request->headers->get('Authorization');
+        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+            return null;
+        }
+        
+        return substr($authHeader, 7);
+    }
+
+    private function getCurrentUserFromToken(): ?User
+    {
+        $token = $this->JWTgetToken();
+        if (!$token) return null;
+        
+        $payload = $this->jwtService->decodeToken($token);
+        if (!$payload || !isset($payload['id'])) {
+            return null;
+        }
+        
+        return $this->em->getRepository(User::class)->find($payload['id']);
+    }
 
     private function getCurrentUser(Request $request): ?User
     {
@@ -167,5 +195,65 @@ class OrganizerApiController extends AbstractController
         $trips = $this->tripRepo->findBy(['organizer' => $organizerProfile], ['created_at' => 'DESC']);
         
         return $this->json($trips, Response::HTTP_OK, [], ['groups' => 'trip:read']);
+    }
+
+    #[Route('/profile', name: 'api_organizer_update_profile', methods: ['PUT'])]
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $this->getCurrentUserFromToken();
+        
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+        
+        $organizerProfile = $user->getOrganizerProfile();
+        if (!$organizerProfile) {
+            return $this->json(['error' => 'Organizer profile not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        
+        if (isset($data['agency_name'])) {
+            $organizerProfile->setAgencyName($data['agency_name']);
+        }
+        if (isset($data['license_number'])) {
+            $organizerProfile->setLicenseNumber($data['license_number']);
+        }
+        if (isset($data['address'])) {
+            $organizerProfile->setAddress($data['address']);
+        }
+        if (isset($data['country'])) {
+            $organizerProfile->setCountry($data['country']);
+        }
+        if (isset($data['description'])) {
+            $organizerProfile->setDescription($data['description']);
+        }
+        if (isset($data['experience'])) {
+            $organizerProfile->setExperience($data['experience']);
+        }
+        if (isset($data['website'])) {
+            $organizerProfile->setWebsite($data['website']);
+        }
+        if (isset($data['facebook'])) {
+            $organizerProfile->setFacebook($data['facebook']);
+        }
+        if (isset($data['instagram'])) {
+            $organizerProfile->setInstagram($data['instagram']);
+        }
+
+        $this->em->flush();
+
+        return $this->json([
+            'message' => 'Organizer profile updated successfully',
+            'agency_name' => $organizerProfile->getAgencyName(),
+            'license_number' => $organizerProfile->getLicenseNumber(),
+            'address' => $organizerProfile->getAddress(),
+            'country' => $organizerProfile->getCountry(),
+            'description' => $organizerProfile->getDescription(),
+            'experience' => $organizerProfile->getExperience(),
+            'website' => $organizerProfile->getWebsite(),
+            'facebook' => $organizerProfile->getFacebook(),
+            'instagram' => $organizerProfile->getInstagram(),
+        ]);
     }
 }

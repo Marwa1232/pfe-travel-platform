@@ -15,39 +15,61 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
-        # كل auth endpoints مفتوحة
+        # Auth endpoints - no JWT required
         auth:
             pattern: ^/api/auth
             stateless: true
             security: false
 
-        # باقي الـ API يحتاج JWT
+        # Public API - no JWT required
+        public:
+            pattern: ^/api/trips
+            stateless: true
+            security: false
+        
+        public_cat:
+            pattern: ^/api/categories
+            stateless: true
+            security: false
+            
+        public_dest:
+            pattern: ^/api/destinations
+            stateless: true
+            security: false
+            
+        public_rec:
+            pattern: ^/api/recommendations
+            stateless: true
+            security: false
+            
+        public_ai:
+            pattern: ^/api/ai
+            stateless: true
+            security: false
+            
+        public_rev:
+            pattern: ^/api/reviews
+            stateless: true
+            security: false
+            
+        public_mom:
+            pattern: ^/api/moments/trip
+            stateless: true
+            security: false
+            
+        public_my_book:
+            pattern: ^/api/moments/my-bookings
+            stateless: true
+            security: false
+            
+        public_mom_root:
+            pattern: ^/api/moments$
+            stateless: true
+            security: false
+
+        # All other API - JWT authentication
         api:
             pattern: ^/api
             stateless: true
             jwt: ~
-
-    access_control:
-        # Login & Register مفتوحين
-        - { path: ^/api/auth, roles: PUBLIC_ACCESS }
-
-        # CORS preflight - allow OPTIONS without auth
-        - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
-
-        # Public trips - GET only (without $ to allow query strings)
-        - { path: ^/api/trips, roles: PUBLIC_ACCESS, methods: [GET] }
-
-        # Public categories and destinations (without $ to allow sub-paths like /popular)
-        - { path: ^/api/destinations, roles: PUBLIC_ACCESS }
-        - { path: ^/api/categories, roles: PUBLIC_ACCESS }
-        - { path: ^/api/recommendations/trending, roles: PUBLIC_ACCESS }
-        - { path: ^/api/recommendations/status, roles: PUBLIC_ACCESS }
-
-        # AI Search is public
-        - { path: ^/api/ai/search, roles: PUBLIC_ACCESS }
-
-        # Organizer trips - needs authentication
-        - { path: ^/api/trips$, roles: IS_AUTHENTICATED_FULLY, methods: [POST, PUT, DELETE] }
-
-        # باقي الـ API يحتاج JWT
-        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+            provider: app_user_provider

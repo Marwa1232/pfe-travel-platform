@@ -17,13 +17,19 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import BookingHistory from './pages/BookingHistory';
+import Saved from './pages/Saved';
+import SettingsPage from './pages/Settings';
 import OrganizerRequest from './pages/OrganizerRequest';
+import Terms from './pages/Terms';
+import Contact from './pages/Contact';
+import Moments from './pages/Moments';
 
 // Organizer pages
 import OrganizerDashboard from './pages/organizer/OrganizerDashboard';
 import OrganizerTrips from './pages/organizer/OrganizerTrips';
 import TripForm from './pages/organizer/TripForm';
 import OrganizerBookings from './pages/organizer/OrganizerBookings';
+import OrganizerReviews from './pages/organizer/OrganizerReviews';
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -54,7 +60,13 @@ function App() {
                 {/* User routes */}
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/bookings" element={<BookingHistory />} />
+                <Route path="/saved" element={<Saved />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/organizer-request" element={<OrganizerRequest />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/moments" element={<Moments />} />
+                <Route path="/moments/:tripId" element={<Moments />} />
 
                 {/* Organizer routes */}
                 <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
@@ -62,6 +74,7 @@ function App() {
                 <Route path="/organizer/trips/new" element={<TripForm />} />
                 <Route path="/organizer/trips/:id/edit" element={<TripForm />} />
                 <Route path="/organizer/bookings" element={<OrganizerBookings />} />
+                <Route path="/organizer/reviews" element={<OrganizerReviews />} />
 
                 {/* Admin routes */}
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />

@@ -148,4 +148,22 @@ class TripSession
         }
         return $this;
     }
+
+    #[Groups(['trip:read'])]
+    public function getBookedSeats(): int
+    {
+        $booked = 0;
+        foreach ($this->bookings as $booking) {
+            if (in_array($booking->getStatus(), ['CONFIRMED', 'COMPLETED', 'PENDING_PAYMENT'])) {
+                $booked += $booking->getNumTravelers();
+            }
+        }
+        return $booked;
+    }
+
+    #[Groups(['trip:read'])]
+    public function getAvailableSeats(): int
+    {
+        return $this->max_capacity - $this->getBookedSeats();
+    }
 }

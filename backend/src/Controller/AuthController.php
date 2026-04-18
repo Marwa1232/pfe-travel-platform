@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Entity\Role;
 use App\Service\JwtService;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -23,7 +24,8 @@ class AuthController extends AbstractController
         private UserPasswordHasherInterface $passwordHasher,
         private SerializerInterface $serializer,
         private ValidatorInterface $validator,
-        private JwtService $jwtService
+        private JwtService $jwtService,
+        private NotificationService $notificationService
     ) {}
 
     #[Route('/register', name: 'api_auth_register', methods: ['POST'])]
@@ -62,6 +64,12 @@ class AuthController extends AbstractController
 
         $this->em->persist($user);
         $this->em->flush();
+
+        // Send welcome notification
+        $this->notificationService->notifyWelcome($user);
+        
+        // Notify admins about new user
+        $this->notificationService->notifyNewUser($user);
 
         return $this->json([
             'message' => 'Registration successful',

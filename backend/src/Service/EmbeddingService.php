@@ -16,6 +16,7 @@ class EmbeddingService
     private const CACHE_TTL = 86400; // 24 hours
     private const MODEL = 'sentence-transformers/all-MiniLM-L6-v2';
     private const API_URL = 'https://router.huggingface.co/hf-inference/models/';
+    private const API_SUFFIX = '/pipeline/feature-extraction';
 
     public function __construct(
         HttpClientInterface $client,
@@ -30,12 +31,19 @@ class EmbeddingService
         error_log('[EmbeddingService] API key length: ' . strlen($this->apiKey));
     }
 
+    private bool $apiWorking = true; // Will be set to false on first API failure
+
     public function isConfigured(): bool
     {
-        $configured = !empty($this->apiKey);
-        error_log('[EmbeddingService] isConfigured: ' . ($configured ? 'YES' : 'NO'));
-        error_log('[EmbeddingService] API key value: ' . substr($this->apiKey, 0, 10) . '...');
-        return $configured;
+        return !empty($this->apiKey) && $this->apiWorking;
+    }
+
+    /**
+     * Mark embedding API as non-functional (called after repeated failures)
+     */
+    public function markAsNotWorking(): void
+    {
+        $this->apiWorking = false;
     }
 
     /**
@@ -62,7 +70,7 @@ class EmbeddingService
         try {
             $response = $this->client->request(
                 'POST',
-                self::API_URL . self::MODEL,
+                self::API_URL . self::MODEL . self::API_SUFFIX,
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $this->apiKey,
@@ -80,14 +88,24 @@ class EmbeddingService
             $statusCode = $response->getStatusCode();
             error_log('[EmbeddingService] API response status: ' . $statusCode);
 
-            $result = $response->toArray();
-            error_log('[EmbeddingService] API response: ' . json_encode($result));
+            if ($statusCode !== 200) {
+                error_log('[EmbeddingService] API returned non-200, marking as not working');
+                $this->markAsNotWorking();
+                return null;
+            }
 
-            // Hugging Face returns a nested array, extract the embedding
-            $embedding = is_array($result) && isset($result[0]) ? $result[0] : $result;
+            $result = $response->toArray();
+
+            // /pipeline/feature-extraction returns a flat float array directly
+            // /models/ endpoint returns nested array [[...]]
+            $embedding = $result;
+            if (is_array($result) && isset($result[0]) && is_array($result[0])) {
+                $embedding = $result[0]; // nested format
+            }
 
             if (!is_array($embedding) || empty($embedding)) {
                 error_log('[EmbeddingService] Invalid embedding format received');
+                $this->markAsNotWorking();
                 return null;
             }
 
@@ -100,7 +118,7 @@ class EmbeddingService
 
         } catch (\Exception $e) {
             error_log('[EmbeddingService] Error generating embedding: ' . $e->getMessage());
-            error_log('[EmbeddingService] Stack trace: ' . $e->getTraceAsString());
+            $this->markAsNotWorking();
             return null;
         }
     }

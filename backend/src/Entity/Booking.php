@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\BookingRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -64,6 +66,7 @@ class Booking
     public function __construct()
     {
         $this->created_at = new \DateTimeImmutable();
+        $this->moments = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -189,6 +192,33 @@ class Booking
     public function setPayment(?Payment $payment): static
     {
         $this->payment = $payment;
+        return $this;
+    }
+
+    #[ORM\OneToMany(mappedBy: 'booking', targetEntity: Moment::class, cascade: ['persist', 'remove'])]
+    private Collection $moments;
+
+    public function getMoments(): Collection
+    {
+        return $this->moments;
+    }
+
+    public function addMoment(Moment $moment): static
+    {
+        if (!isset($this->moments) || !$this->moments->contains($moment)) {
+            $this->moments->add($moment);
+            $moment->setBooking($this);
+        }
+        return $this;
+    }
+
+    public function removeMoment(Moment $moment): static
+    {
+        if (isset($this->moments) && $this->moments->removeElement($moment)) {
+            if ($moment->getBooking() === $this) {
+                $moment->setBooking(null);
+            }
+        }
         return $this;
     }
 }

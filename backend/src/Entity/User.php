@@ -10,6 +10,8 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Annotation\Groups;
 
+use App\Entity\Notification;
+
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'users')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
@@ -71,11 +73,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $updated_at = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['user:read'])]
+    private ?string $profile_photo_url = null;
+
     #[ORM\OneToOne(mappedBy: 'user', cascade: ['persist', 'remove'])]
     private ?OrganizerProfile $organizerProfile = null;
 
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: Booking::class)]
     private Collection $bookings;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Review::class, cascade: ['persist', 'remove'])]
+    private Collection $reviews;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Notification::class, cascade: ['persist', 'remove'])]
+    private Collection $notifications;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Moment::class, cascade: ['persist', 'remove'])]
+    private Collection $moments;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Favorite::class, cascade: ['persist', 'remove'])]
+    private Collection $favorites;
 
     #[ORM\ManyToMany(targetEntity: Role::class, inversedBy: 'users')]
     #[ORM\JoinTable(name: 'user_roles')]
@@ -84,7 +102,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function __construct()
     {
         $this->bookings = new ArrayCollection();
+        $this->reviews = new ArrayCollection();
         $this->userRoles = new ArrayCollection();
+        $this->notifications = new ArrayCollection();
+        $this->moments = new ArrayCollection();
+        $this->favorites = new ArrayCollection();
         $this->created_at = new \DateTimeImmutable();
     }
 
@@ -259,6 +281,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function getProfilePhotoUrl(): ?string
+    {
+        return $this->profile_photo_url;
+    }
+
+    public function setProfilePhotoUrl(?string $profile_photo_url): static
+    {
+        $this->profile_photo_url = $profile_photo_url;
+        return $this;
+    }
+
     public function getOrganizerProfile(): ?OrganizerProfile
     {
         return $this->organizerProfile;
@@ -316,6 +349,81 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function removeUserRole(Role $userRole): static
     {
         $this->userRoles->removeElement($userRole);
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Notification>
+     */
+    public function getNotifications(): Collection
+    {
+        return $this->notifications;
+    }
+
+    public function addNotification(Notification $notification): static
+    {
+        if (!$this->notifications->contains($notification)) {
+            $this->notifications->add($notification);
+            $notification->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeNotification(Notification $notification): static
+    {
+        if ($this->notifications->removeElement($notification)) {
+            if ($notification->getUser() === $this) {
+                $notification->setUser(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getMoments(): Collection
+    {
+        return $this->moments;
+    }
+
+    public function addMoment(Moment $moment): static
+    {
+        if (!$this->moments->contains($moment)) {
+            $this->moments->add($moment);
+            $moment->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeMoment(Moment $moment): static
+    {
+        if ($this->moments->removeElement($moment)) {
+            if ($moment->getUser() === $this) {
+                $moment->setUser(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getFavorites(): Collection
+    {
+        return $this->favorites;
+    }
+
+    public function addFavorite(Favorite $favorite): static
+    {
+        if (!$this->favorites->contains($favorite)) {
+            $this->favorites->add($favorite);
+            $favorite->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeFavorite(Favorite $favorite): static
+    {
+        if ($this->favorites->removeElement($favorite)) {
+            if ($favorite->getUser() === $this) {
+                $favorite->setUser(null);
+            }
+        }
         return $this;
     }
 }

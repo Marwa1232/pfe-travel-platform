@@ -35,12 +35,40 @@ export const authAPI = {
   login: (data: any) => api.post('/auth/login', data),
 };
 
+export const userAPI = {
+  getProfile: () => api.get('/user/profile'),
+  updateProfile: (data: any) => api.put('/user/profile', data),
+  uploadProfilePhoto: (file: File) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    return api.post('/user/profile-photo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  changePassword: (data: { current_password: string; new_password: string; confirm_password: string }) => 
+    api.post('/user/change-password', data),
+  updatePreferences: (data: { interests?: string[] }) => 
+    api.put('/user/preferences', data),
+  updateSocialLinks: (data: { facebook?: string; instagram?: string; website?: string; linkedin?: string; x_link?: string }) => 
+    api.put('/user/social-links', data),
+  deleteAccount: (password: string) => 
+    api.delete('/user/account', { data: { password } }),
+  disableAccount: (password: string) => 
+    api.post('/user/account/disable', { password }),
+};
+
+export const organizerAPI = {
+  updateProfile: (data: any) => api.put('/organizer/profile', data),
+};
+
 export const tripAPI = {
   list: (params?: any) => api.get('/trips', { params }),
   get: (id: number) => api.get(`/trips/${id}`),
   create: (data: any, config?: any) => api.post('/trips', data, config),
   update: (id: number, data: any, config?: any) => api.put(`/trips/${id}`, data, config),
   delete: (id: number) => api.delete(`/trips/${id}`),
+  getPolicy: (id: number) => api.get(`/trips/${id}/policy`),
+  cancelSession: (tripId: number, sessionId: number) => api.post(`/trips/${tripId}/sessions/${sessionId}/cancel`, {}),
   uploadImages: (files: File[], tripId?: number, isCover: boolean = false) => {
     console.log('[DEBUG API] uploadImages called with files:', files.length);
     const formData = new FormData();
@@ -87,9 +115,41 @@ export const recommendationAPI = {
   // Get search-based recommendations (no auth required)
   searchBased: (query: string) => 
     api.post('/recommendations/search-based', { query }),
-  
+
   // Check LLM service status
   getStatus: () => api.get('/recommendations/status'),
+};
+
+export const reviewAPI = {
+  // Get reviews for a trip (public)
+  getTripReviews: (tripId: number) => 
+    api.get(`/reviews/trip/${tripId}`),
+  
+  // Submit a review (requires auth)
+  createReview: (data: { trip_id: number; rating: number; comment?: string }) => 
+    api.post('/reviews', data),
+  
+  // Delete own review (requires auth)
+  deleteReview: (id: number) => 
+    api.delete(`/reviews/${id}`),
+};
+
+export const organizerReviewAPI = {
+  // Get all reviews for organizer's trips
+  getAll: (status?: string) => 
+    api.get('/organizer/reviews', { params: { status } }),
+  
+  // Approve a review
+  approve: (id: number) => 
+    api.put(`/organizer/reviews/${id}/approve`),
+  
+  // Reject a review
+  reject: (id: number) => 
+    api.put(`/organizer/reviews/${id}/reject`),
+  
+  // Respond to a review
+  respond: (id: number, response: string) => 
+    api.put(`/organizer/reviews/${id}/respond`, { response }),
 };
 
 export const bookingAPI = {
@@ -97,6 +157,8 @@ export const bookingAPI = {
   get: (id: number) => api.get(`/bookings/${id}`),
   myBookings: () => api.get('/bookings/me'),
   delete: (id: number) => api.delete(`/bookings/${id}`),
+  getCancelOptions: (id: number) => api.get(`/bookings/${id}/cancel-options`),
+  cancel: (id: number, choice: string) => api.post(`/bookings/${id}/cancel`, { choice }),
 };
 
 // Admin APIs
@@ -132,6 +194,22 @@ export const adminAPI = {
   createDestination: (data: any) => api.post('/admin/destinations', data),
   updateDestination: (id: number, data: any) => api.put(`/admin/destinations/${id}`, data),
   deleteDestination: (id: number) => api.delete(`/admin/destinations/${id}`),
+};
+
+export const momentAPI = {
+  getAllMoments: () => api.get('/moments'),
+  getTripMoments: (tripId: number) => api.get(`/moments/trip/${tripId}`),
+  getMyEligibleBookings: () => api.get('/moments/my-bookings'),
+  createMoment: (formData: FormData) => api.post('/moments', formData),
+  deleteMoment: (id: number) => api.delete(`/moments/${id}`),
+};
+
+export const favoriteAPI = {
+  list: () => api.get('/favorites'),
+  add: (tripId: number) => api.post(`/favorites/${tripId}`),
+  remove: (tripId: number) => api.delete(`/favorites/${tripId}`),
+  check: (tripId: number) => api.get(`/favorites/check/${tripId}`),
+  toggle: (tripId: number) => api.post(`/favorites/toggle/${tripId}`),
 };
 
 export default api;

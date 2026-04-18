@@ -86,10 +86,10 @@ const Footer: React.FC = () => {
               Légal
             </Typography>
             <Typography variant="body2" sx={{ mb: 1 }}>
-              <Link href="#" color="grey.400" underline="hover" sx={{ '&:hover': { color: '#00BFA5' } }}>Mentions légales</Link>
+              <Link href="/terms" color="grey.400" underline="hover" sx={{ '&:hover': { color: '#00BFA5' } }}>Terms & Conditions</Link>
             </Typography>
             <Typography variant="body2" sx={{ mb: 1 }}>
-              <Link href="#" color="grey.400" underline="hover" sx={{ '&:hover': { color: '#00BFA5' } }}>CGV</Link>
+              <Link href="#" color="grey.400" underline="hover" sx={{ '&:hover': { color: '#00BFA5' } }}>Mentions légales</Link>
             </Typography>
             <Typography variant="body2">
               <Link href="#" color="grey.400" underline="hover" sx={{ '&:hover': { color: '#00BFA5' } }}>Confidentialité</Link>

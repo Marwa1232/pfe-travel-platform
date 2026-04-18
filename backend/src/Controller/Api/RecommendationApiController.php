@@ -256,19 +256,19 @@ class RecommendationApiController extends AbstractController
                 $score = 0;
                 $reasons = [];
                 
-                if ($filters['destination']) {
+                if (!empty($filters['destination'])) {
                     $score += 40;
                     $reasons[] = 'matches destination';
                 }
-                if ($filters['max_price']) {
+                if (!empty($filters['max_price'])) {
                     $score += 30;
                     $reasons[] = 'within budget';
                 }
-                if ($filters['category']) {
+                if (!empty($filters['category'])) {
                     $score += 35;
                     $reasons[] = 'matches category';
                 }
-                if ($filters['duration']) {
+                if (!empty($filters['duration'])) {
                     $score += 20;
                     $reasons[] = 'right duration';
                 }
@@ -295,7 +295,7 @@ class RecommendationApiController extends AbstractController
                         'currency' => $trip->getCurrency(),
                         'duration_days' => $trip->getDurationDays(),
                         'cover_image' => $trip->getCoverImage()?->getUrl() ?? '',
-                        'destination' => $trip->getDestinations()->first()?->getName() ?? '',
+                        'destination' => ($trip->getDestinations()->first() ?: null)?->getName() ?? '',
                         'categories' => array_map(fn($c) => $c->getName(), $trip->getCategories()->toArray())
                     ],
                     'score' => $item['score'],
@@ -331,10 +331,10 @@ class RecommendationApiController extends AbstractController
         return $this->json([
             'llm_service' => [
                 'configured' => $llmConfigured,
-                'model' => $llmConfigured ? 'gpt-4o' : 'not configured',
+                'model' => $llmConfigured ? 'llama-3.1-8b-instant (Groq)' : 'not configured',
                 'message' => $llmConfigured 
-                    ? 'AI recommendations are active'
-                    : 'Set OPENAI_API_KEY in .env to enable AI features'
+                    ? 'AI recommendations are active (Groq)'
+                    : 'Set GROQ_API_KEY in .env to enable AI features'
             ],
             'features' => [
                 'personalized_recommendations' => true,

@@ -14,6 +14,8 @@ import { bookingAPI } from '../services/api';
 interface BookingFormProps {
   trip: any;
   sessions: any[];
+  selectedSession?: any;
+  participantCount?: number;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -21,12 +23,14 @@ interface BookingFormProps {
 const BookingForm: React.FC<BookingFormProps> = ({
   trip,
   sessions,
+  selectedSession,
+  participantCount = 1,
   onSuccess,
   onCancel,
 }) => {
   const [formData, setFormData] = useState({
-    trip_session_id: sessions[0]?.id || '',
-    num_travelers: 1,
+    trip_session_id: selectedSession?.id || sessions[0]?.id || '',
+    num_travelers: participantCount,
     payment_method: 'CASH',
   });
   const [loading, setLoading] = useState(false);
@@ -72,7 +76,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     }
   };
 
-  const selectedSession = sessions.find((s) => s.id === parseInt(formData.trip_session_id.toString()));
+  const foundSession = sessions.find((s) => s.id === parseInt(formData.trip_session_id.toString()));
 
   return (
     <Paper elevation={2} sx={{ p: 3 }}>
@@ -119,7 +123,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           value={formData.num_travelers}
           onChange={handleChange}
           required
-          inputProps={{ min: 1, max: selectedSession?.max_capacity || 10 }}
+          inputProps={{ min: 1, max: foundSession?.max_capacity || 10 }}
           margin="normal"
         />
 

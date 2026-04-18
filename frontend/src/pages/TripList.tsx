@@ -229,7 +229,7 @@ const TripList: React.FC = () => {
           const tripsData = responses.map(res => res.data);
           
           console.log('[TripList] AI search trips loaded:', tripsData);
-          setTrips(tripsData);
+          setTrips(Array.isArray(tripsData) ? tripsData : []);
           setTotalPages(1); // No pagination for AI search results
         } else {
           setTrips([]);
@@ -261,13 +261,14 @@ const TripList: React.FC = () => {
         // Handle both Hydra format and regular array response
         const tripsData = response.data['hydra:member'] || response.data;
         console.log('[TripList] Trips data:', tripsData);
-        setTrips(tripsData);
+        setTrips(Array.isArray(tripsData) ? tripsData : []);
         // Calculate total pages from response
-        const totalItems = response.data['hydra:totalItems'] || tripsData.length || 0;
+        const totalItems = response.data['hydra:totalItems'] || (Array.isArray(tripsData) ? tripsData.length : 0) || 0;
         setTotalPages(Math.ceil(totalItems / 12));
       }
     } catch (error) {
       console.error('Error loading trips:', error);
+      setTrips([]);
     } finally {
       setLoading(false);
     }

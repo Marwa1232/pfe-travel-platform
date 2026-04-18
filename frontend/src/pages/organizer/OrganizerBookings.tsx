@@ -20,10 +20,47 @@ import {
   CircularProgress,
   IconButton,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
 } from '@mui/material';
 import { Delete, PictureAsPdf } from '@mui/icons-material';
+import { styled, alpha } from '@mui/material/styles';
 import { jsPDF } from 'jspdf';
 import api from '../../services/api';
+
+// Couleurs et gradient du thème
+const primaryColor = '#00BFA5';
+const secondaryColor = '#0D47A1';
+const primaryGradient = 'linear-gradient(90deg, #00BFA5, #0D47A1)';
+
+// Style du tableau
+const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
+  borderRadius: theme.spacing(3),
+  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+  border: `1px solid ${alpha(primaryColor, 0.1)}`,
+  overflow: 'hidden',
+  '& .MuiTableHead-root .MuiTableCell-root': {
+    backgroundColor: alpha(primaryColor, 0.02),
+    fontWeight: 700,
+    color: secondaryColor,
+    borderBottom: `2px solid ${alpha(primaryColor, 0.2)}`,
+  },
+  '& .MuiTableRow-root:hover': {
+    backgroundColor: alpha(primaryColor, 0.02),
+  },
+}));
+
+// Style du Paper pour les filtres
+const FiltersPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2),
+  marginBottom: theme.spacing(3),
+  borderRadius: theme.spacing(2),
+  border: `1px solid ${alpha(primaryColor, 0.1)}`,
+  boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+}));
 
 const OrganizerBookings: React.FC = () => {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -31,6 +68,10 @@ const OrganizerBookings: React.FC = () => {
   const [filters, setFilters] = useState({
     trip_id: '',
     status: '',
+  });
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; bookingId: number | null }>({
+    open: false,
+    bookingId: null,
   });
 
   useEffect(() => {
@@ -58,12 +99,11 @@ const OrganizerBookings: React.FC = () => {
     }
   };
 
-  const handleDelete = async (bookingId: number) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette réservation?')) {
-      return;
-    }
+  const handleDelete = async () => {
+    if (!deleteDialog.bookingId) return;
     try {
-      await api.delete(`/bookings/${bookingId}`);
+      await api.delete(`/bookings/${deleteDialog.bookingId}`);
+      setDeleteDialog({ open: false, bookingId: null });
       loadBookings();
     } catch (error) {
       console.error('Error deleting booking:', error);
@@ -74,8 +114,8 @@ const OrganizerBookings: React.FC = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     
-    // Header - Blue background
-    doc.setFillColor(41, 128, 185);
+    // Header - Utiliser la couleur primaire pour l'en-tête
+    doc.setFillColor(0, 191, 165); // #00BFA5
     doc.rect(0, 0, pageWidth, 40, 'F');
     
     doc.setTextColor(255, 255, 255);
@@ -184,21 +224,30 @@ const OrganizerBookings: React.FC = () => {
     return labels[status] || status;
   };
 
+  // Style personnalisé pour les chips de statut (optionnel, car Chip avec color gère déjà)
+  // On peut ajouter des styles supplémentaires si besoin
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 700, color: secondaryColor, mb: 3 }}>
         Réservations
       </Typography>
 
       {/* Filters */}
-      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+      <FiltersPaper elevation={0}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <FormControl sx={{ minWidth: 200 }}>
             <InputLabel>Statut</InputLabel>
             <Select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
               label="Statut"
+              sx={{
+                borderRadius: 2,
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: primaryColor,
+                },
+              }}
             >
               <MenuItem value="">Tous</MenuItem>
               <MenuItem value="CONFIRMED">Confirmées</MenuItem>
@@ -207,81 +256,163 @@ const OrganizerBookings: React.FC = () => {
             </Select>
           </FormControl>
         </Box>
-      </Paper>
+      </FiltersPaper>
 
       {loading ? (
-        <Box textAlign="center">
-          <CircularProgress />
+        <Box textAlign="center" sx={{ mt: 4 }}>
+          <CircularProgress sx={{ color: primaryColor }} />
         </Box>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Voyage</TableCell>
-                <TableCell>Client</TableCell>
-                <TableCell>Date départ</TableCell>
-                <TableCell>Voyageurs</TableCell>
-                <TableCell>Prix total</TableCell>
-                <TableCell>Statut</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {bookings.map((booking) => (
-                <TableRow key={booking.id}>
-                  <TableCell>
-                    <Typography variant="body1" fontWeight="bold">
-                      {booking.trip?.title}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    {booking.user?.first_name} {booking.user?.last_name}
-                    <br />
-                    <Typography variant="body2" color="text.secondary">
-                      {booking.user?.email}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    {booking.tripSession?.start_date
-                      ? new Date(booking.tripSession.start_date).toLocaleDateString('fr-FR')
-                      : '-'}
-                  </TableCell>
-                  <TableCell>{booking.num_travelers}</TableCell>
-                  <TableCell>
-                    {booking.total_price} {booking.currency}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={getStatusLabel(booking.status)}
-                      color={getStatusColor(booking.status) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <IconButton 
-                        color="primary" 
-                        onClick={() => handleExportPdf(booking)}
-                        title="Exporter PDF"
-                      >
-                        <PictureAsPdf />
-                      </IconButton>
-                      <IconButton 
-                        color="error" 
-                        onClick={() => handleDelete(booking.id)}
-                        title="Supprimer"
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <>
+          {bookings.length === 0 ? (
+            <Alert
+              severity="info"
+              sx={{
+                borderRadius: 2,
+                borderLeft: `4px solid ${primaryColor}`,
+                backgroundColor: alpha(primaryColor, 0.02),
+              }}
+            >
+              Aucune réservation trouvée.
+            </Alert>
+          ) : (
+            <StyledTableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Voyage</TableCell>
+                    <TableCell>Client</TableCell>
+                    <TableCell>Date départ</TableCell>
+                    <TableCell>Voyageurs</TableCell>
+                    <TableCell>Prix total</TableCell>
+                    <TableCell>Statut</TableCell>
+                    <TableCell align="center">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {bookings.map((booking) => (
+                    <TableRow key={booking.id}>
+                      <TableCell>
+                        <Typography variant="body1" fontWeight={600} sx={{ color: secondaryColor }}>
+                          {booking.trip?.title}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {booking.user?.first_name} {booking.user?.last_name}
+                        <br />
+                        <Typography variant="body2" color="text.secondary">
+                          {booking.user?.email}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {booking.tripSession?.start_date
+                          ? new Date(booking.tripSession.start_date).toLocaleDateString('fr-FR')
+                          : '-'}
+                      </TableCell>
+                      <TableCell>{booking.num_travelers}</TableCell>
+                      <TableCell>
+                        <Typography variant="body1" fontWeight={600} color="primary">
+                          {booking.total_price} {booking.currency}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={getStatusLabel(booking.status)}
+                          color={getStatusColor(booking.status) as any}
+                          size="small"
+                          sx={{
+                            fontWeight: 600,
+                            backgroundColor: getStatusColor(booking.status) === 'success' 
+                              ? alpha('#00BFA5', 0.1) 
+                              : undefined,
+                            color: getStatusColor(booking.status) === 'success' 
+                              ? '#00BFA5' 
+                              : undefined,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Stack direction="row" spacing={1} justifyContent="center">
+                          <IconButton 
+                            onClick={() => handleExportPdf(booking)}
+                            title="Exporter PDF"
+                            sx={{ color: primaryColor, '&:hover': { backgroundColor: alpha(primaryColor, 0.1) } }}
+                          >
+                            <PictureAsPdf />
+                          </IconButton>
+                          <IconButton 
+                            color="error"
+                            onClick={() => setDeleteDialog({ open: true, bookingId: booking.id })}
+                            title="Supprimer"
+                            sx={{ '&:hover': { backgroundColor: alpha('#FF6B6B', 0.1) } }}
+                          >
+                            <Delete />
+                          </IconButton>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </StyledTableContainer>
+          )}
+        </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, bookingId: null })}
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, color: secondaryColor }}>
+          Supprimer la réservation
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Êtes-vous sûr de vouloir supprimer cette réservation ?
+            Cette action est irréversible.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button
+            onClick={() => setDeleteDialog({ open: false, bookingId: null })}
+            variant="outlined"
+            sx={{
+              borderColor: alpha(primaryColor, 0.5),
+              color: primaryColor,
+              borderRadius: 2,
+              textTransform: 'none',
+              '&:hover': {
+                borderColor: primaryColor,
+                backgroundColor: alpha(primaryColor, 0.04),
+              },
+            }}
+          >
+            Annuler
+          </Button>
+          <Button
+            onClick={handleDelete}
+            variant="contained"
+            color="error"
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              boxShadow: 'none',
+              '&:hover': {
+                backgroundColor: '#D32F2F',
+              },
+            }}
+          >
+            Supprimer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

@@ -36,7 +36,7 @@ class RecommendationService
         
         // Get all active trips
         $trips = $this->em->getRepository(Trip::class)->findBy([
-            'isActive' => true,
+            'is_active' => true,
             'status' => 'published'
         ]);
         
@@ -92,7 +92,7 @@ class RecommendationService
     public function getSimilarTrips(Trip $trip, int $limit = 5): array
     {
         $allTrips = $this->em->getRepository(Trip::class)->findBy([
-            'isActive' => true,
+            'is_active' => true,
             'status' => 'published'
         ]);
         
@@ -146,12 +146,14 @@ class RecommendationService
             $recentDate = new \DateTime('-30 days');
             
             $bookings = $this->em->getRepository(Booking::class)->createQueryBuilder('b')
-                ->where('b.createdAt >= :date')
+                ->where('b.created_at >= :date')
                 ->andWhere('b.status IN (:statuses)')
                 ->setParameter('date', $recentDate)
                 ->setParameter('statuses', ['CONFIRMED', 'COMPLETED'])
                 ->getQuery()
                 ->getResult();
+            
+            error_log('[RecommendationService] Found ' . count($bookings) . ' recent CONFIRMED/COMPLETED bookings');
             
             // Count bookings per trip
             $tripCounts = [];
@@ -174,11 +176,43 @@ class RecommendationService
                 $result[] = $this->formatTripRecommendation($item['trip'], $item['count'] * 10, 'Popular based on recent bookings');
             }
             
+            // Fallback: if no trending found, return most recent published trips
+            if (empty($result)) {
+                error_log('[RecommendationService] No trending from bookings, falling back to recent published trips');
+                $recentTrips = $this->em->getRepository(Trip::class)->findBy(
+                    ['is_active' => true, 'status' => 'published'],
+                    ['createdAt' => 'DESC'],
+                    $limit
+                );
+                
+                foreach ($recentTrips as $trip) {
+                    $result[] = $this->formatTripRecommendation($trip, 50, 'Recently published trip');
+                }
+            }
+            
+            error_log('[RecommendationService] Returning ' . count($result) . ' trending trips');
             return $result;
             
         } catch (\Exception $e) {
             error_log('[RecommendationService] Error getting trending trips: ' . $e->getMessage());
-            return [];
+            error_log('[RecommendationService] Stack trace: ' . $e->getTraceAsString());
+            
+            // Fallback on error: return recent published trips
+            try {
+                $recentTrips = $this->em->getRepository(Trip::class)->findBy(
+                    ['is_active' => true, 'status' => 'published'],
+                    ['createdAt' => 'DESC'],
+                    $limit
+                );
+                $result = [];
+                foreach ($recentTrips as $trip) {
+                    $result[] = $this->formatTripRecommendation($trip, 50, 'Recently published trip');
+                }
+                return $result;
+            } catch (\Exception $e2) {
+                error_log('[RecommendationService] Fallback also failed: ' . $e2->getMessage());
+                return [];
+            }
         }
     }
     
@@ -202,14 +236,17 @@ class RecommendationService
      */
     public function trackUserPreference(int $userId, string $type, array $data): void
     {
-        $aiData = new AIData();
-        $aiData->setUserId($userId);
-        $aiData->setDataType('preference_' . $type);
-        $aiData->setData($data);
-        $aiData->setScore(1.0);
-        
-        $this->em->persist($aiData);
-        $this->em->flush();
+        try {
+            $aiData = new AIData();
+            $aiData->setUserId($userId);
+            $aiData->setDataType('preference_' . $type);
+            $aiData->setData($data);
+            $aiData->setScore(1.0);
+            $this->em->persist($aiData);
+            $this->em->flush();
+        } catch (\Exception $e) {
+            error_log('[RecommendationService] trackUserPreference failed (non-fatal): ' . $e->getMessage());
+        }
     }
     
     /**
@@ -217,17 +254,20 @@ class RecommendationService
      */
     public function trackSearch(int $userId, string $query, array $filters): void
     {
-        $aiData = new AIData();
-        $aiData->setUserId($userId);
-        $aiData->setDataType('search_history');
-        $aiData->setData([
-            'query' => $query,
-            'filters' => $filters,
-            'timestamp' => (new \DateTime())->format('Y-m-d H:i:s')
-        ]);
-        
-        $this->em->persist($aiData);
-        $this->em->flush();
+        try {
+            $aiData = new AIData();
+            $aiData->setUserId($userId);
+            $aiData->setDataType('search_history');
+            $aiData->setData([
+                'query' => $query,
+                'filters' => $filters,
+                'timestamp' => (new \DateTime())->format('Y-m-d H:i:s')
+            ]);
+            $this->em->persist($aiData);
+            $this->em->flush();
+        } catch (\Exception $e) {
+            error_log('[RecommendationService] trackSearch failed (non-fatal): ' . $e->getMessage());
+        }
     }
     
     /**
@@ -323,21 +363,43 @@ class RecommendationService
     /**
      * Format a trip for recommendation output
      */
+    private function getFirstDest(Trip $trip): ?object
+    {
+        $first = $trip->getDestinations()->first();
+        return $first === false ? null : $first;
+    }
+
     private function formatTripRecommendation(Trip $trip, float $score, string $reason): array
     {
+        $firstDest = $this->getFirstDest($trip);
+        $organizer = $trip->getOrganizer();
+        
+        $images = [];
+        foreach ($trip->getImages() as $img) {
+            $images[] = [
+                'url' => $img->getUrl(),
+                'is_cover' => $img->isCover()
+            ];
+        }
+        
         return [
             'trip' => [
                 'id' => $trip->getId(),
-                'title' => $trip->getTitle(),
-                'short_description' => $trip->getShortDescription(),
+                'title' => $trip->getTitle() ?? '',
+                'short_description' => $trip->getShortDescription() ?? '',
                 'base_price' => $trip->getBasePrice(),
-                'currency' => $trip->getCurrency(),
+                'currency' => $trip->getCurrency() ?? 'TND',
                 'duration_days' => $trip->getDurationDays(),
-                'difficulty_level' => $trip->getDifficultyLevel(),
-                'cover_image' => $trip->getCoverImage()?->getImageUrl(),
-                'destination' => $trip->getDestinations()->first()?->getName() ?? '',
+                'difficulty_level' => $trip->getDifficultyLevel() ?? '',
+                'cover_image' => $trip->getCoverImage()?->getUrl() ?? '',
+                'images' => $images,
+                'destination' => $firstDest?->getName() ?? '',
                 'categories' => array_map(fn($c) => $c->getName(), $trip->getCategories()->toArray()),
-                'destinations' => array_map(fn($d) => $d->getName(), $trip->getDestinations()->toArray())
+                'destinations' => array_map(fn($d) => $d->getName(), $trip->getDestinations()->toArray()),
+                'organizer' => $organizer ? [
+                    'id' => $organizer->getId(),
+                    'agency_name' => $organizer->getAgencyName() ?? ''
+                ] : null
             ],
             'score' => round($score, 1),
             'reason' => $reason
@@ -654,7 +716,7 @@ class RecommendationService
             
             // Get all active trips
             $trips = $this->em->getRepository(Trip::class)->findBy([
-                'isActive' => true,
+                'is_active' => true,
                 'status' => 'published'
             ]);
             
@@ -845,4 +907,3 @@ class RecommendationService
         return "Found trips matching: " . implode(', ', $parts);
     }
 }
-

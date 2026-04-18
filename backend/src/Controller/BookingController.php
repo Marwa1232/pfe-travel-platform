@@ -9,6 +9,7 @@ use App\Entity\TripSession;
 use App\Entity\User;
 use App\Repository\BookingRepository;
 use App\Service\JwtService;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -23,7 +24,8 @@ class BookingController extends AbstractController
     public function __construct(
         private BookingRepository $bookingRepo,
         private EntityManagerInterface $em,
-        private JwtService $jwtService
+        private JwtService $jwtService,
+        private NotificationService $notificationService
     ) {}
 
     private function getCurrentUser(Request $request): ?User
@@ -103,6 +105,14 @@ class BookingController extends AbstractController
             $this->em->persist($payment);
             $this->em->flush();
 
+            // Notify organizer about new booking
+            $this->notificationService->notifyNewBooking($booking);
+
+            // If booking is confirmed, notify user
+            if ($bookingStatus === 'CONFIRMED') {
+                $this->notificationService->notifyBookingConfirmed($booking);
+            }
+
             return $this->json($booking, Response::HTTP_CREATED, [], ['groups' => 'booking:read']);
         } catch (\Throwable $e) {
             error_log('Booking error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
@@ -179,6 +189,9 @@ class BookingController extends AbstractController
 
         $this->em->flush();
 
+        // Notify user about confirmed booking
+        $this->notificationService->notifyBookingConfirmed($booking);
+
         return $this->json($booking, Response::HTTP_OK, [], ['groups' => 'booking:read']);
     }
 
@@ -204,6 +217,11 @@ class BookingController extends AbstractController
 
         if (!$isOwner && !$isOrganizer && !$isAdmin) {
             return $this->json(['error' => 'Access denied'], Response::HTTP_FORBIDDEN);
+        }
+
+        // If organizer cancels, notify the user
+        if ($isOrganizer) {
+            $this->notificationService->notifyBookingCancelledByOrganizer($booking);
         }
 
         $this->em->remove($booking);

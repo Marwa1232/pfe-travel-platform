@@ -27,6 +27,12 @@ class JwtAuthenticator extends AbstractAuthenticator
         '/api/ai/search',
     ];
 
+    private array $protectedPaths = [
+        '/api/notifications',
+        '/api/organizer/reviews',
+        '/api/moments',
+    ];
+
     public function __construct(
         private JwtService $jwtService,
         private EntityManagerInterface $em
