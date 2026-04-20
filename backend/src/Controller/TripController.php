@@ -122,9 +122,13 @@ class TripController extends AbstractController
     }
 
     #[Route('', name: 'api_trips_create', methods: ['POST'])]
-    #[IsGranted('ROLE_ORGANIZER')]
     public function create(Request $request): JsonResponse
     {
+        $user = $this->getCurrentUser($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+        
         $data = json_decode($request->getContent(), true);
 
         // Debug: Log received data
@@ -153,8 +157,6 @@ class TripController extends AbstractController
         if (isset($data['meeting_point'])) $trip->setMeetingPoint($data['meeting_point']);
         if (isset($data['meeting_address'])) $trip->setMeetingAddress($data['meeting_address']);
 
-        $user = $this->getUser();
-        
         // Debug: Check user
         if (!$user) {
             error_log('No user found - authentication issue');
@@ -169,7 +171,7 @@ class TripController extends AbstractController
             return $this->json(['error' => 'No organizer profile found. Please create an organizer profile first.'], Response::HTTP_FORBIDDEN);
         }
         
-        if ($organizer->getStatus() !== 'APPROVED') {
+        if ($organizer->getStatus() !== 'APPROVED' && $organizer->getStatus() !== 'approved') {
             error_log('Organizer status: ' . $organizer->getStatus());
             return $this->json(['error' => 'Organizer profile not approved. Current status: ' . $organizer->getStatus()], Response::HTTP_FORBIDDEN);
         }
@@ -276,11 +278,14 @@ class TripController extends AbstractController
     }
 
     #[Route('/upload-image', name: 'api_trips_upload_image', methods: ['POST'])]
-    #[IsGranted('ROLE_ORGANIZER')]
     public function uploadImage(Request $request): JsonResponse
     {
+        $user = $this->getCurrentUser($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+        
         try {
-            // Get PHP config for debugging
             error_log('=== UPLOAD IMAGE ENDPOINT START ===');
             error_log('PHP max_file_uploads: ' . ini_get('max_file_uploads'));
             error_log('PHP upload_max_filesize: ' . ini_get('upload_max_filesize'));
@@ -372,14 +377,17 @@ class TripController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_trips_update', methods: ['PUT'])]
-    #[IsGranted('ROLE_ORGANIZER')]
     public function update(int $id, Request $request): JsonResponse
     {
+        $user = $this->getCurrentUser($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+        
         $trip = $this->tripRepo->find($id);
         if (!$trip) return $this->json(['error' => 'Trip not found'], Response::HTTP_NOT_FOUND);
 
-        $user = $this->getUser();
-        if ($trip->getOrganizer()->getUser() !== $user) {
+        if ($trip->getOrganizer()->getUser()->getId() !== $user->getId()) {
             return $this->json(['error' => 'Access denied'], Response::HTTP_FORBIDDEN);
         }
 

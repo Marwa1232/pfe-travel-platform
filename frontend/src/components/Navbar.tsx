@@ -47,6 +47,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import { logout } from '../store/authSlice';
 import { RootState } from '../store';
+import { fixImageUrl } from '../services/api';
 
 interface Destination {
   id: number;
@@ -58,7 +59,30 @@ interface Destination {
 interface Category {
   id: number;
   name: string;
+  typeId?: string;
 }
+
+const CATEGORY_TO_TYPE: Record<string, string> = {
+  // French categories (exact or variations)
+  'Adventure': 'aventure',
+  'Aventure & Randonnée': 'aventure',
+  'Randonnée': 'aventure',
+  'Culturel': 'culturel',
+  'Culturel & Historique': 'culturel',
+  'Historique': 'culturel',
+  'Plage': 'plage',
+  'Plage & Relaxation': 'plage',
+  'Relaxation': 'plage',
+  'Désert': 'desert',
+  'Désert & Safari': 'desert',
+  'Safari': 'desert',
+  'Gastronomie': 'gastro',
+  'Wellness': 'wellness',
+  'Wellness & Spa': 'wellness',
+  'Spa': 'wellness',
+  'Détente': 'wellness',
+  'Bien-être': 'wellness',
+};
 
 // ─── Styled components (identiques) ─────────────────────────────────────────
 
@@ -122,12 +146,14 @@ const LogoText = styled(Typography)(({ theme }) => ({
   [theme.breakpoints.down('sm')]: { fontSize: '2rem' },
 }));
 
-const UserAvatar = styled(Avatar)(({ theme }) => ({
-  width: 40,
-  height: 40,
-  background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+const UserAvatar = styled(Avatar, {
+  shouldForwardProp: (prop) => prop !== 'hasCustomImage',
+})<{ hasCustomImage?: boolean }>(({ theme, hasCustomImage }) => ({
+  width: 55,
+  height: 55,
+  background: hasCustomImage ? 'transparent' : 'linear-gradient(135deg, #00BFA5, #0D47A1)',
   cursor: 'pointer',
-  transition: 'all 0.3s ease',
+  transition: 'all 0.6s ease',
   border: '2px solid transparent',
   '&:hover': {
     transform: 'scale(1.05)',
@@ -214,7 +240,11 @@ const Navbar: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, token } = useSelector((state: RootState) => state.auth);
 
-  const [anchorEl, setAnchorEl]                       = useState<null | HTMLElement>(null);
+  const userAny = user as any;
+  const profilePhotoUrl = userAny?.profile_photo_url ? fixImageUrl(userAny.profile_photo_url) : null;
+  const hasCustomPhoto = Boolean(profilePhotoUrl);
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notifAnchor, setNotifAnchor]                 = useState<null | HTMLElement>(null);
   const [mobileOpen, setMobileOpen]                   = useState(false);
   const [scrolled, setScrolled]                       = useState(false);
@@ -261,9 +291,12 @@ const Navbar: React.FC = () => {
           { id: 3, name: 'Djerba',     country: 'Tunisie' },
         ]);
         setCategories([
-          { id: 1, name: 'Aventure' },
-          { id: 2, name: 'Détente' },
-          { id: 3, name: 'Culturel' },
+          { id: 1, name: 'Aventure & Randonnée' },
+          { id: 2, name: 'Culturel & Historique' },
+          { id: 3, name: 'Plage & Relaxation' },
+          { id: 4, name: 'Désert & Safari' },
+          { id: 5, name: 'Gastronomie' },
+          { id: 6, name: 'Wellness & Spa' },
         ]);
       }
     };
@@ -396,7 +429,15 @@ const Navbar: React.FC = () => {
           <ListItemText primary="Styles de voyage" primaryTypographyProps={{ fontWeight: 700, color: '#1a1a2e' }} />
         </ListItem>
         {categories.map((cat) => (
-          <ListItem button key={cat.id} onClick={() => { navigate(`/trips?category=${encodeURIComponent(cat.name)}`); setMobileOpen(false); }}
+          <ListItem button key={cat.id} onClick={() => { 
+              const typeId = CATEGORY_TO_TYPE[cat.name];
+              if (typeId) {
+                navigate(`/travel-types?type=${typeId}`);
+              } else {
+                navigate(`/trips?category=${encodeURIComponent(cat.name)}`);
+              }
+              setMobileOpen(false); 
+            }}
             sx={{ py: 0.5, '&:hover': { backgroundColor: alpha('#00BFA5', 0.06) } }}>
             <ListItemText primary={cat.name} primaryTypographyProps={{ fontSize: '0.87rem' }} />
           </ListItem>
@@ -524,16 +565,16 @@ const Navbar: React.FC = () => {
                       Lancez-vous à corps perdu ou avancez à pas feutrés… Chaque aventure est le témoin de vos rêves et de vos désirs. Optez pour un style qui vous ressemble.
                     </Typography>
                     <Button
-                      variant="outlined"
+                      variant="contained"
                       size="small"
-                      onClick={() => { navigate('/trips'); setStylesAnchor(null); }}
+                      onClick={() => { navigate('/travel-types?type=detente'); setStylesAnchor(null); }}
                       sx={{
                         borderRadius: 8, textTransform: 'none', fontWeight: 600,
-                        borderColor: '#00BFA5', color: '#00BFA5', fontSize: '0.83rem',
-                        '&:hover': { backgroundColor: alpha('#00BFA5', 0.06), borderColor: '#00BFA5' },
+                        background: '#00BFA5', color: '#fff', fontSize: '0.83rem',
+                        '&:hover': { backgroundColor: '#00A896' },
                       }}
                     >
-                      Voir tous les styles →
+                      Découvrir tous →
                     </Button>
                   </Box>
 
@@ -542,7 +583,15 @@ const Navbar: React.FC = () => {
                     <Grid container columns={3} sx={{ width: 520 }}>
                       {categories.slice(0, 12).map((cat) => (
                         <Grid item xs={1} key={cat.id}>
-                          <StyleItem onClick={() => { navigate(`/trips?category=${encodeURIComponent(cat.name)}`); setStylesAnchor(null); }}>
+                          <StyleItem onClick={() => { 
+                              const typeId = CATEGORY_TO_TYPE[cat.name];
+                              if (typeId) {
+                                navigate(`/travel-types?type=${typeId}`);
+                              } else {
+                                navigate(`/trips?category=${encodeURIComponent(cat.name)}`);
+                              }
+                              setStylesAnchor(null); 
+                            }}>
                             <Box className="style-label" sx={{ fontWeight: 500 }}>
                               {cat.name}
                             </Box>
@@ -604,7 +653,7 @@ const Navbar: React.FC = () => {
                     </IconButton>
                   )}
                   <IconButton onClick={handleMenuOpen} sx={{ p: 0, ml: 0.5 }}>
-                    <UserAvatar>
+                    <UserAvatar hasCustomImage={hasCustomPhoto} src={hasCustomPhoto && profilePhotoUrl ? profilePhotoUrl : undefined}>
                       {token && user
                         ? `${user.first_name?.[0]}${user.last_name?.[0]}`
                         : <AccountCircleIcon sx={{ fontSize: 28, color: 'white' }} />
@@ -619,7 +668,7 @@ const Navbar: React.FC = () => {
           {/* Mobile avatar */}
           {isMobile && (
             <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
-              <UserAvatar>
+              <UserAvatar hasCustomImage={hasCustomPhoto} src={hasCustomPhoto && profilePhotoUrl ? profilePhotoUrl : undefined}>
                 {token && user
                   ? `${user.first_name?.[0]}${user.last_name?.[0]}`
                   : <AccountCircleIcon sx={{ fontSize: 28, color: 'white' }} />

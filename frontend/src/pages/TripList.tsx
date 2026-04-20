@@ -27,6 +27,7 @@ import {
   Badge,
   Divider,
   Breadcrumbs,
+  Stack,
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 import { styled, alpha } from '@mui/material/styles';
@@ -46,9 +47,10 @@ import {
   TrendingUp,
 } from '@mui/icons-material';
 import { tripAPI, destinationAPI } from '../services/api';
-import TripCard from '../components/TripCard';
+import TripCard2 from '../pages/TripCard2';
 
-// Styled components
+// ─── Styled components ────────────────────────────────────────────────────────
+
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: theme.spacing(2),
@@ -60,9 +62,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 
 const FilterSection = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(3),
-  '&:last-child': {
-    marginBottom: 0,
-  },
+  '&:last-child': { marginBottom: 0 },
 }));
 
 const FilterTitle = styled(Typography)(({ theme }) => ({
@@ -82,34 +82,22 @@ const StyledChip = styled(Chip)(({ theme }) => ({
     transform: 'translateY(-2px)',
     boxShadow: '0 4px 12px rgba(0,191,165,0.2)',
   },
-  '&.MuiChip-clickable': {
-    '&:active': {
-      boxShadow: 'none',
-    },
-  },
 }));
 
-const ViewToggle = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  gap: theme.spacing(1),
-  backgroundColor: alpha(theme.palette.primary.main, 0.05),
-  padding: theme.spacing(0.5),
-  borderRadius: theme.spacing(2),
-}));
-
-const StyledBadge = styled(Badge)(({ theme }) => ({
+const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
     backgroundColor: '#00BFA5',
     color: 'white',
   },
 }));
 
-// Types
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface Trip {
   id: number;
   title: string;
   short_description: string;
-  base_price: string;  // Changé de number à string pour correspondre au TripCard
+  base_price: string;
   currency: string;
   duration_days: number;
   difficulty_level: string;
@@ -131,8 +119,9 @@ interface Category {
   trips_count?: number;
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const TripList: React.FC = () => {
-  const navigate = useNavigate(); // Ajout de useNavigate
   const [searchParams] = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -143,7 +132,7 @@ const TripList: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // défaut list pour TripCard2
   const [sortBy, setSortBy] = useState('popular');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -161,7 +150,6 @@ const TripList: React.FC = () => {
     duration: '',
   });
 
-  // Catégories statiques en attendant l'API
   const staticCategories: Category[] = [
     { id: 1, name: 'Aventure', trips_count: 12 },
     { id: 2, name: 'Détente', trips_count: 8 },
@@ -172,18 +160,13 @@ const TripList: React.FC = () => {
 
   useEffect(() => {
     loadInitialData();
-    
-    // Read URL search params and set filters
+
     const urlSearch = searchParams.get('search') || '';
     const urlDestination = searchParams.get('destination') || '';
     const urlCategory = searchParams.get('category') || '';
     const urlMaxPrice = searchParams.get('max_price') || '';
-    const urlIds = searchParams.get('ids') || '';
-    
-    console.log('[TripList] URL params:', { urlSearch, urlDestination, urlCategory, urlMaxPrice, urlIds });
-    
+
     if (urlSearch || urlDestination || urlCategory || urlMaxPrice) {
-      console.log('[TripList] Setting filters from URL');
       setFilters(prev => ({
         ...prev,
         search: urlSearch,
@@ -204,7 +187,7 @@ const TripList: React.FC = () => {
     try {
       const destinationsRes = await destinationAPI.list();
       setDestinations(destinationsRes.data);
-      setCategories(staticCategories); // Utilisation des catégories statiques
+      setCategories(staticCategories);
     } catch (error) {
       console.error('Error loading filters data:', error);
     }
@@ -213,57 +196,39 @@ const TripList: React.FC = () => {
   const loadTrips = async () => {
     try {
       setLoading(true);
-      
-      // Check if we have specific trip IDs from AI search
+
       const urlIds = searchParams.get('ids');
-      
+
       if (urlIds) {
-        // AI search mode: fetch only the specific trips by ID
-        console.log('[TripList] AI search mode - fetching trips by IDs:', urlIds);
-        const tripIds = urlIds.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
-        
+        const tripIds = urlIds
+          .split(',')
+          .map(id => parseInt(id.trim(), 10))
+          .filter(id => !isNaN(id));
+
         if (tripIds.length > 0) {
-          // Fetch each trip by ID
-          const tripsPromises = tripIds.map(id => tripAPI.get(id));
-          const responses = await Promise.all(tripsPromises);
-          const tripsData = responses.map(res => res.data);
-          
-          console.log('[TripList] AI search trips loaded:', tripsData);
-          setTrips(Array.isArray(tripsData) ? tripsData : []);
-          setTotalPages(1); // No pagination for AI search results
+          const responses = await Promise.all(tripIds.map(id => tripAPI.get(id)));
+          setTrips(responses.map(r => r.data));
+          setTotalPages(1);
         } else {
           setTrips([]);
           setTotalPages(1);
         }
       } else {
-        // Regular filter mode: use the standard list endpoint
-        console.log('[TripList] Loading trips with filters:', filters);
-        const params: any = {
-          ...filters,
-          page,
-          limit: 12,
-        };
-        
-        // Add selected destinations and categories to filters
-        if (selectedDestinations.length > 0) {
+        const params: any = { ...filters, page, limit: 12 };
+
+        if (selectedDestinations.length > 0)
           params.destination = selectedDestinations.join(',');
-        }
-        if (selectedCategories.length > 0) {
+        if (selectedCategories.length > 0)
           params.category = selectedCategories.join(',');
-        }
-        
-        // Ajout du tri
         if (sortBy === 'price_asc') params.order = { base_price: 'asc' };
         if (sortBy === 'price_desc') params.order = { base_price: 'desc' };
-        
+
         const response = await tripAPI.list(params);
-        console.log('[TripList] API Response:', response.data);
-        // Handle both Hydra format and regular array response
         const tripsData = response.data['hydra:member'] || response.data;
-        console.log('[TripList] Trips data:', tripsData);
         setTrips(Array.isArray(tripsData) ? tripsData : []);
-        // Calculate total pages from response
-        const totalItems = response.data['hydra:totalItems'] || (Array.isArray(tripsData) ? tripsData.length : 0) || 0;
+        const totalItems =
+          response.data['hydra:totalItems'] ||
+          (Array.isArray(tripsData) ? tripsData.length : 0);
         setTotalPages(Math.ceil(totalItems / 12));
       }
     } catch (error) {
@@ -283,7 +248,7 @@ const TripList: React.FC = () => {
     setSelectedDestinations(prev =>
       prev.includes(destinationId)
         ? prev.filter(id => id !== destinationId)
-        : [...prev, destinationId]
+        : [...prev, destinationId],
     );
     setPage(1);
   };
@@ -292,7 +257,7 @@ const TripList: React.FC = () => {
     setSelectedCategories(prev =>
       prev.includes(categoryId)
         ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
+        : [...prev, categoryId],
     );
     setPage(1);
   };
@@ -313,61 +278,63 @@ const TripList: React.FC = () => {
     setPage(1);
   };
 
-  const activeFiltersCount = 
+  const activeFiltersCount =
     Object.values(filters).filter(v => v && v !== '').length +
     selectedDestinations.length +
     selectedCategories.length;
 
-  // Skeleton loading
-  const renderSkeletons = () => {
-    return Array(6).fill(0).map((_, index) => (
-      <Grid xs={12} sm={6} md={4} key={index}>
-        <Skeleton variant="rectangular" height={350} sx={{ borderRadius: 3 }} />
-      </Grid>
-    ));
-  };
+  // ── Skeleton ─────────────────────────────────────────────────────────────────
+  // Skeleton calqué sur la hauteur fixe de TripCard2 (220px)
+  const renderSkeletons = () =>
+    Array(6)
+      .fill(0)
+      .map((_, index) => (
+        <Box key={index} sx={{ width: '100%', mb: 0 }}>
+          <Skeleton
+            variant="rectangular"
+            height={220}
+            sx={{ borderRadius: 2 }}
+          />
+        </Box>
+      ));
 
+  // ── Filter panel ─────────────────────────────────────────────────────────────
   const FilterContent = () => (
     <Box>
-      {/* Search Bar */}
       <FilterSection>
         <TextField
           fullWidth
           placeholder="Rechercher un voyage..."
           value={filters.search}
-          onChange={(e) => handleFilterChange('search', e.target.value)}
+          onChange={e => handleFilterChange('search', e.target.value)}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
                 <Search sx={{ color: '#00BFA5' }} />
               </InputAdornment>
             ),
-            sx: {
-              borderRadius: 3,
-              backgroundColor: alpha(theme.palette.common.white, 0.8),
-            }
+            sx: { borderRadius: 3, backgroundColor: alpha(theme.palette.common.white, 0.8) },
           }}
         />
       </FilterSection>
 
-      {/* Destinations */}
       <FilterSection>
-        <FilterTitle>
-          <LocationOn sx={{ color: '#00BFA5' }} />
+        <FilterTitle variant="body2">
+          <LocationOn sx={{ color: '#00BFA5', fontSize: 18 }} />
           Destinations
         </FilterTitle>
         <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
-          {destinations.map((dest) => (
+          {destinations.map(dest => (
             <StyledChip
               key={dest.id}
-              label={`${dest.name} ${dest.trips_count ? `(${dest.trips_count})` : ''}`}
+              label={`${dest.name}${dest.trips_count ? ` (${dest.trips_count})` : ''}`}
               onClick={() => handleDestinationToggle(dest.id)}
               color={selectedDestinations.includes(dest.id) ? 'primary' : 'default'}
               variant={selectedDestinations.includes(dest.id) ? 'filled' : 'outlined'}
               size="small"
-              sx={{ 
-                backgroundColor: selectedDestinations.includes(dest.id) 
-                  ? '#00BFA5' 
+              sx={{
+                backgroundColor: selectedDestinations.includes(dest.id)
+                  ? '#00BFA5'
                   : 'transparent',
               }}
             />
@@ -375,17 +342,16 @@ const TripList: React.FC = () => {
         </Box>
       </FilterSection>
 
-      {/* Categories */}
       <FilterSection>
-        <FilterTitle>
-          <Category sx={{ color: '#00BFA5' }} />
+        <FilterTitle variant="body2">
+          <Category sx={{ color: '#00BFA5', fontSize: 18 }} />
           Catégories
         </FilterTitle>
         <Box>
-          {categories.map((cat) => (
+          {categories.map(cat => (
             <StyledChip
               key={cat.id}
-              label={`${cat.name} ${cat.trips_count ? `(${cat.trips_count})` : ''}`}
+              label={`${cat.name}${cat.trips_count ? ` (${cat.trips_count})` : ''}`}
               onClick={() => handleCategoryToggle(cat.id)}
               color={selectedCategories.includes(cat.id) ? 'primary' : 'default'}
               variant={selectedCategories.includes(cat.id) ? 'filled' : 'outlined'}
@@ -395,10 +361,9 @@ const TripList: React.FC = () => {
         </Box>
       </FilterSection>
 
-      {/* Price Range */}
       <FilterSection>
-        <FilterTitle>
-          <AttachMoney sx={{ color: '#00BFA5' }} />
+        <FilterTitle variant="body2">
+          <AttachMoney sx={{ color: '#00BFA5', fontSize: 18 }} />
           Budget
         </FilterTitle>
         <Box sx={{ px: 1 }}>
@@ -423,53 +388,47 @@ const TripList: React.FC = () => {
             }}
           />
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-            <Typography variant="caption" color="text.secondary">
-              {priceRange[0]} DT
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {priceRange[1]} DT
-            </Typography>
+            <Typography variant="caption" color="text.secondary">{priceRange[0]} DT</Typography>
+            <Typography variant="caption" color="text.secondary">{priceRange[1]} DT</Typography>
           </Box>
         </Box>
       </FilterSection>
 
-      {/* Difficulty */}
       <FilterSection>
-        <FilterTitle>
-          <TrendingUp sx={{ color: '#00BFA5' }} />
+        <FilterTitle variant="body2">
+          <TrendingUp sx={{ color: '#00BFA5', fontSize: 18 }} />
           Difficulté
         </FilterTitle>
         <FormGroup>
-          {['Facile', 'Intermédiaire', 'Difficile'].map((level) => (
+          {['Facile', 'Intermédiaire', 'Difficile'].map(level => (
             <FormControlLabel
               key={level}
               control={
                 <Checkbox
                   checked={filters.difficulty === level.toLowerCase()}
-                  onChange={(e) => handleFilterChange('difficulty', e.target.checked ? level.toLowerCase() : '')}
-                  sx={{
-                    color: 'text.secondary',
-                    '&.Mui-checked': { color: '#00BFA5' },
-                  }}
+                  onChange={e =>
+                    handleFilterChange('difficulty', e.target.checked ? level.toLowerCase() : '')
+                  }
+                  sx={{ color: 'text.secondary', '&.Mui-checked': { color: '#00BFA5' } }}
                 />
               }
-              label={level}
+              label={<Typography variant="body2">{level}</Typography>}
             />
           ))}
         </FormGroup>
       </FilterSection>
 
-      {/* Duration */}
       <FilterSection>
-        <FilterTitle>
-          <AccessTime sx={{ color: '#00BFA5' }} />
+        <FilterTitle variant="body2">
+          <AccessTime sx={{ color: '#00BFA5', fontSize: 18 }} />
           Durée
         </FilterTitle>
         <Select
           fullWidth
           value={filters.duration}
-          onChange={(e) => handleFilterChange('duration', e.target.value)}
+          onChange={e => handleFilterChange('duration', e.target.value)}
           displayEmpty
+          size="small"
           sx={{ borderRadius: 2 }}
         >
           <MenuItem value="">Toutes les durées</MenuItem>
@@ -480,15 +439,14 @@ const TripList: React.FC = () => {
         </Select>
       </FilterSection>
 
-      {/* Clear Filters */}
       {activeFiltersCount > 0 && (
         <Button
           fullWidth
           variant="outlined"
           startIcon={<Clear />}
           onClick={clearFilters}
-          sx={{ 
-            mt: 2, 
+          sx={{
+            mt: 2,
             borderRadius: 2,
             borderColor: alpha(theme.palette.primary.main, 0.3),
             color: theme.palette.primary.main,
@@ -504,21 +462,20 @@ const TripList: React.FC = () => {
     </Box>
   );
 
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
-      pt: 4,
-      pb: 6,
-    }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
+        pt: 4,
+        pb: 6,
+      }}
+    >
       <Container maxWidth="xl">
         {/* Breadcrumbs */}
         <Breadcrumbs sx={{ mb: 3, color: 'text.secondary' }}>
-          <Link 
-            color="inherit" 
-            to="/" 
-            style={{ cursor: 'pointer', textDecoration: 'none' }}
-          >
+          <Link to="/" style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}>
             Accueil
           </Link>
           <Typography color="text.primary">Voyages</Typography>
@@ -534,7 +491,7 @@ const TripList: React.FC = () => {
           </Typography>
         </Box>
 
-        {/* Mobile Filter Button */}
+        {/* Mobile Filter FAB */}
         {isMobile && (
           <Fab
             variant="extended"
@@ -555,18 +512,13 @@ const TripList: React.FC = () => {
           </Fab>
         )}
 
-        {/* Mobile Filter Drawer */}
+        {/* Mobile Drawer */}
         <Drawer
           anchor="left"
           open={mobileFilterOpen}
           onClose={() => setMobileFilterOpen(false)}
           PaperProps={{
-            sx: {
-              width: '85%',
-              maxWidth: 360,
-              p: 3,
-              backgroundColor: 'background.default',
-            }
+            sx: { width: '85%', maxWidth: 360, p: 3, backgroundColor: 'background.default' },
           }}
         >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -620,11 +572,10 @@ const TripList: React.FC = () => {
               </Box>
 
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                {/* Sort */}
                 <FormControl size="small" sx={{ minWidth: 150 }}>
                   <Select
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
+                    onChange={e => setSortBy(e.target.value)}
                     displayEmpty
                     sx={{ borderRadius: 2 }}
                     startAdornment={
@@ -640,9 +591,17 @@ const TripList: React.FC = () => {
                   </Select>
                 </FormControl>
 
-                {/* View Toggle - Desktop only */}
+                {/* View Toggle */}
                 {!isTablet && (
-                  <ViewToggle>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 1,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                      padding: '4px',
+                      borderRadius: 2,
+                    }}
+                  >
                     <IconButton
                       size="small"
                       onClick={() => setViewMode('grid')}
@@ -650,7 +609,10 @@ const TripList: React.FC = () => {
                         backgroundColor: viewMode === 'grid' ? 'primary.main' : 'transparent',
                         color: viewMode === 'grid' ? 'white' : 'text.secondary',
                         '&:hover': {
-                          backgroundColor: viewMode === 'grid' ? 'primary.dark' : alpha(theme.palette.primary.main, 0.1),
+                          backgroundColor:
+                            viewMode === 'grid'
+                              ? 'primary.dark'
+                              : alpha(theme.palette.primary.main, 0.1),
                         },
                       }}
                     >
@@ -663,22 +625,26 @@ const TripList: React.FC = () => {
                         backgroundColor: viewMode === 'list' ? 'primary.main' : 'transparent',
                         color: viewMode === 'list' ? 'white' : 'text.secondary',
                         '&:hover': {
-                          backgroundColor: viewMode === 'list' ? 'primary.dark' : alpha(theme.palette.primary.main, 0.1),
+                          backgroundColor:
+                            viewMode === 'list'
+                              ? 'primary.dark'
+                              : alpha(theme.palette.primary.main, 0.1),
                         },
                       }}
                     >
                       <ViewList />
                     </IconButton>
-                  </ViewToggle>
+                  </Box>
                 )}
               </Box>
             </Paper>
 
-            {/* Trip Cards */}
+            {/* ── Trip Cards ── */}
             {loading ? (
-              <Grid container spacing={3}>
+              // Skeletons à hauteur fixe 220px comme TripCard2
+              <Stack spacing={2}>
                 {renderSkeletons()}
-              </Grid>
+              </Stack>
             ) : trips.length === 0 ? (
               <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
                 <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -695,16 +661,24 @@ const TripList: React.FC = () => {
                   Effacer les filtres
                 </Button>
               </Paper>
+            ) : viewMode === 'list' ? (
+              // ── MODE LIST : cartes empilées, largeur 100%, hauteur fixe ──
+              <Stack spacing={2}>
+                {trips.map(trip => (
+                  <TripCard2 key={trip.id} trip={trip} />
+                ))}
+              </Stack>
             ) : (
-              <Grid container spacing={3}>
-                {trips.map((trip) => (
-                  <Grid 
-                    xs={12} 
-                    sm={viewMode === 'grid' ? 6 : 12} 
-                    md={viewMode === 'grid' ? 4 : 12} 
-                    key={trip.id}
-                  >
-                    <TripCard trip={trip} />
+              // ── MODE GRID : 2 colonnes en grille ──
+              // En mode grid, TripCard2 n'est pas idéale (conçue pour list),
+              // mais on force quand même une hauteur fixe via le wrapper
+              <Grid container spacing={2}>
+                {trips.map(trip => (
+                  <Grid xs={12} sm={6} key={trip.id}>
+                    {/* Wrapper avec overflow hidden pour bloquer tout débordement */}
+                    <Box sx={{ width: '100%', height: 220, overflow: 'hidden' }}>
+                      <TripCard2 trip={trip} />
+                    </Box>
                   </Grid>
                 ))}
               </Grid>
@@ -719,11 +693,7 @@ const TripList: React.FC = () => {
                   onChange={(_, value) => setPage(value)}
                   color="primary"
                   size={isMobile ? 'medium' : 'large'}
-                  sx={{
-                    '& .MuiPaginationItem-root': {
-                      borderRadius: 2,
-                    },
-                  }}
+                  sx={{ '& .MuiPaginationItem-root': { borderRadius: 2 } }}
                 />
               </Box>
             )}

@@ -576,7 +576,7 @@ const Moments: React.FC = () => {
           <Stack spacing={4}>
             {moments.map((moment) => {
               const mediaItems = Array.isArray(moment.media) ? moment.media : [];
-              const location = moment.trip?.destination || 'Unknown destination';
+              const location = moment.destination || moment.trip?.destination || 'Unknown destination';
               const views = Math.floor(Math.random() * 5000) + 100; // vue fictive
 
               return (
@@ -598,6 +598,7 @@ const Moments: React.FC = () => {
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                       <Stack direction="row" spacing={2} alignItems="center">
                         <Avatar
+                          src={moment.user?.profile_photo_url ? fixImageUrl(moment.user.profile_photo_url) : undefined}
                           sx={{
                             bgcolor: accentColor,
                             width: 56,
@@ -614,11 +615,21 @@ const Moments: React.FC = () => {
                           </Typography>
                           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                             <Typography variant="caption" sx={{ fontSize: 13, color: textSecondary }}>
+                              {moment.trip?.title || location}
+                            </Typography>
+                            {moment.trip?.agency_name && (
+                              <>
+                                <Typography variant="caption" sx={{ fontSize: 13, color: textSecondary }}>•</Typography>
+                                <Typography variant="caption" sx={{ fontSize: 13, color: '#00BFA5', fontWeight: 600 }}>
+                                  {moment.trip.agency_name}
+                                </Typography>
+                              </>
+                            )}
+                            <Typography variant="caption" sx={{ fontSize: 13, color: textSecondary }}>•</Typography>
+                            <Typography variant="caption" sx={{ fontSize: 13, color: textSecondary }}>
                               {location}
                             </Typography>
-                            <Typography variant="caption" sx={{ fontSize: 13, color: textSecondary }}>
-                              •
-                            </Typography>
+                            <Typography variant="caption" sx={{ fontSize: 13, color: textSecondary }}>•</Typography>
                             <Typography variant="caption" sx={{ fontSize: 13, color: textSecondary }}>
                               {formatRelativeTime(moment.created_at)}
                             </Typography>

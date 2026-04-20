@@ -469,13 +469,13 @@ const Home: React.FC = () => {
         <Box
           sx={{
             position: 'relative',
-            width: 'min(1200px, calc(100% - 24px))', 
+            width: 'min(1300px, calc(100% - 24px))', 
             mx: 'auto',
             mt: { xs: 10, md: 12 },
             height: { xs: '62vh', md: '70vh' },
-            minHeight: { xs: 300, md: 380 },
-            maxHeight: 600,
-            borderRadius: { xs: '46px', md: '54px' },
+            minHeight: { xs: 400, md: 480 },
+            maxHeight: 900,
+            borderRadius: { xs: '36px', md: '36x' },
             overflow: 'hidden',
           }}
         >

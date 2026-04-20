@@ -9,6 +9,7 @@ interface User {
   roles: string[];
   status_organizer?: string;
   interests?: string[];
+  profile_photo_url?: string | null;
 }
 
 interface AuthState {
@@ -18,8 +19,20 @@ interface AuthState {
   error: string | null;
 }
 
+const getStoredUser = () => {
+  const stored = localStorage.getItem('user');
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 const initialState: AuthState = {
-  user: null,
+  user: getStoredUser(),
   token: localStorage.getItem('token'),
   loading: false,
   error: null,
@@ -30,6 +43,7 @@ export const login = createAsyncThunk(
   async (credentials: { email: string; password: string }) => {
     const response = await authAPI.login(credentials);
     localStorage.setItem('token', response.data.token);
+    localStorage.setItem('user', JSON.stringify(response.data.user));
     return response.data;
   }
 );
@@ -50,6 +64,7 @@ const authSlice = createSlice({
       state.user = null;
       state.token = null;
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
     },
   },
   extraReducers: (builder) => {

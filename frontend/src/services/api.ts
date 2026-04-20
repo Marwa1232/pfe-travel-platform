@@ -58,6 +58,10 @@ export const userAPI = {
 };
 
 export const organizerAPI = {
+  getStats: () => api.get('/organizer/stats'),
+  getBookings: (params?: any) => api.get('/organizer/bookings', { params }),
+  getTrips: (params?: any) => api.get('/organizer/trips', { params }),
+  getReviews: (params?: any) => api.get('/organizer/reviews', { params }),
   updateProfile: (data: any) => api.put('/organizer/profile', data),
 };
 

@@ -77,11 +77,20 @@ class OrganizerApiController extends AbstractController
         $user = $this->getCurrentUser($request);
         
         if (!$user) {
+            error_log('STATS: No user found');
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
         
+        error_log('STATS: User ID: ' . $user->getId() . ', Email: ' . $user->getEmail());
+        
         // Get organizer profile
         $organizerProfile = $this->em->getRepository(OrganizerProfile::class)->findOneBy(['user' => $user]);
+        
+        if (!$organizerProfile) {
+            error_log('STATS: No organizer profile for user');
+        } else {
+            error_log('STATS: Organizer profile ID: ' . $organizerProfile->getId());
+        }
         
         if (!$organizerProfile) {
             return $this->json(['error' => 'Organizer profile not found'], Response::HTTP_NOT_FOUND);
@@ -89,10 +98,13 @@ class OrganizerApiController extends AbstractController
         
         // Get trips for this organizer
         $trips = $this->tripRepo->findBy(['organizer' => $organizerProfile]);
+        error_log('STATS: Found ' . count($trips) . ' trips for organizer');
         $tripIds = array_map(fn($t) => $t->getId(), $trips);
+        error_log('STATS: Trip IDs: ' . implode(', ', $tripIds));
         
         // Get bookings for these trips
         $bookings = empty($tripIds) ? [] : $this->bookingRepo->findBy(['trip' => $tripIds]);
+        error_log('STATS: Found ' . count($bookings) . ' bookings for these trips');
         
         $totalRevenue = 0;
         $confirmedBookings = 0;
@@ -107,12 +119,65 @@ class OrganizerApiController extends AbstractController
             }
         }
         
+        // Get monthly revenue for last 6 months
+        $monthlyRevenue = [];
+        $monthlyBookings = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = new \DateTime();
+            $month->modify("-$i months");
+            $monthStr = $month->format('Y-m');
+            $monthLabel = $month->format('M');
+            
+            $mRev = 0;
+            $mBook = 0;
+            foreach ($bookings as $booking) {
+                $created = $booking->getCreatedAt();
+                if ($created && $created->format('Y-m') === $monthStr) {
+                    $mBook++;
+                    if ($booking->getStatus() === 'CONFIRMED') {
+                        $mRev += (float)$booking->getTotalPrice();
+                    }
+                }
+            }
+            $monthlyRevenue[] = ['month' => $monthLabel, 'rev' => $mRev, 'prev' => 0];
+            $monthlyBookings[] = ['month' => $monthLabel, 'bookings' => $mBook];
+        }
+        
+        // Get booking status breakdown
+        $statusBreakdown = [
+            ['name' => 'Confirmées', 'value' => $confirmedBookings, 'color' => '#0EA5A0'],
+            ['name' => 'En attente', 'value' => $pendingBookings, 'color' => '#D97706'],
+            ['name' => 'Annulées', 'value' => 0, 'color' => '#DC2626'],
+        ];
+        
+        // Get weekly booking data for the last 7 days
+        $weeklyData = [];
+        $days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = new \DateTime();
+            $date->modify("-$i days");
+            $dateStr = $date->format('Y-m-d');
+            
+            $dayBookings = 0;
+            foreach ($bookings as $booking) {
+                $created = $booking->getCreatedAt();
+                if ($created && $created->format('Y-m-d') === $dateStr) {
+                    $dayBookings++;
+                }
+            }
+            $weeklyData[] = ['d' => $days[6 - $i], 'v' => $dayBookings];
+        }
+        
         return $this->json([
             'total_trips' => count($trips),
             'total_bookings' => count($bookings),
             'confirmed_bookings' => $confirmedBookings,
             'pending_bookings' => $pendingBookings,
             'total_revenue' => $totalRevenue,
+            'monthly_revenue' => $monthlyRevenue,
+            'monthly_bookings' => $monthlyBookings,
+            'status_breakdown' => $statusBreakdown,
+            'weekly_data' => $weeklyData,
         ]);
     }
 

@@ -6,6 +6,7 @@ use App\Entity\Booking;
 use App\Entity\User;
 use App\Entity\Notification;
 use App\Service\CancellationPolicyService;
+use App\Service\JwtService;
 use App\Service\NotificationService;
 use App\Repository\BookingRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,16 +23,52 @@ class BookingApiController extends AbstractController
         private EntityManagerInterface $em,
         private BookingRepository $bookingRepo,
         private CancellationPolicyService $policyService,
-        private NotificationService $notificationService
+        private NotificationService $notificationService,
+        private JwtService $jwtService
     ) {}
 
-    #[Route('/{id}/cancel-options', name: 'api_bookings_cancel_options', methods: ['GET'])]
-    public function getCancelOptions(int $id): JsonResponse
+    private function getAuthenticatedUser(Request $request): ?User
     {
+        $user = $this->getUser();
+        if ($user instanceof User) {
+            return $user;
+        }
+        
+        $authHeader = $request->headers->get('Authorization');
+        if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
+            try {
+                $token = substr($authHeader, 7);
+                $payload = $this->jwtService->decodeToken($token);
+                if ($payload && isset($payload['id'])) {
+                    return $this->em->getRepository(User::class)->find($payload['id']);
+                }
+            } catch (\Exception $e) {
+                error_log('JWT decode error: ' . $e->getMessage());
+            }
+        }
+        
+        return null;
+    }
+
+    #[Route('/{id}/cancel-options', name: 'api_bookings_cancel_options', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function getCancelOptions(int $id, Request $request): JsonResponse
+    {
+        $user = $this->getAuthenticatedUser($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+        
         $booking = $this->bookingRepo->find($id);
         
         if (!$booking) {
             return $this->json(['error' => 'Booking not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($booking->getUser()->getId() !== $user->getId()) {
+            return $this->json(['error' => 'Access denied'], Response::HTTP_FORBIDDEN);
         }
 
         $trip = $booking->getTrip();
@@ -56,11 +93,14 @@ class BookingApiController extends AbstractController
         return $this->json($options);
     }
 
-    #[Route('/{id}/cancel', name: 'api_bookings_cancel', methods: ['POST'])]
+    #[Route('/{id}/cancel', name: 'api_bookings_cancel', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function cancel(Request $request, int $id): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user instanceof User) {
+        $user = $this->getAuthenticatedUser($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+        if (!$user) {
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 

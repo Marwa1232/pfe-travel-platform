@@ -23,6 +23,8 @@ import OrganizerRequest from './pages/OrganizerRequest';
 import Terms from './pages/Terms';
 import Contact from './pages/Contact';
 import Moments from './pages/Moments';
+import TravelTypesArticle from './pages/Traveltypesarticle';
+
 
 // Organizer pages
 import OrganizerDashboard from './pages/organizer/OrganizerDashboard';
@@ -30,7 +32,7 @@ import OrganizerTrips from './pages/organizer/OrganizerTrips';
 import TripForm from './pages/organizer/TripForm';
 import OrganizerBookings from './pages/organizer/OrganizerBookings';
 import OrganizerReviews from './pages/organizer/OrganizerReviews';
-
+import OrganizerCalendar from './pages/organizer/Organizercalendar';
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
@@ -56,6 +58,7 @@ function App() {
                 <Route path="/trips/:id" element={<TripDetail />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/travel-types" element={<TravelTypesArticle />} />
 
                 {/* User routes */}
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -75,7 +78,7 @@ function App() {
                 <Route path="/organizer/trips/:id/edit" element={<TripForm />} />
                 <Route path="/organizer/bookings" element={<OrganizerBookings />} />
                 <Route path="/organizer/reviews" element={<OrganizerReviews />} />
-
+                <Route path="/organizer/calendar" element={<OrganizerCalendar />} />
                 {/* Admin routes */}
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/users" element={<AdminUsers />} />

@@ -1,960 +1,653 @@
+// ═══════════════════════════════════════════════════════
+//  Dashboard.tsx  — User Dashboard (redesigned)
+// ═══════════════════════════════════════════════════════
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  Container,
-  Typography,
-  Box,
-  Paper,
-  Card,
-  CardContent,
-  Button,
-  Grid,
-  Avatar,
-  Chip,
-  CircularProgress,
-  Divider,
-  LinearProgress,
-  IconButton,
-  Fade,
-  Zoom,
-  Grow,
-  Badge,
-  Tooltip,
-  alpha,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
+  Typography, Box, Paper, Card, Button, Grid, Avatar,
+  Chip, CircularProgress, LinearProgress, IconButton,
+  Badge, Tooltip, Divider, Menu, MenuItem,
+  ListItemIcon, ListItemText,
 } from '@mui/material';
-import { styled, keyframes } from '@mui/material/styles';
+import { styled, alpha, keyframes } from '@mui/material/styles';
 import {
-  FlightTakeoff,
-  History,
-  Favorite,
-  TrendingUp,
-  CalendarMonth,
-  LocationOn,
-  AccessTime,
-  Star,
-  EmojiEvents,
-  Work,
-  Public,
-  BusinessCenter,
-  ArrowForward,
-  Edit,
-  Explore,
-  BeachAccess,
-  Terrain,
-  Restaurant,
-  Spa,
-  DirectionsBike,
-  Diamond,
-  FamilyRestroom,
-  CheckCircle,
-  Notifications,
-  Settings,
-  Logout,
-  Dashboard as DashboardIcon,
-  Timeline,
-  RocketLaunch,
-  WorkspacePremium,
-  Celebration,
-  AttachMoney,
-  Menu as MenuIcon,
-  Close as CloseIcon,
-  BookmarkBorder as BookingsIcon,
+  FlightTakeoff, History, Favorite, TrendingUp,
+  CalendarMonth, LocationOn, AccessTime, Star,
+  EmojiEvents, BusinessCenter, ArrowForward, Edit,
+  Diamond, FamilyRestroom, CheckCircle, Notifications,
+  Logout, Dashboard as DashboardIcon, RocketLaunch,
+  WorkspacePremium, Celebration, AttachMoney, Menu as MenuIcon,
+  BookmarkBorder as BookingsIcon, Explore, BeachAccess,
+  Terrain, Restaurant, Spa, DirectionsBike,
+  ArrowUpward, People, Bookmark,
 } from '@mui/icons-material';
 import { logout } from '../store/authSlice';
-import { tripAPI, recommendationAPI } from '../services/api';
+import { tripAPI, recommendationAPI, fixImageUrl } from '../services/api';
 import { RootState } from '../store';
-import TripCard from '../components/TripCard';
 
-// Animations
-const float = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-`;
-
-const pulse = keyframes`
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-`;
-
-// Styled components
-const GlassPaper = styled(Paper)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.9)',
-  backdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255,255,255,0.2)',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
-}));
-
-const StatCard = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(2),
-  borderRadius: theme.spacing(2),
-  background: 'rgba(255, 255, 255, 0.8)',
-  backdropFilter: 'blur(10px)',
-  border: '1px solid rgba(0,191,165,0.1)',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    transform: 'translateY(-4px)',
-    boxShadow: '0 12px 40px rgba(0,191,165,0.15)',
-    borderColor: '#00BFA5',
-  },
-}));
-
-const TimelineItem = styled(Box)(({ theme }) => ({
-  position: 'relative',
-  paddingLeft: theme.spacing(4),
-  paddingBottom: theme.spacing(3),
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 2,
-    background: `linear-gradient(180deg, ${theme.palette.primary.main}, ${alpha(theme.palette.primary.main, 0.1)})`,
-  },
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    left: -5,
-    top: 0,
-    width: 12,
-    height: 12,
-    borderRadius: '50%',
-    background: theme.palette.primary.main,
-    border: '3px solid white',
-    boxShadow: `0 0 0 2px ${theme.palette.primary.main}`,
-  },
-}));
-
-const InterestChip = styled(Chip)(({ theme }) => ({
-  margin: theme.spacing(0.5),
-  borderRadius: theme.spacing(2),
-  padding: theme.spacing(1, 0.5),
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    transform: 'translateY(-2px)',
-    boxShadow: '0 4px 12px rgba(0,191,165,0.2)',
-  },
-  '&.selected': {
-    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
-    color: 'white',
-  },
-}));
-
-const BadgeIcon = styled(Box)(({ theme }) => ({
-  width: 60,
-  height: 60,
-  borderRadius: '50%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: '2rem',
-  animation: `${float} 3s ease-in-out infinite`,
-}));
-
-// Available interests with icons
-const availableInterests = [
-  { value: 'aventure', label: 'Aventure', icon: <Terrain />, color: '#FF6B6B' },
-  { value: 'plage', label: 'Plage', icon: <BeachAccess />, color: '#4ECDC4' },
-  { value: 'culture', label: 'Culture', icon: <Explore />, color: '#45B7D1' },
-  { value: 'gastronomie', label: 'Gastronomie', icon: <Restaurant />, color: '#FFA07A' },
-  { value: 'nature', label: 'Nature', icon: <Spa />, color: '#95E1D3' },
-  { value: 'sport', label: 'Sport', icon: <DirectionsBike />, color: '#FFD93D' },
-  { value: 'luxe', label: 'Luxe', icon: <Diamond />, color: '#B983FF' },
-  { value: 'famille', label: 'Famille', icon: <FamilyRestroom />, color: '#94B49F' },
-];
-
-// Badges based on travel count
-const getBadge = (tripCount: number) => {
-  if (tripCount >= 20) return {
-    name: 'Explorateur Légendaire',
-    color: '#FFD700',
-    icon: <WorkspacePremium sx={{ fontSize: 40 }} />,
-    next: null,
-  };
-  if (tripCount >= 10) return {
-    name: 'Maître Aventurier',
-    color: '#C0C0C0',
-    icon: <EmojiEvents sx={{ fontSize: 40 }} />,
-    next: { target: 20, name: 'Explorateur Légendaire' },
-  };
-  if (tripCount >= 5) return {
-    name: 'Voyageur Confirmé',
-    color: '#CD7F32',
-    icon: <Celebration sx={{ fontSize: 40 }} />,
-    next: { target: 10, name: 'Maître Aventurier' },
-  };
-  if (tripCount >= 1) return {
-    name: 'Explorateur Débutant',
-    color: '#00BFA5',
-    icon: <RocketLaunch sx={{ fontSize: 40 }} />,
-    next: { target: 5, name: 'Voyageur Confirmé' },
-  };
-  return {
-    name: 'Nouveau Voyageur',
-    color: '#64748B',
-    icon: <FlightTakeoff sx={{ fontSize: 40 }} />,
-    next: { target: 1, name: 'Explorateur Débutant' },
-  };
+// ─── Design tokens ────────────────────────────────────
+const T = {
+  teal:   '#0EA5A0',
+  navy:   '#0F2D5C',
+  slate:  '#64748B',
+  ink:    '#0F172A',
+  paper:  '#F8FAFC',
+  white:  '#FFFFFF',
+  border: '#E2E8F0',
+  green:  '#16A34A',
+  amber:  '#D97706',
+  red:    '#DC2626',
+  purple: '#7C3AED',
 };
 
-const Dashboard: React.FC = () => {
-  const dispatch = useDispatch();
+// ─── Keyframes ────────────────────────────────────────
+const fadeUp = keyframes`
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+`;
+
+// ─── Styled ───────────────────────────────────────────
+const Page = styled(Box)({
+  minHeight: '100vh',
+  backgroundColor: T.paper,
+  padding: '28px 0 64px',
+});
+
+const SCard = styled(Paper)({
+  backgroundColor: T.white,
+  borderRadius: 16,
+  border: `1px solid ${T.border}`,
+  boxShadow: 'none',
+});
+
+const TimelineDot = styled(Box)({
+  position: 'absolute',
+  left: -6,
+  top: 4,
+  width: 12,
+  height: 12,
+  borderRadius: '50%',
+  backgroundColor: T.teal,
+  border: `2px solid ${T.white}`,
+  boxShadow: `0 0 0 2px ${alpha(T.teal, 0.3)}`,
+});
+
+// ─── Interests config ─────────────────────────────────
+const INTERESTS = [
+  { value: 'aventure',     label: 'Aventure',    icon: <Terrain />,        color: '#16A34A' },
+  { value: 'plage',        label: 'Plage',        icon: <BeachAccess />,    color: '#0EA5E9' },
+  { value: 'culture',      label: 'Culture',      icon: <Explore />,        color: '#7C3AED' },
+  { value: 'gastronomie',  label: 'Gastronomie',  icon: <Restaurant />,     color: '#DC2626' },
+  { value: 'nature',       label: 'Nature',       icon: <Spa />,            color: '#0EA5A0' },
+  { value: 'sport',        label: 'Sport',        icon: <DirectionsBike />, color: '#D97706' },
+  { value: 'luxe',         label: 'Luxe',         icon: <Diamond />,        color: '#9333EA' },
+  { value: 'famille',      label: 'Famille',      icon: <FamilyRestroom />, color: '#0F2D5C' },
+];
+
+// ─── Badge config ─────────────────────────────────────
+const getBadge = (n: number) => {
+  if (n >= 20) return { name: 'Explorateur Légendaire', color: '#D97706', icon: <WorkspacePremium />, next: null };
+  if (n >= 10) return { name: 'Maître Aventurier',      color: '#7C3AED', icon: <EmojiEvents />,      next: { target: 20, name: 'Explorateur Légendaire' } };
+  if (n >= 5)  return { name: 'Voyageur Confirmé',      color: T.teal,    icon: <Celebration />,      next: { target: 10, name: 'Maître Aventurier' } };
+  if (n >= 1)  return { name: 'Explorateur Débutant',   color: '#16A34A', icon: <RocketLaunch />,     next: { target: 5,  name: 'Voyageur Confirmé' } };
+  return        { name: 'Nouveau Voyageur',              color: T.slate,   icon: <FlightTakeoff />,    next: { target: 1,  name: 'Explorateur Débutant' } };
+};
+
+// ═══════════════════════════════════════════════════════
+//  TRIP CARD  (redesigned, standalone)
+// ═══════════════════════════════════════════════════════
+export const TripCard: React.FC<{ trip: any }> = ({ trip }) => {
   const navigate = useNavigate();
+  const [saved, setSaved] = useState(false);
+  const imgSrc = trip.cover_image
+    ? (typeof fixImageUrl === 'function' ? fixImageUrl(trip.cover_image) : trip.cover_image)
+    : `https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&q=75`;
+
+  return (
+    <Box
+      onClick={() => navigate(`/trips/${trip.id}`)}
+      sx={{
+        borderRadius: '14px',
+        overflow: 'hidden',
+        border: `1px solid ${T.border}`,
+        bgcolor: T.white,
+        cursor: 'pointer',
+        transition: 'all 0.22s ease',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: '0 16px 40px rgba(0,0,0,0.1)',
+          borderColor: alpha(T.teal, 0.4),
+          '& .trip-img': { transform: 'scale(1.05)' },
+        },
+      }}
+    >
+      {/* Image */}
+      <Box sx={{ height: 175, overflow: 'hidden', position: 'relative' }}>
+        <Box
+          component="img"
+          className="trip-img"
+          src={imgSrc}
+          alt={trip.title}
+          sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.4s ease' }}
+          onError={(e: any) => { e.target.src = 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=75'; }}
+        />
+        {/* Overlay gradient */}
+        <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,18,28,0.55) 0%, transparent 55%)' }} />
+
+        {/* Save button */}
+        <IconButton
+          size="small"
+          onClick={e => { e.stopPropagation(); setSaved(s => !s); }}
+          sx={{
+            position: 'absolute', top: 10, right: 10,
+            width: 32, height: 32,
+            bgcolor: 'rgba(255,255,255,0.15)',
+            backdropFilter: 'blur(6px)',
+            border: '1px solid rgba(255,255,255,0.25)',
+            color: saved ? '#F59E0B' : T.white,
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
+          }}
+        >
+          {saved ? <Bookmark sx={{ fontSize: 15 }} /> : <BookingsIcon sx={{ fontSize: 15 }} />}
+        </IconButton>
+
+        {/* Duration badge */}
+        {trip.duration_days && (
+          <Box sx={{
+            position: 'absolute', top: 10, left: 10,
+            px: 1.2, py: 0.3, borderRadius: 10,
+            bgcolor: 'rgba(15,18,28,0.55)', backdropFilter: 'blur(6px)',
+          }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 700, color: T.white }}>
+              {trip.duration_days}j
+            </Typography>
+          </Box>
+        )}
+
+        {/* Price + destination overlay */}
+        <Box sx={{ position: 'absolute', bottom: 10, left: 12, right: 12 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.3 }}>
+            <LocationOn sx={{ fontSize: 12, color: alpha(T.white, 0.8) }} />
+            <Typography sx={{ fontSize: 11, color: alpha(T.white, 0.85), fontWeight: 500 }}>
+              {trip.destinations?.map((d: any) => d.name || d).join(', ') || trip.destination || '—'}
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Body */}
+      <Box sx={{ p: '12px 14px 14px' }}>
+        <Typography sx={{ fontSize: 14, fontWeight: 700, color: T.ink, mb: 0.5, lineHeight: 1.3,
+          overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+          {trip.title}
+        </Typography>
+
+        {trip.short_description && (
+          <Typography sx={{ fontSize: 12, color: T.slate, lineHeight: 1.6, mb: 1.2,
+            overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            {trip.short_description}
+          </Typography>
+        )}
+
+        <Divider sx={{ mb: 1.2, borderColor: T.border }} />
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography sx={{ fontSize: 10, color: T.slate, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              À partir de
+            </Typography>
+            <Typography sx={{ fontSize: 17, fontWeight: 800, color: T.teal, lineHeight: 1 }}>
+              {Number(trip.base_price || 0).toLocaleString('fr-TN')}
+              <Typography component="span" sx={{ fontSize: 11, fontWeight: 600, color: T.slate, ml: 0.4 }}>
+                {trip.currency || 'TND'}
+              </Typography>
+            </Typography>
+          </Box>
+
+          {trip.average_rating > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4,
+              px: 1, py: 0.4, borderRadius: 8, bgcolor: alpha('#F59E0B', 0.09) }}>
+              <Star sx={{ fontSize: 12, color: '#F59E0B' }} />
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#B45309' }}>
+                {Number(trip.average_rating).toFixed(1)}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+// ═══════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════
+const Dashboard: React.FC = () => {
+  const dispatch  = useDispatch();
+  const navigate  = useNavigate();
   const { user, token } = useSelector((state: RootState) => state.auth);
-  
-  // Menu state
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
-  
+  const userAny   = user as any;
+  const photoUrl  = userAny?.profile_photo_url ? fixImageUrl(userAny.profile_photo_url) : null;
+
+  const [anchorEl, setAnchorEl]           = useState<null | HTMLElement>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [upcomingTrips, setUpcomingTrips] = useState<any[]>([]);
-  const [pastTrips, setPastTrips] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [interests, setInterests] = useState<string[]>(user?.interests || []);
+  const [upcomingTrips, setUpcomingTrips]  = useState<any[]>([]);
+  const [pastTrips, setPastTrips]          = useState<any[]>([]);
+  const [loading, setLoading]              = useState(true);
+  const [interests, setInterests]          = useState<string[]>(user?.interests || []);
   const [editingInterests, setEditingInterests] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      navigate('/login');
-      return;
-    }
+    if (!token) { navigate('/login'); return; }
     loadData();
   }, [token]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-
-      // Load user's bookings
       try {
-        const bookingsResponse = await fetch('http://localhost:8000/api/user/bookings/upcoming', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+        const res = await fetch('http://localhost:8000/api/user/bookings/upcoming', {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
-        
-        if (bookingsResponse.ok) {
-          const bookingsData = await bookingsResponse.json();
-          setUpcomingTrips(bookingsData.upcoming || []);
-          setPastTrips(bookingsData.past || []);
-        } else {
-          const errorText = await bookingsResponse.text();
-          console.error('Bookings error:', bookingsResponse.status, errorText);
+        if (res.ok) {
+          const d = await res.json();
+          setUpcomingTrips(d.upcoming || []);
+          setPastTrips(d.past || []);
         }
-      } catch (bookingError: any) {
-        console.error('Bookings error:', bookingError);
-      }
+      } catch (e) { console.error(e); }
 
-      // Load recommendations
       let recs: any[] = [];
-      if (user?.id) {
-        try {
-          const recResponse = await recommendationAPI.getTrending(4);
-          console.log('Recommendations response:', recResponse.data);
-          if (recResponse.data && recResponse.data.trending && recResponse.data.trending.length > 0) {
-            const tripIds = recResponse.data.trending.map((r: any) => r.trip.id);
-            const trips = await Promise.all(
-              tripIds.map((id: number) =>
-                tripAPI.get(id).then((res) => res.data)
-              )
-            );
-            recs = trips;
-          }
-        } catch (recError: any) {
-          console.error('Recommendations error:', recError?.response?.data || recError.message);
-          console.log('AI service not available, loading random trips');
+      try {
+        const r = await recommendationAPI.getTrending(4);
+        if (r.data?.trending?.length) {
+          recs = await Promise.all(r.data.trending.map((x: any) => tripAPI.get(x.trip.id).then((res: any) => res.data)));
         }
-      }
-
-      // If no recommendations, load random trips from API
-      if (recs.length === 0) {
+      } catch (_) {}
+      if (!recs.length) {
         try {
-          const response = await tripAPI.list({ limit: 4 });
-          if (response.data['hydra:member']) {
-            recs = response.data['hydra:member'];
-          }
-        } catch (tripError) {
-          console.log('Could not load trips');
-        }
+          const r = await tripAPI.list({ limit: 4 });
+          recs = r.data['hydra:member'] || [];
+        } catch (_) {}
       }
-
       setRecommendations(recs);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  const handleLogout = () => {
-    dispatch(logout() as any);
-    navigate('/');
-  };
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleDrawerToggle = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-
-  const handleInterestToggle = (interest: string) => {
-    setInterests(prev => 
-      prev.includes(interest)
-        ? prev.filter(i => i !== interest)
-        : [...prev, interest]
-    );
-  };
+  const handleLogout = () => { dispatch(logout() as any); navigate('/'); };
 
   const saveInterests = async () => {
     try {
       await fetch('http://localhost:8000/api/user/profile', {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ interests }),
       });
       setEditingInterests(false);
-    } catch (error) {
-      console.error('Error saving interests:', error);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const totalTrips = upcomingTrips.length + pastTrips.length;
-  const badge = getBadge(totalTrips);
-  const progressToNext = badge.next ? (totalTrips / badge.next.target) * 100 : 100;
+  const badge      = getBadge(totalTrips);
+  const progress   = badge.next ? Math.min((totalTrips / badge.next.target) * 100, 100) : 100;
 
   if (loading) {
     return (
-      <Box sx={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
-      }}>
-        <Zoom in>
-          <Box sx={{ textAlign: 'center' }}>
-            <CircularProgress size={60} thickness={4} sx={{ color: '#00BFA5', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
-              Chargement de votre espace...
-            </Typography>
-          </Box>
-        </Zoom>
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: T.paper }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={44} thickness={3} sx={{ color: T.teal, mb: 1.5 }} />
+          <Typography sx={{ fontSize: 14, color: T.slate }}>Chargement de votre espace…</Typography>
+        </Box>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
-      position: 'relative',
-      overflow: 'hidden',
-      pt: 4,
-      pb: 8,
-    }}>
-      {/* Background decorative elements */}
-      <Box sx={{
-        position: 'absolute',
-        top: -100,
-        right: -100,
-        width: 500,
-        height: 500,
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(0,191,165,0.1) 0%, transparent 70%)',
-        animation: `${float} 20s ease-in-out infinite`,
-      }} />
-      <Box sx={{
-        position: 'absolute',
-        bottom: -100,
-        left: -100,
-        width: 400,
-        height: 400,
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(13,71,161,0.1) 0%, transparent 70%)',
-        animation: `${float} 15s ease-in-out infinite reverse`,
-      }} />
+    <Page>
+      <Box maxWidth={1200} mx="auto" px={{ xs: 2, md: 4 }}>
 
-      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1 }}>
-        {/* Welcome Header with Menu */}
-        <Fade in timeout={1000}>
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                  Bon retour, {user?.first_name} ! 👋
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Voici un résumé de vos aventures
-                </Typography>
-              </Box>
-              
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Tooltip title="Notifications">
-                  <IconButton sx={{ bgcolor: 'background.paper', boxShadow: 2 }}>
-                    <Badge badgeContent={3} color="primary">
-                      <Notifications />
-                    </Badge>
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Menu">
-                  <IconButton 
-                    onClick={handleMenuOpen}
-                    sx={{ bgcolor: 'background.paper', boxShadow: 2 }}
-                  >
-                    <MenuIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            </Box>
+        {/* ── Top bar ──────────────────────────────── */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4,
+          animation: `${fadeUp} 0.4s ease` }}>
+          <Box>
+            <Typography sx={{ fontSize: 22, fontWeight: 700, color: T.ink }}>
+              Bon retour, {user?.first_name} 👋
+            </Typography>
+            <Typography sx={{ fontSize: 13, color: T.slate, mt: 0.3 }}>
+              {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </Typography>
           </Box>
-        </Fade>
+         
+        </Box>
 
-        {/* Menu Popup */}
-        <Menu
-          anchorEl={anchorEl}
-          open={open}
-          onClose={handleMenuClose}
-          PaperProps={{
-            sx: {
-              borderRadius: 2,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-              mt: 1,
-            }
-          }}
-        >
-          <MenuItem onClick={() => { navigate('/dashboard'); handleMenuClose(); }}>
-            <ListItemIcon>
-              <DashboardIcon fontSize="small" sx={{ color: '#00BFA5' }} />
-            </ListItemIcon>
-            <ListItemText>Tableau de bord</ListItemText>
-          </MenuItem>
-          
-          <MenuItem onClick={() => { navigate('/bookings'); handleMenuClose(); }}>
-            <ListItemIcon>
-              <BookingsIcon fontSize="small" sx={{ color: '#00BFA5' }} />
-            </ListItemIcon>
-            <ListItemText>Mes réservations</ListItemText>
-          </MenuItem>
-          
-          <MenuItem onClick={() => { navigate('/saved'); handleMenuClose(); }}>
-            <ListItemIcon>
-              <Favorite fontSize="small" sx={{ color: '#00BFA5' }} />
-            </ListItemIcon>
-            <ListItemText>Mes favoris</ListItemText>
-          </MenuItem>
-          
-          <Divider />
-          
-          <MenuItem 
-            onClick={() => { handleLogout(); handleMenuClose(); }} 
-            sx={{ color: '#FF6D00' }}
-          >
-            <ListItemIcon>
-              <Logout fontSize="small" sx={{ color: '#FF6D00' }} />
-            </ListItemIcon>
-            <ListItemText>Déconnexion</ListItemText>
+        {/* Menu */}
+        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}
+          PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 8px 32px rgba(0,0,0,0.1)', border: `1px solid ${T.border}`, mt: 1, minWidth: 200 } }}>
+          {[
+            { label: 'Tableau de bord', icon: <DashboardIcon />, path: '/dashboard' },
+            { label: 'Mes réservations', icon: <BookingsIcon />, path: '/bookings' },
+            { label: 'Mes favoris',      icon: <Favorite />,     path: '/saved' },
+          ].map(item => (
+            <MenuItem key={item.path} onClick={() => { navigate(item.path); setAnchorEl(null); }}
+              sx={{ py: 1.2, '&:hover': { bgcolor: alpha(T.teal, 0.05) } }}>
+              <ListItemIcon sx={{ color: T.teal, minWidth: 34 }}>{React.cloneElement(item.icon, { fontSize: 'small' })}</ListItemIcon>
+              <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 500 }}>{item.label}</ListItemText>
+            </MenuItem>
+          ))}
+          <Divider sx={{ my: 0.5 }} />
+          <MenuItem onClick={() => { handleLogout(); setAnchorEl(null); }}
+            sx={{ py: 1.2, color: T.red, '&:hover': { bgcolor: alpha(T.red, 0.05) } }}>
+            <ListItemIcon sx={{ color: T.red, minWidth: 34 }}><Logout fontSize="small" /></ListItemIcon>
+            <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 500, color: T.red }}>Déconnexion</ListItemText>
           </MenuItem>
         </Menu>
 
         <Grid container spacing={3}>
-          {/* Left Sidebar - Profile Card */}
-          <Grid item xs={12} md={4}>
-            <Zoom in timeout={500}>
-              <GlassPaper
-                sx={{
-                  p: 3,
-                  borderRadius: 4,
-                  position: 'sticky',
-                  top: 24,
-                }}
-              >
-                {/* Profile Header with Cover */}
-                <Box
-                  sx={{
-                    height: 100,
-                    borderRadius: 3,
-                    background: 'linear-gradient(135deg, #00BFA5 0%, #0D47A1 100%)',
-                    position: 'relative',
-                    mb: 6,
-                  }}
-                >
-                  <Avatar
-                    sx={{
-                      width: 100,
-                      height: 100,
-                      position: 'absolute',
-                      bottom: -50,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      border: '4px solid white',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-                      background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
-                      fontSize: '2.5rem',
-                    }}
-                  >
-                    {user?.first_name?.[0]}{user?.last_name?.[0]}
-                  </Avatar>
-                </Box>
 
-                <Box sx={{ textAlign: 'center', mt: 2 }}>
-                  <Typography variant="h5" fontWeight={700}>
-                    {user?.first_name} {user?.last_name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    {user?.email}
-                  </Typography>
-                  
-                  {/* Badge/Rank */}
-                  <BadgeIcon sx={{ mx: 'auto', mb: 2, bgcolor: `${badge.color}20`, color: badge.color }}>
-                    {badge.icon}
-                  </BadgeIcon>
-                  <Typography variant="h6" sx={{ color: badge.color, fontWeight: 600 }}>
-                    {badge.name}
-                  </Typography>
-                  
-                  {/* Progress to next level */}
-                  {badge.next && (
-                    <Box sx={{ mt: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Progression vers {badge.next.name}
-                        </Typography>
-                        <Typography variant="caption" fontWeight={600}>
-                          {totalTrips}/{badge.next.target}
-                        </Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={progressToNext}
-                        sx={{
-                          height: 8,
-                          borderRadius: 4,
-                          bgcolor: alpha(badge.color, 0.2),
-                          '& .MuiLinearProgress-bar': {
-                            bgcolor: badge.color,
-                          },
-                        }}
-                      />
-                    </Box>
-                  )}
-                </Box>
+          {/* ── Left sidebar ──────────────────────── */}
+          <Grid item xs={12} md={4} lg={3}>
+            <Box sx={{ position: 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 2 }}>
 
-                <Divider sx={{ my: 3 }} />
-
-                {/* Interests */}
-                <Box sx={{ mb: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Centres d'intérêt
-                    </Typography>
-                    {editingInterests ? (
-                      <Button 
-                        size="small" 
-                        onClick={saveInterests}
-                        variant="contained"
-                        sx={{ borderRadius: 2 }}
-                      >
-                        Enregistrer
-                      </Button>
-                    ) : (
-                      <IconButton size="small" onClick={() => setEditingInterests(true)}>
-                        <Edit fontSize="small" />
-                      </IconButton>
-                    )}
+              {/* Profile card */}
+              <SCard sx={{ overflow: 'hidden', animation: `${fadeUp} 0.4s ease 0.05s both` }}>
+                {/* Cover */}
+                <Box sx={{ height: 80, background: `linear-gradient(135deg, ${T.teal}, ${T.navy})`, position: 'relative' }} />
+                {/* Avatar */}
+                <Box sx={{ px: 3, pb: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mt: -4, mb: 2 }}>
+                    <Avatar
+                      src={photoUrl || undefined}
+                      sx={{ width: 120, height: 120, border: `3px solid ${T.white}`, bgcolor: T.navy, fontSize: 34, fontWeight: 700  }}
+                    >
+                    </Avatar>
+                   
                   </Box>
-                  
-                  {editingInterests ? (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                      {availableInterests.map((interest) => (
-                        <InterestChip
-                          key={interest.value}
-                          icon={interest.icon}
-                          label={interest.label}
-                          onClick={() => handleInterestToggle(interest.value)}
-                          className={interests.includes(interest.value) ? 'selected' : ''}
-                          sx={{
-                            bgcolor: interests.includes(interest.value) 
-                              ? interest.color 
-                              : 'transparent',
-                            color: interests.includes(interest.value) ? 'white' : 'text.primary',
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  ) : (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                      {interests.length > 0 ? (
-                        interests.map((interest) => {
-                          const interestObj = availableInterests.find(i => i.value === interest);
-                          return (
-                            <Chip
-                              key={interest}
-                              icon={interestObj?.icon}
-                              label={interestObj?.label}
-                              size="small"
-                              sx={{
-                                borderRadius: 2,
-                                bgcolor: `${interestObj?.color}20`,
-                                color: interestObj?.color,
-                              }}
-                            />
-                          );
-                        })
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          Aucun centre d'intérêt sélectionné
-                        </Typography>
+
+            
+
+                  {/* Badge */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, p: '10px 12px', borderRadius: 2,
+                    bgcolor: alpha(badge.color, 0.07), border: `1px solid ${alpha(badge.color, 0.2)}`, mb: 2 }}>
+                    <Box sx={{ color: badge.color, display: 'flex', '& svg': { fontSize: 20 } }}>{badge.icon}</Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: badge.color }}>{badge.name}</Typography>
+                      {badge.next && (
+                        <Typography sx={{ fontSize: 10, color: T.slate }}>{totalTrips}/{badge.next.target} voyages</Typography>
                       )}
                     </Box>
-                  )}
-                </Box>
+                  </Box>
 
-                {/* Organizer CTA */}
-                {user?.status_organizer !== 'approved' && (
-                  <Box sx={{ mt: 3 }}>
-                    {user?.status_organizer === 'pending' ? (
-                      <Paper
-                        sx={{
-                          p: 2,
-                          borderRadius: 3,
-                          bgcolor: alpha('#FFA500', 0.1),
-                          textAlign: 'center',
-                        }}
-                      >
-                        <AccessTime sx={{ fontSize: 40, color: '#FFA500', mb: 1 }} />
-                        <Typography variant="body1" fontWeight={600} color="#FFA500">
-                          Demande en attente
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Votre demande sera traitée sous 24h
-                        </Typography>
-                      </Paper>
+                  {/* Progress bar */}
+                  {badge.next && (
+                    <Box sx={{ mb: 2 }}>
+                      <LinearProgress variant="determinate" value={progress}
+                        sx={{ height: 4, borderRadius: 2, bgcolor: alpha(badge.color, 0.12),
+                          '& .MuiLinearProgress-bar': { bgcolor: badge.color, borderRadius: 2 } }} />
+                      <Typography sx={{ fontSize: 10, color: T.slate, mt: 0.5 }}>
+                        Prochain niveau: {badge.next.name}
+                      </Typography>
+                    </Box>
+                  )}
+
+          
+
+                  {/* Organizer status */}
+                  {user?.status_organizer !== 'approved' && (
+                    user?.status_organizer === 'pending' ? (
+                      <Box sx={{ p: '10px 12px', borderRadius: 2, bgcolor: alpha(T.amber, 0.07), border: `1px solid ${alpha(T.amber, 0.2)}`, display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <AccessTime sx={{ fontSize: 16, color: T.amber }} />
+                        <Box>
+                          <Typography sx={{ fontSize: 12, fontWeight: 700, color: T.amber }}>Demande en attente</Typography>
+                          <Typography sx={{ fontSize: 11, color: T.slate }}>Réponse sous 24h</Typography>
+                        </Box>
+                      </Box>
                     ) : (
-                      <Button
-                        variant="outlined"
-                        fullWidth
-                        startIcon={<BusinessCenter />}
+                      <Button fullWidth variant="outlined" startIcon={<BusinessCenter sx={{ fontSize: 16 }} />}
                         onClick={() => navigate('/organizer-request')}
-                        sx={{
-                          py: 1.5,
-                          borderRadius: 3,
-                          borderColor: '#00BFA5',
-                          color: '#00BFA5',
-                          '&:hover': {
-                            bgcolor: alpha('#00BFA5', 0.05),
-                            borderColor: '#0D47A1',
-                          },
-                        }}
-                      >
+                        sx={{ py: 1, borderRadius: 2, borderColor: alpha(T.teal, 0.4), color: T.teal,
+                          fontSize: 13, textTransform: 'none', fontWeight: 600,
+                          '&:hover': { borderColor: T.teal, bgcolor: alpha(T.teal, 0.04) } }}>
                         Devenir organisateur
                       </Button>
-                    )}
-                  </Box>
-                )}
-
-                {/* Quick Actions */}
-                <Box sx={{ mt: 3 }}>
-                  <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={1}>
-                    <Grid item xs={6}>
-                      <Button
-                        fullWidth
-                        variant="text"
-                        startIcon={<History />}
-                        onClick={() => navigate('/bookings')}
-                        sx={{color: '#FF6D00', justifyContent: 'flex-start' }}
-                      >
-                        Mes réservations
-                      </Button>
-                    </Grid>
-                   
-                    <Grid item xs={6}>
-                      <Button
-                        fullWidth
-                        variant="text"
-                        startIcon={<Logout />}
-                        onClick={handleLogout}
-                        sx={{ color: '#FF6D00', justifyContent: 'flex-start' }}
-                      >
-                        Déconnexion
-                      </Button>
-                    </Grid>
-                  </Grid>
+                    )
+                  )}
                 </Box>
-              </GlassPaper>
-            </Zoom>
+              </SCard>
+
+              {/* Interests card */}
+              <SCard sx={{ p: 2.5, animation: `${fadeUp} 0.4s ease 0.1s both` }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: T.ink }}>Centres d'intérêt</Typography>
+                  {editingInterests ? (
+                    <Button size="small" onClick={saveInterests}
+                      sx={{ fontSize: 11, textTransform: 'none', bgcolor: T.teal, color: T.white, px: 1.5, py: 0.4, borderRadius: 1.5,
+                        '&:hover': { bgcolor: '#0c9490' } }}>
+                      Enregistrer
+                    </Button>
+                  ) : (
+                    <IconButton size="small" onClick={() => setEditingInterests(true)} sx={{ color: T.slate }}>
+                      <Edit sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  )}
+                </Box>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                  {(editingInterests ? INTERESTS : INTERESTS.filter(i => interests.includes(i.value))).map(item => {
+                    const selected = interests.includes(item.value);
+                    return (
+                      <Chip key={item.value}
+                        icon={item.icon as React.ReactElement}
+                        label={item.label}
+                        size="small"
+                        onClick={editingInterests ? () => setInterests(p => p.includes(item.value) ? p.filter(x => x !== item.value) : [...p, item.value]) : undefined}
+                        sx={{
+                          fontSize: 11, fontWeight: 600, height: 26,
+                          bgcolor: selected ? alpha(item.color, 0.12) : alpha(T.border, 0.6),
+                          color: selected ? item.color : T.slate,
+                          border: `1px solid ${selected ? alpha(item.color, 0.3) : 'transparent'}`,
+                          cursor: editingInterests ? 'pointer' : 'default',
+                          transition: 'all 0.15s',
+                          '& .MuiChip-icon': { color: item.color, fontSize: 13 },
+                          '&:hover': editingInterests ? { bgcolor: alpha(item.color, 0.18) } : {},
+                        }}
+                      />
+                    );
+                  })}
+                  {!editingInterests && interests.length === 0 && (
+                    <Typography sx={{ fontSize: 12, color: T.slate, fontStyle: 'italic' }}>
+                      Aucun centre d'intérêt — cliquez sur ✏️ pour en ajouter
+                    </Typography>
+                  )}
+                </Box>
+              </SCard>
+
+              {/* Quick links */}
+              <SCard sx={{ p: 2, animation: `${fadeUp} 0.4s ease 0.15s both` }}>
+                {[
+                  { label: 'Mes réservations', icon: <BookingsIcon />, path: '/bookings', color: T.teal },
+                  { label: 'Mes favoris',       icon: <Favorite />,    path: '/saved',    color: '#E11D48' },
+                  { label: 'Déconnexion',       icon: <Logout />,      action: handleLogout, color: T.slate },
+                ].map((item, i) => (
+                  <Box key={i} onClick={item.action || (() => navigate(item.path!))}
+                    sx={{ display: 'flex', alignItems: 'center', gap: 1.2, p: '9px 10px', borderRadius: 2, cursor: 'pointer',
+                      transition: 'all 0.15s', '&:hover': { bgcolor: alpha(item.color, 0.06) } }}>
+                    <Box sx={{ color: item.color, display: 'flex', '& svg': { fontSize: 18 } }}>{item.icon}</Box>
+                    <Typography sx={{ fontSize: 13, fontWeight: 500, color: item.color === T.slate ? T.slate : T.ink }}>
+                      {item.label}
+                    </Typography>
+                  </Box>
+                ))}
+              </SCard>
+
+            </Box>
           </Grid>
 
-          {/* Main Content */}
-          <Grid item xs={12} md={8}>
-            {/* Stats Cards - SUPPRIMÉS */}
+          {/* ── Main content ──────────────────────── */}
+          <Grid item xs={12} md={8} lg={9}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
 
-            {/* Upcoming Trips Timeline */}
-            <GlassPaper sx={{ p: 3, mb: 3, borderRadius: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                <Box sx={{ 
-                  width: 48, 
-                  height: 48, 
-                  borderRadius: 2,
-                  background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <CalendarMonth sx={{ color: 'white' }} />
-                </Box>
-                <Box>
-                  <Typography variant="h6" fontWeight={700}>
-                    Voyages à venir
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {upcomingTrips.length} voyage{upcomingTrips.length !== 1 ? 's' : ''} planifié{upcomingTrips.length !== 1 ? 's' : ''}
-                  </Typography>
-                </Box>
-              </Box>
-
-              {upcomingTrips.length > 0 ? (
-                <Box sx={{ position: 'relative' }}>
-                  {upcomingTrips.map((booking: any, index: number) => (
-                    <Grow in timeout={500 + index * 100} key={booking.id}>
-                      <TimelineItem>
-                        <Paper
-                          sx={{
-                            p: 3,
-                            borderRadius: 3,
-                            bgcolor: 'background.paper',
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            transition: 'all 0.3s ease',
-                            '&:hover': {
-                              transform: 'translateX(8px)',
-                              borderColor: 'primary.main',
-                              boxShadow: '0 8px 24px rgba(0,191,165,0.1)',
-                            },
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                            <Box>
-                              <Typography variant="h6" fontWeight={600}>
-                                {booking.trip?.title}
-                              </Typography>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                <LocationOn sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                <Typography variant="body2" color="text.secondary">
-                                  {booking.trip?.destination || 'Destination non spécifiée'}
-                                </Typography>
-                              </Box>
-                            </Box>
-                            <Chip 
-                              label={booking.status || 'Confirmé'} 
-                              size="small" 
-                              sx={{
-                                bgcolor: alpha('#00BFA5', 0.1),
-                                color: '#00BFA5',
-                                fontWeight: 600,
-                              }}
-                            />
-                          </Box>
-                          
-                          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <CalendarMonth sx={{ fontSize: 16, color: 'text.secondary' }} />
-                              <Typography variant="body2">
-                                {booking.trip_session?.start_date} - {booking.trip_session?.end_date}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <AttachMoney sx={{ fontSize: 16, color: 'primary.main' }} />
-                              <Typography variant="body2" fontWeight={600} color="primary.main">
-                                {booking.total_price} {booking.currency}
-                              </Typography>
-                            </Box>
-                          </Box>
-
-                          <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              endIcon={<ArrowForward />}
-                              onClick={() => navigate(`/trips/${booking.trip?.id}`)}
-                              sx={{ borderRadius: 2 }}
-                            >
-                              Voir détails
-                            </Button>
-                          </Box>
-                        </Paper>
-                      </TimelineItem>
-                    </Grow>
-                  ))}
-                </Box>
-              ) : (
-                <Paper
-                  sx={{
-                    p: 4,
-                    borderRadius: 3,
-                    textAlign: 'center',
-                    bgcolor: 'grey.50',
-                  }}
-                >
-                  <FlightTakeoff sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                  <Typography variant="body1" color="text.secondary" gutterBottom>
-                    Aucun voyage à venir
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Commencez à planifier votre prochaine aventure !
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    onClick={() => navigate('/trips')}
-                    sx={{
-                      borderRadius: 3,
-                      background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-                    }}
-                  >
-                    Découvrir des voyages
-                  </Button>
-                </Paper>
-              )}
-            </GlassPaper>
-
-            {/* Past Trips */}
-            <GlassPaper sx={{ p: 3, mb: 3, borderRadius: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                <Box sx={{ 
-                  width: 48, 
-                  height: 48, 
-                  borderRadius: 2,
-                  bgcolor: alpha('#64748B', 0.1),
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <History sx={{ color: '#64748B' }} />
-                </Box>
-                <Box>
-                  <Typography variant="h6" fontWeight={700}>
-                    Voyages passés
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {pastTrips.length} voyage{pastTrips.length !== 1 ? 's' : ''} effectué{pastTrips.length !== 1 ? 's' : ''}
-                  </Typography>
-                </Box>
-              </Box>
-
-              {pastTrips.length > 0 ? (
-                <Grid container spacing={2}>
-                  {pastTrips.slice(0, 4).map((booking: any, index: number) => (
-                    <Grid item xs={12} sm={6} key={booking.id}>
-                      <Fade in timeout={500 + index * 100}>
-                        <Paper
-                          sx={{
-                            p: 2,
-                            borderRadius: 3,
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            opacity: 0.9,
-                            transition: 'all 0.3s ease',
-                            '&:hover': {
-                              opacity: 1,
-                              borderColor: 'primary.main',
-                            },
-                          }}
-                        >
-                          <Typography variant="subtitle2" fontWeight={600} noWrap>
-                            {booking.trip?.title}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                            {booking.trip_session?.start_date}
-                          </Typography>
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <Button
-                              size="small"
-                              onClick={() => navigate(`/trips/${booking.trip?.id}`)}
-                              sx={{ fontSize: '0.75rem' }}
-                            >
-                              Revivre l'expérience
-                            </Button>
-                          </Box>
-                        </Paper>
-                      </Fade>
-                    </Grid>
-                  ))}
-                </Grid>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                  Aucun voyage passé
-                </Typography>
-              )}
-            </GlassPaper>
-
-            {/* Recommendations */}
-            {recommendations.length > 0 && (
-              <GlassPaper sx={{ p: 3, borderRadius: 4 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box sx={{ 
-                      width: 48, 
-                      height: 48, 
-                      borderRadius: 2,
-                      background: 'linear-gradient(135deg, #FF6B6B, #FFA07A)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      <TrendingUp sx={{ color: 'white' }} />
+              {/* Upcoming trips */}
+              <SCard sx={{ p: 3, animation: `${fadeUp} 0.4s ease 0.1s both` }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: alpha(T.teal, 0.1),
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.teal }}>
+                      <CalendarMonth sx={{ fontSize: 18 }} />
                     </Box>
                     <Box>
-                      <Typography variant="h6" fontWeight={700}>
-                        Recommandés pour vous
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Basés sur vos centres d'intérêt
+                      <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Voyages à venir</Typography>
+                      <Typography sx={{ fontSize: 11, color: T.slate }}>
+                        {upcomingTrips.length} voyage{upcomingTrips.length !== 1 ? 's' : ''} planifié{upcomingTrips.length !== 1 ? 's' : ''}
                       </Typography>
                     </Box>
                   </Box>
-                  <Button 
-                    variant="text" 
-                    endIcon={<ArrowForward />}
-                    onClick={() => navigate('/trips')}
-                    sx={{ color: '#00BFA5' }}
-                  >
+                  <Button size="small" endIcon={<ArrowForward sx={{ fontSize: 13 }} />}
+                    onClick={() => navigate('/bookings')}
+                    sx={{ fontSize: 12, textTransform: 'none', color: T.teal, fontWeight: 600, p: 0,
+                      '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' } }}>
                     Voir tout
                   </Button>
                 </Box>
 
-                <Grid container spacing={2}>
-                  {recommendations.map((trip: any, index: number) => (
-                    <Grid item xs={12} sm={6} key={trip.id}>
-                      <Zoom in timeout={500 + index * 100}>
-                        <Box>
-                          <TripCard trip={trip} />
+                {upcomingTrips.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 5, px: 2 }}>
+                    <Box sx={{ width: 60, height: 60, borderRadius: '50%', bgcolor: alpha(T.teal, 0.08), mx: 'auto', mb: 2,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <FlightTakeoff sx={{ fontSize: 26, color: T.teal }} />
+                    </Box>
+                    <Typography sx={{ fontSize: 14, fontWeight: 600, color: T.ink, mb: 0.5 }}>Aucun voyage à venir</Typography>
+                    <Typography sx={{ fontSize: 13, color: T.slate, mb: 2.5 }}>Commencez à planifier votre prochaine aventure !</Typography>
+                    <Button variant="contained" onClick={() => navigate('/trips')}
+                      sx={{ bgcolor: T.navy, color: T.white, borderRadius: 2, textTransform: 'none', fontWeight: 600, px: 3,
+                        '&:hover': { bgcolor: '#0D2550' } }}>
+                      Découvrir des voyages
+                    </Button>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pl: 2.5, borderLeft: `2px solid ${alpha(T.teal, 0.2)}`, position: 'relative' }}>
+                    {upcomingTrips.map((booking: any, i: number) => (
+                      <Box key={booking.id} sx={{ position: 'relative' }}>
+                        <TimelineDot />
+                        <Box sx={{ p: 2, borderRadius: 2, border: `1px solid ${T.border}`, bgcolor: T.white,
+                          transition: 'all 0.18s', cursor: 'pointer',
+                          '&:hover': { borderColor: alpha(T.teal, 0.5), bgcolor: alpha(T.teal, 0.01),
+                            transform: 'translateX(4px)' } }}
+                          onClick={() => navigate(`/trips/${booking.trip?.id}`)}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Typography sx={{ fontSize: 14, fontWeight: 700, color: T.ink }}>
+                              {booking.trip?.title}
+                            </Typography>
+                            <Chip label={booking.status || 'Confirmé'} size="small"
+                              sx={{ height: 20, fontSize: 10, fontWeight: 700,
+                                bgcolor: alpha(T.teal, 0.09), color: T.teal, borderRadius: '5px' }} />
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 2.5, flexWrap: 'wrap' }}>
+                            {booking.trip?.destination && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <LocationOn sx={{ fontSize: 13, color: T.slate }} />
+                                <Typography sx={{ fontSize: 12, color: T.slate }}>{booking.trip.destination}</Typography>
+                              </Box>
+                            )}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <CalendarMonth sx={{ fontSize: 13, color: T.slate }} />
+                              <Typography sx={{ fontSize: 12, color: T.slate }}>
+                                {booking.trip_session?.start_date} → {booking.trip_session?.end_date}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                              <AttachMoney sx={{ fontSize: 13, color: T.teal }} />
+                              <Typography sx={{ fontSize: 12, fontWeight: 700, color: T.teal }}>
+                                {booking.total_price} {booking.currency}
+                              </Typography>
+                            </Box>
+                          </Box>
                         </Box>
-                      </Zoom>
-                    </Grid>
-                  ))}
-                </Grid>
-              </GlassPaper>
-            )}
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </SCard>
+
+              {/* Past trips */}
+              <SCard sx={{ p: 3, animation: `${fadeUp} 0.4s ease 0.15s both` }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: alpha(T.slate, 0.1),
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.slate }}>
+                      <History sx={{ fontSize: 18 }} />
+                    </Box>
+                    <Box>
+                      <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Voyages passés</Typography>
+                      <Typography sx={{ fontSize: 11, color: T.slate }}>
+                        {pastTrips.length} voyage{pastTrips.length !== 1 ? 's' : ''} effectué{pastTrips.length !== 1 ? 's' : ''}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {pastTrips.length === 0 ? (
+                  <Typography sx={{ fontSize: 13, color: T.slate, textAlign: 'center', py: 3 }}>
+                    Aucun voyage passé pour le moment
+                  </Typography>
+                ) : (
+                  <Grid container spacing={1.5}>
+                    {pastTrips.slice(0, 4).map((booking: any) => (
+                      <Grid item xs={12} sm={6} key={booking.id}>
+                        <Box sx={{ p: '12px 14px', borderRadius: 2, border: `1px solid ${T.border}`, cursor: 'pointer',
+                          transition: 'all 0.15s', '&:hover': { borderColor: alpha(T.teal, 0.4), bgcolor: alpha(T.teal, 0.01) } }}
+                          onClick={() => navigate(`/trips/${booking.trip?.id}`)}>
+                          <Typography sx={{ fontSize: 13, fontWeight: 600, color: T.ink, mb: 0.3,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {booking.trip?.title}
+                          </Typography>
+                          <Typography sx={{ fontSize: 11, color: T.slate, mb: 1 }}>
+                            {booking.trip_session?.start_date}
+                          </Typography>
+                          <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.teal }}>
+                            Revivre l'expérience →
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
+              </SCard>
+
+              {/* Recommendations */}
+              {recommendations.length > 0 && (
+                <SCard sx={{ p: 3, animation: `${fadeUp} 0.4s ease 0.2s both` }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: alpha(T.purple, 0.1),
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.purple }}>
+                        <TrendingUp sx={{ fontSize: 18 }} />
+                      </Box>
+                      <Box>
+                        <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Recommandés pour vous</Typography>
+                        <Typography sx={{ fontSize: 11, color: T.slate }}>Basés sur vos centres d'intérêt</Typography>
+                      </Box>
+                    </Box>
+                    <Button size="small" endIcon={<ArrowForward sx={{ fontSize: 13 }} />}
+                      onClick={() => navigate('/trips')}
+                      sx={{ fontSize: 12, textTransform: 'none', color: T.teal, fontWeight: 600, p: 0,
+                        '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' } }}>
+                      Voir tout
+                    </Button>
+                  </Box>
+                  <Grid container spacing={2}>
+                    {recommendations.map((trip: any) => (
+                      <Grid item xs={12} sm={6} key={trip.id}>
+                        <TripCard trip={trip} />
+                      </Grid>
+                    ))}
+                  </Grid>
+                </SCard>
+              )}
+
+            </Box>
           </Grid>
         </Grid>
-      </Container>
-    </Box>
+      </Box>
+    </Page>
   );
 };
 

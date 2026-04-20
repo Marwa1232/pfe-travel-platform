@@ -6,6 +6,7 @@ use App\Entity\Favorite;
 use App\Entity\Trip;
 use App\Entity\User;
 use App\Repository\FavoriteRepository;
+use App\Service\JwtService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -20,7 +21,8 @@ class FavoriteApiController extends AbstractController
     public function __construct(
         private EntityManagerInterface $em,
         private FavoriteRepository $favoriteRepository,
-        private SerializerInterface $serializer
+        private SerializerInterface $serializer,
+        private JwtService $jwtService
     ) {}
 
     private function getCurrentUser(Request $request): ?User
@@ -29,6 +31,20 @@ class FavoriteApiController extends AbstractController
         if ($user instanceof User) {
             return $user;
         }
+        
+        $authHeader = $request->headers->get('Authorization');
+        if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
+            try {
+                $token = substr($authHeader, 7);
+                $payload = $this->jwtService->decodeToken($token);
+                if ($payload && isset($payload['id'])) {
+                    return $this->em->getRepository(User::class)->find($payload['id']);
+                }
+            } catch (\Exception $e) {
+                error_log('JWT decode error: ' . $e->getMessage());
+            }
+        }
+        
         return null;
     }
 
@@ -60,10 +76,10 @@ class FavoriteApiController extends AbstractController
                             'url' => $img->getUrl(),
                             'is_cover' => $img->isIsCover(),
                         ];
-                    }, $trip->getImages()->toArray()),
+                    }, $trip->getImages() ? $trip->getImages()->toArray() : []),
                     'destinations' => array_map(function($dest) {
                         return ['id' => $dest->getId(), 'name' => $dest->getName()];
-                    }, $trip->getDestinations()->toArray()),
+                    }, $trip->getDestinations() ? $trip->getDestinations()->toArray() : []),
                     'favorite_id' => $favorite->getId(),
                     'favorited_at' => $favorite->getCreatedAt()?->format('Y-m-d H:i:s'),
                 ];

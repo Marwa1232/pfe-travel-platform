@@ -114,6 +114,7 @@ class AuthController extends AbstractController
                 'roles' => $user->getRoles(),
                 'status_organizer' => $user->getStatusOrganizer(),
                 'interests' => $user->getInterests() ?? [],
+                'profile_photo_url' => $user->getProfilePhotoUrl(),
             ]
         ]);
     }

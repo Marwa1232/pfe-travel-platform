@@ -241,6 +241,7 @@ const SettingsPage: React.FC = () => {
       await userAPI.deleteAccount(deletePassword);
       showMessage('Account deactivated successfully!');
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       navigate('/login');
     } catch (error: any) {
       showMessage(error.response?.data?.error || 'Failed to delete account', 'error');

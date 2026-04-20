@@ -625,7 +625,14 @@ const TripDetail: React.FC = () => {
               <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`, boxShadow: '0 8px 24px rgba(15,23,42,0.08)' }}>
                 <Typography variant="h5" gutterBottom fontWeight="bold">À propos de ce voyage</Typography>
                 <Divider sx={{ mb: 3 }} />
-                <Typography variant="body1" paragraph color="text.secondary" sx={{ fontSize: '1.1rem', lineHeight: 1.8 }}>
+                <Typography variant="body1" paragraph color="text.secondary"  sx={{
+                            fontSize: '1.1rem',
+                            lineHeight: 1.8,
+                            whiteSpace: 'normal',    
+                            wordBreak: 'break-word',   
+                            overflow: 'visible',      
+                            display: 'block'
+                          }}>
                   {trip.long_description || trip.short_description}
                 </Typography>
               </Paper>
@@ -658,9 +665,21 @@ const TripDetail: React.FC = () => {
                       <Typography variant="h6" gutterBottom color="primary">
                         Jour {program.dayNumber || program.day_number || index + 1}: {program.title}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                        {program.description || 'Description non disponible'}
-                      </Typography>
+                      <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            fontSize: '1.1rem',
+                            lineHeight: 1.8,
+                            whiteSpace: 'normal',    
+                            wordBreak: 'break-word',   
+                            overflow: 'visible',      
+                            display: 'block'
+                          }}
+                          paragraph
+                        >
+                          {program.description || 'Description non disponible'}
+                        </Typography>
                       {index < 2 && <Divider sx={{ my: 2 }} />}
                     </Box>
                   ))}

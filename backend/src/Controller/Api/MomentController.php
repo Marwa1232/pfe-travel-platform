@@ -51,7 +51,47 @@ class MomentController extends AbstractController
             ['createdAt' => 'DESC']
         );
 
-        return $this->json($moments, Response::HTTP_OK, [], ['groups' => 'moment:read']);
+        $result = [];
+        foreach ($moments as $moment) {
+            $user = $moment->getUser();
+            $trip = $moment->getTrip();
+            
+            $destination = 'Unknown destination';
+            if ($trip && $trip->getDestinations()->first()) {
+                $destination = $trip->getDestinations()->first()->getName();
+            }
+            
+            $tripTitle = $trip ? $trip->getTitle() : 'Unknown trip';
+            $agencyName = null;
+            if ($trip && $trip->getOrganizer()) {
+                $agencyName = $trip->getOrganizer()->getAgencyName();
+            }
+            
+            $result[] = [
+                'id' => $moment->getId(),
+                'content' => $moment->getContent(),
+                'created_at' => $moment->getCreatedAt()?->format('Y-m-d H:i:s'),
+                'destination' => $destination,
+                'trip' => [
+                    'id' => $trip?->getId(),
+                    'title' => $tripTitle,
+                    'agency_name' => $agencyName,
+                ],
+                'user' => [
+                    'id' => $user?->getId(),
+                    'first_name' => $user?->getFirstName(),
+                    'last_name' => $user?->getLastName(),
+                    'profile_photo_url' => $user?->getProfilePhotoUrl(),
+                ],
+                'media' => $moment->getMedia()->map(fn($m) => [
+                    'id' => $m->getId(),
+                    'url' => $m->getUrl(),
+                    'type' => $m->getType(),
+                ])->toArray(),
+            ];
+        }
+
+        return $this->json($result, Response::HTTP_OK);
     }
 
     #[Route('', name: 'api_moments_create', methods: ['POST'])]
