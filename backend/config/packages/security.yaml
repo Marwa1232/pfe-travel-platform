@@ -15,6 +15,10 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
+        stripe_webhook:
+            pattern: ^/api/payments/webhook
+            security: false
+
         # Auth endpoints - no JWT required
         auth:
             pattern: ^/api/auth

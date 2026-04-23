@@ -24,6 +24,7 @@ import Terms from './pages/Terms';
 import Contact from './pages/Contact';
 import Moments from './pages/Moments';
 import TravelTypesArticle from './pages/Traveltypesarticle';
+import CheckoutPage from './pages/CheckoutPage';
 
 
 // Organizer pages
@@ -70,6 +71,7 @@ function App() {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/moments" element={<Moments />} />
                 <Route path="/moments/:tripId" element={<Moments />} />
+                <Route path="/checkout/:bookingId" element={<CheckoutPage />} />
 
                 {/* Organizer routes */}
                 <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />

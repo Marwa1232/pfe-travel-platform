@@ -16,40 +16,24 @@ import {
   Button,
   CircularProgress,
   Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   IconButton,
   Stack,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormControl,
 } from '@mui/material';
 import { Delete, PictureAsPdf, Cancel } from '@mui/icons-material';
 import { jsPDF } from 'jspdf';
 import { bookingAPI } from '../services/api';
 import { RootState } from '../store/index';
-
-interface CancelOptions {
-  refundAmount: number;
-  refundPercent: number;
-  options: string[];
-}
+import CancelBookingModal from '../components/CancelBookingModal';
 
 const BookingHistory: React.FC = () => {
   const navigate = useNavigate();
   const { user, token } = useSelector((state: RootState) => state.auth);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cancelDialog, setCancelDialog] = useState<{ open: boolean; booking: any | null; options: CancelOptions | null; choice: string }>({
-    open: false,
-    booking: null,
-    options: null,
-    choice: '',
-  });
+  
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelBookingId, setCancelId] = useState<number | null>(null);
+  const [cancelHasPaid, setCancelHasPaid] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -176,36 +160,10 @@ const BookingHistory: React.FC = () => {
   };
 
   const handleCancel = async (booking: any) => {
-    try {
-      const response = await bookingAPI.getCancelOptions(booking.id);
-      setCancelDialog({ 
-        open: true, 
-        booking, 
-        options: response.data,
-        choice: '',
-      });
-    } catch (error) {
-      console.error('Error fetching cancel options:', error);
-      setCancelDialog({ 
-        open: true, 
-        booking, 
-        options: { refundAmount: 0, refundPercent: 0, options: ['refund'] },
-        choice: 'refund',
-      });
-    }
-  };
-
-  const confirmCancel = async () => {
-    if (!cancelDialog.booking || !cancelDialog.choice) return;
-
-    try {
-      await bookingAPI.cancel(cancelDialog.booking.id, cancelDialog.choice);
-      alert('Réservation annulée avec succès');
-      setCancelDialog({ open: false, booking: null, options: null, choice: '' });
-      loadBookings();
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-    }
+    setCancelId(booking.id);
+    const hasPaid = booking.payment?.method === 'STRIPE' && booking.payment?.status === 'SUCCEEDED';
+    setCancelHasPaid(hasPaid);
+    setCancelOpen(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -334,81 +292,22 @@ const BookingHistory: React.FC = () => {
         </TableContainer>
       )}
 
-      {/* Cancel Dialog */}
-      <Dialog
-        open={cancelDialog.open}
-        onClose={() => setCancelDialog({ open: false, booking: null, options: null, choice: '' })}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Cancel color="error" />
-            Annuler la réservation
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 3 }}>
-            Voyage: <strong>{cancelDialog.booking?.trip?.title}</strong>
-          </Typography>
-          
-          {cancelDialog.options && (
-            <>
-              <Paper sx={{ p: 2, mb: 3, bgcolor: '#f5f5f5' }}>
-                <Typography variant="h6" color="primary">
-                  Montant du remboursement: {cancelDialog.options.refundAmount} TND
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  ({cancelDialog.options.refundPercent}% du prix total)
-                </Typography>
-              </Paper>
-
-              <FormControl component="fieldset" fullWidth>
-                <Typography variant="subtitle1" gutterBottom>Choisissez une option:</Typography>
-                <RadioGroup
-                  value={cancelDialog.choice}
-                  onChange={(e) => setCancelDialog(prev => ({ ...prev, choice: e.target.value }))}
-                >
-                  {cancelDialog.options.options.includes('refund') && (
-                    <FormControlLabel
-                      value="refund"
-                      control={<Radio />}
-                      label="Remboursement sur le moyen de paiement initial"
-                    />
-                  )}
-                  {cancelDialog.options.options.includes('voucher') && (
-                    <FormControlLabel
-                      value="voucher"
-                      control={<Radio />}
-                      label="Bon d'achat (valable pour un futur voyage)"
-                    />
-                  )}
-                  {cancelDialog.options.options.includes('rebooking') && (
-                    <FormControlLabel
-                      value="rebooking"
-                      control={<Radio />}
-                      label="Reprogrammer pour une autre date"
-                    />
-                  )}
-                </RadioGroup>
-              </FormControl>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCancelDialog({ open: false, booking: null, options: null, choice: '' })}>
-            Fermer
-          </Button>
-          <Button 
-            onClick={confirmCancel} 
-            color="error" 
-            variant="contained"
-            disabled={!cancelDialog.choice}
-          >
-            Confirmer l'annulation
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CancelBookingModal
+        open={cancelOpen}
+        bookingId={cancelBookingId}
+        hasPaidStripe={cancelHasPaid}
+        onClose={() => {
+          setCancelOpen(false);
+          setCancelId(null);
+          setCancelHasPaid(false);
+        }}
+        onCancelled={() => {
+          setCancelOpen(false);
+          setCancelId(null);
+          setCancelHasPaid(false);
+          loadBookings();
+        }}
+      />
     </Container>
   );
 };

@@ -16,7 +16,7 @@ interface BookingFormProps {
   sessions: any[];
   selectedSession?: any;
   participantCount?: number;
-  onSuccess: () => void;
+  onSuccess: (bookingId?: number) => void;
   onCancel: () => void;
 }
 
@@ -66,9 +66,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
         num_travelers: parseInt(formData.num_travelers.toString()),
         payment_method: formData.payment_method,
       };
-
-      await bookingAPI.create(bookingData);
-      onSuccess();
+      const response = await bookingAPI.create(bookingData);
+      onSuccess(response.data.id);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Erreur lors de la réservation');
     } finally {

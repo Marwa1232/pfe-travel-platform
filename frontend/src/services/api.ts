@@ -165,6 +165,12 @@ export const bookingAPI = {
   cancel: (id: number, choice: string) => api.post(`/bookings/${id}/cancel`, { choice }),
 };
 
+export const paymentAPI = {
+  createIntent: (bookingId: number) => api.post(`/payments/create-intent/${bookingId}`),
+  confirm: (paymentIntentId: string) => api.post('/payments/confirm', { payment_intent_id: paymentIntentId }),
+  refund: (bookingId: number) => api.post(`/payments/refund/${bookingId}`),
+};
+
 // Admin APIs
 export const adminAPI = {
   // Stats

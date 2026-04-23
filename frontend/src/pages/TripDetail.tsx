@@ -404,9 +404,13 @@ const TripDetail: React.FC = () => {
     setShowBookingForm(true);
   };
 
-  const handleBookingSuccess = () => {
+  const handleBookingSuccess = (bookingId?: number) => {
     setShowBookingForm(false);
-    navigate('/bookings');
+    if (bookingId) {
+      navigate(`/checkout/${bookingId}`);
+    } else {
+      navigate('/bookings');
+    }
   };
 
   const handleShare = () => {

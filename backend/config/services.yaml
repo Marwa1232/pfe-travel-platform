@@ -28,3 +28,8 @@ services:
     App\Service\LlmService:
         arguments:
             $apiKey: '%env(GROQ_API_KEY)%'
+
+    App\Controller\Api\PaymentController:
+        arguments:
+            $stripeSecretKey: '%env(STRIPE_SECRET_KEY)%'
+            $stripeWebhookSecret: '%env(STRIPE_WEBHOOK_SECRET)%'

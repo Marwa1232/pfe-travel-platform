@@ -4,7 +4,6 @@ namespace App\Controller\Api;
 
 use App\Entity\Booking;
 use App\Entity\User;
-use App\Entity\Notification;
 use App\Service\CancellationPolicyService;
 use App\Service\JwtService;
 use App\Service\NotificationService;
@@ -30,15 +29,12 @@ class BookingApiController extends AbstractController
     private function getAuthenticatedUser(Request $request): ?User
     {
         $user = $this->getUser();
-        if ($user instanceof User) {
-            return $user;
-        }
-        
+        if ($user instanceof User) return $user;
+
         $authHeader = $request->headers->get('Authorization');
         if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
             try {
-                $token = substr($authHeader, 7);
-                $payload = $this->jwtService->decodeToken($token);
+                $payload = $this->jwtService->decodeToken(substr($authHeader, 7));
                 if ($payload && isset($payload['id'])) {
                     return $this->em->getRepository(User::class)->find($payload['id']);
                 }
@@ -46,122 +42,127 @@ class BookingApiController extends AbstractController
                 error_log('JWT decode error: ' . $e->getMessage());
             }
         }
-        
         return null;
+    }
+
+    private function getDaysBeforeDeparture(Booking $booking): int
+    {
+        $session = $booking->getTripSession();
+        if (!$session?->getStartDate()) return 0;
+
+        $now  = new \DateTime();
+        $diff = $session->getStartDate()->getTimestamp() - $now->getTimestamp();
+        return max(0, (int) floor($diff / 86400));
+    }
+
+    private function getDefaultCancelOptions(float $totalPrice, int $daysBefore): array
+    {
+        $percent = match(true) {
+            $daysBefore > 30 => 100,
+            $daysBefore > 15 => 70,
+            $daysBefore > 7  => 40,
+            default          => 0,
+        };
+        return [
+            'refundAmount'  => round($totalPrice * ($percent / 100), 2),
+            'refundPercent' => $percent,
+            'options'       => ['refund'],
+        ];
     }
 
     #[Route('/{id}/cancel-options', name: 'api_bookings_cancel_options', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function getCancelOptions(int $id, Request $request): JsonResponse
     {
         $user = $this->getAuthenticatedUser($request);
-        if (!$user) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
-        }
-        if (!$user) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
-        }
-        
+        if (!$user) return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+
         $booking = $this->bookingRepo->find($id);
-        
-        if (!$booking) {
-            return $this->json(['error' => 'Booking not found'], Response::HTTP_NOT_FOUND);
+        if (!$booking) return $this->json(['error' => 'Booking not found'], Response::HTTP_NOT_FOUND);
+        if ($booking->getUser()->getId() !== $user->getId()) return $this->json(['error' => 'Access denied'], Response::HTTP_FORBIDDEN);
+
+        if ($booking->getStatus() === 'CANCELLED') {
+            return $this->json(['error' => 'Booking already cancelled'], Response::HTTP_BAD_REQUEST);
         }
 
-        if ($booking->getUser()->getId() !== $user->getId()) {
-            return $this->json(['error' => 'Access denied'], Response::HTTP_FORBIDDEN);
-        }
+        $totalPrice  = (float) $booking->getTotalPrice();
+        $daysBefore  = $this->getDaysBeforeDeparture($booking);
+        $policy      = $booking->getTrip()->getCancellationPolicy();
 
-        $trip = $booking->getTrip();
-        $policy = $trip->getCancellationPolicy();
-        
-        if (!$policy) {
-            return $this->json(['error' => 'No cancellation policy found'], Response::HTTP_NOT_FOUND);
-        }
+        $options = $policy
+            ? $this->policyService->getCancelOptions($policy, $daysBefore, $totalPrice)
+            : $this->getDefaultCancelOptions($totalPrice, $daysBefore);
 
-        $tripSession = $booking->getTripSession();
-        if (!$tripSession || !$tripSession->getStartDate()) {
-            return $this->json(['error' => 'Trip session not found'], Response::HTTP_NOT_FOUND);
-        }
-
-        $now = new \DateTime();
-        $tripDate = $tripSession->getStartDate();
-        $daysBefore = (int)floor(($tripDate->getTimestamp() - $now->getTimestamp()) / (86400));
-
-        $totalPrice = (float) $booking->getTotalPrice();
-        $options = $this->policyService->getCancelOptions($policy, $daysBefore, $totalPrice);
-
-        return $this->json($options);
+        return $this->json([
+            'refundAmount'   => $options['refundAmount'],
+            'refundPercent'  => $options['refundPercent'],
+            'options'        => $options['options'],
+            'daysBefore'     => $daysBefore,
+            'totalPrice'     => $totalPrice,
+            'allowVoucher'   => $policy?->isAllowVoucher() ?? false,
+            'allowRebooking' => $policy?->isAllowRebooking() ?? false,
+        ]);
     }
 
     #[Route('/{id}/cancel', name: 'api_bookings_cancel', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function cancel(Request $request, int $id): JsonResponse
     {
         $user = $this->getAuthenticatedUser($request);
-        if (!$user) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
-        }
-        if (!$user) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
-        }
+        if (!$user) return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
 
         $booking = $this->bookingRepo->find($id);
-        
-        if (!$booking) {
-            return $this->json(['error' => 'Booking not found'], Response::HTTP_NOT_FOUND);
+        if (!$booking) return $this->json(['error' => 'Booking not found'], Response::HTTP_NOT_FOUND);
+        if ($booking->getUser()->getId() !== $user->getId()) return $this->json(['error' => 'Access denied'], Response::HTTP_FORBIDDEN);
+
+        if ($booking->getStatus() === 'CANCELLED') {
+            return $this->json(['error' => 'Already cancelled'], Response::HTTP_BAD_REQUEST);
         }
 
-        if ($booking->getUser()->getId() !== $user->getId()) {
-            return $this->json(['error' => 'Access denied'], Response::HTTP_FORBIDDEN);
-        }
-
-        $data = json_decode($request->getContent(), true);
+        $data   = json_decode($request->getContent(), true);
         $choice = $data['choice'] ?? 'refund';
 
         if (!in_array($choice, ['refund', 'voucher', 'rebooking'])) {
-            return $this->json(['error' => 'Invalid choice'], Response::HTTP_BAD_REQUEST);
+            return $this->json(['error' => 'Invalid choice. Use: refund, voucher, rebooking'], Response::HTTP_BAD_REQUEST);
         }
 
-        $trip = $booking->getTrip();
-        $policy = $trip->getCancellationPolicy();
+        $trip        = $booking->getTrip();
+        $policy      = $trip->getCancellationPolicy();
+        $totalPrice  = (float) $booking->getTotalPrice();
+        $daysBefore  = $this->getDaysBeforeDeparture($booking);
 
-        if (!$policy) {
-            return $this->json(['error' => 'No cancellation policy found'], Response::HTTP_NOT_FOUND);
+        $cancelOptions = $policy
+            ? $this->policyService->getCancelOptions($policy, $daysBefore, $totalPrice)
+            : $this->getDefaultCancelOptions($totalPrice, $daysBefore);
+
+        if ($choice === 'voucher' && !($policy?->isAllowVoucher() ?? false)) {
+            return $this->json(['error' => 'Voucher option not available for this trip'], Response::HTTP_BAD_REQUEST);
         }
-
-        $tripSession = $booking->getTripSession();
-        $now = new \DateTime();
-        $daysBefore = $tripSession && $tripSession->getStartDate() 
-            ? (int)floor(($tripSession->getStartDate()->getTimestamp() - $now->getTimestamp()) / (86400))
-            : 0;
-
-        $totalPrice = (float) $booking->getTotalPrice();
-        $cancelOptions = $this->policyService->getCancelOptions($policy, $daysBefore, $totalPrice);
-
-        if ($choice === 'voucher' && !$policy->isAllowVoucher()) {
-            return $this->json(['error' => 'Voucher option not allowed'], Response::HTTP_BAD_REQUEST);
-        }
-
-        if ($choice === 'rebooking' && !$policy->isAllowRebooking()) {
-            return $this->json(['error' => 'Rebooking option not allowed'], Response::HTTP_BAD_REQUEST);
+        if ($choice === 'rebooking' && !($policy?->isAllowRebooking() ?? false)) {
+            return $this->json(['error' => 'Rebooking option not available for this trip'], Response::HTTP_BAD_REQUEST);
         }
 
         $booking->setStatus('CANCELLED');
         $booking->setCancellationReason($choice);
         $booking->setUpdatedAt(new \DateTimeImmutable());
-
         $this->em->flush();
 
+        $msgMap = [
+            'refund'    => 'Votre remboursement sera traité sous 5-10 jours ouvrables.',
+            'voucher'   => 'Un voucher vous sera envoyé par email.',
+            'rebooking' => 'Vous pouvez rebooker gratuitement un autre voyage.',
+        ];
         $this->notificationService->create(
             $user,
-            'Annulation confirmée',
-            'Votre réservation pour "' . $trip->getTitle() . '" a été annulée. Votre choix: ' . $choice,
+            'Réservation annulée',
+            'Votre réservation "' . $trip->getTitle() . '" a été annulée. ' . ($msgMap[$choice] ?? ''),
             'cancel'
         );
 
         return $this->json([
-            'message' => 'Booking cancelled successfully',
-            'choice' => $choice,
+            'message'      => 'Booking cancelled successfully',
+            'choice'       => $choice,
             'refundAmount' => $cancelOptions['refundAmount'] ?? 0,
+            'bookingId'    => $booking->getId(),
+            'status'       => 'CANCELLED',
         ]);
     }
 }

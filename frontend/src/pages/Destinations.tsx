@@ -24,6 +24,26 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
+const DESTINATION_IMAGES: Record<string, string> = {
+  bali: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&q=80',
+  canes: 'https://images.unsplash.com/photo-1570075800093-55f3e2800a4f?w=400&q=80',
+  paris: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&q=80',
+  tokyo: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&q=80',
+  newy: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=400&q=80',
+  londo: 'https://images.unsplash.com/photo-1513635269975-6c5be52f6d02?w=400&q=80',
+  dubai: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80',
+  barce: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=400&q=80',
+  roma: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&q=80',
+  athel: 'https://images.unsplash.com/photo-1555993539-1732b025823f?w=400&q=80',
+  lisbo: 'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=400&q=80',
+  amste: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=400&q=80',
+};
+
+const getDestinationImage = (name: string): string => {
+  const key = name.slice(0, 4).toLowerCase();
+  return DESTINATION_IMAGES[key] || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=80';
+};
+
 // Styled components professionnels
 const PageHeader = styled(Box)(({ theme }) => ({
   textAlign: 'center',
@@ -121,13 +141,13 @@ const Destinations: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await api.get('/destinations');
-      
+
       const enhancedDestinations = response.data.map((dest: Destination) => ({
         ...dest,
-        image: `https://source.unsplash.com/400x300/?${dest.name.toLowerCase()},travel`,
+        image: getDestinationImage(dest.name),
         trips_count: Math.floor(Math.random() * 30) + 5,
       }));
-      
+
       setDestinations(enhancedDestinations);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Erreur lors du chargement des destinations');

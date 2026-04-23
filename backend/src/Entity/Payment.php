@@ -46,6 +46,30 @@ class Payment
     #[ORM\Column]
     private ?\DateTimeImmutable $created_at = null;
 
+    // ── Nouveaux champs Stripe ──────────────────────
+    // Identifiant PaymentIntent Stripe (pi_xxxxx)
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['booking:read'])]
+    private ?string $stripe_payment_intent_id = null;
+
+    // Identifiant Refund Stripe (re_xxxxx)
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $refund_id = null;
+
+    // Montant remboursé
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
+    #[Groups(['booking:read'])]
+    private ?string $refund_amount = null;
+
+    // Identifiant Dispute/Chargeback (dp_xxxxx)
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $dispute_id = null;
+
+    // needs_response | under_review | won | lost | closed_won | closed_lost
+    #[ORM\Column(length: 50, nullable: true)]
+    #[Groups(['booking:read'])]
+    private ?string $dispute_status = null;
+
     public function __construct()
     {
         $this->created_at = new \DateTimeImmutable();
@@ -143,4 +167,21 @@ class Payment
         $this->created_at = $created_at;
         return $this;
     }
+
+    // ── Nouveaux getters/setters Stripe ─────────────
+
+    public function getStripePaymentIntentId(): ?string { return $this->stripe_payment_intent_id; }
+    public function setStripePaymentIntentId(?string $v): static { $this->stripe_payment_intent_id = $v; return $this; }
+
+    public function getRefundId(): ?string { return $this->refund_id; }
+    public function setRefundId(?string $v): static { $this->refund_id = $v; return $this; }
+
+    public function getRefundAmount(): ?string { return $this->refund_amount; }
+    public function setRefundAmount(?string $v): static { $this->refund_amount = $v; return $this; }
+
+    public function getDisputeId(): ?string { return $this->dispute_id; }
+    public function setDisputeId(?string $v): static { $this->dispute_id = $v; return $this; }
+
+    public function getDisputeStatus(): ?string { return $this->dispute_status; }
+    public function setDisputeStatus(?string $v): static { $this->dispute_status = $v; return $this; }
 }
