@@ -45,15 +45,15 @@ export const userAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
-  changePassword: (data: { current_password: string; new_password: string; confirm_password: string }) => 
+  changePassword: (data: { current_password: string; new_password: string; confirm_password: string }) =>
     api.post('/user/change-password', data),
-  updatePreferences: (data: { interests?: string[] }) => 
+  updatePreferences: (data: { interests?: string[] }) =>
     api.put('/user/preferences', data),
-  updateSocialLinks: (data: { facebook?: string; instagram?: string; website?: string; linkedin?: string; x_link?: string }) => 
+  updateSocialLinks: (data: { facebook?: string; instagram?: string; website?: string; linkedin?: string; x_link?: string }) =>
     api.put('/user/social-links', data),
-  deleteAccount: (password: string) => 
+  deleteAccount: (password: string) =>
     api.delete('/user/account', { data: { password } }),
-  disableAccount: (password: string) => 
+  disableAccount: (password: string) =>
     api.post('/user/account/disable', { password }),
 };
 
@@ -74,10 +74,8 @@ export const tripAPI = {
   getPolicy: (id: number) => api.get(`/trips/${id}/policy`),
   cancelSession: (tripId: number, sessionId: number) => api.post(`/trips/${tripId}/sessions/${sessionId}/cancel`, {}),
   uploadImages: (files: File[], tripId?: number, isCover: boolean = false) => {
-    console.log('[DEBUG API] uploadImages called with files:', files.length);
     const formData = new FormData();
-    files.forEach((file, index) => {
-      console.log('[DEBUG API] Adding file:', index, file.name, file.size);
+    files.forEach((file) => {
       formData.append('images[]', file);
     });
     if (tripId) {
@@ -100,59 +98,36 @@ export const searchAI = {
 };
 
 export const recommendationAPI = {
-  // Get personalized recommendations (requires auth)
-  getPersonalized: (limit?: number) => 
+  getPersonalized: (limit?: number) =>
     api.get('/recommendations/personalized', { params: { limit } }),
-  
-  // Get similar trips to a given trip
-  getSimilar: (tripId: number, limit?: number) => 
+  getSimilar: (tripId: number, limit?: number) =>
     api.get(`/recommendations/similar/${tripId}`, { params: { limit } }),
-  
-  // Get trending trips
-  getTrending: (limit?: number) => 
+  getTrending: (limit?: number) =>
     api.get('/recommendations/trending', { params: { limit } }),
-  
-  // Submit feedback on recommendations
-  submitFeedback: (tripId: number, feedback: 'like' | 'dislike' | 'booked' | 'hidden') => 
+  submitFeedback: (tripId: number, feedback: 'like' | 'dislike' | 'booked' | 'hidden') =>
     api.post('/recommendations/feedback', { trip_id: tripId, feedback }),
-  
-  // Get search-based recommendations (no auth required)
-  searchBased: (query: string) => 
+  searchBased: (query: string) =>
     api.post('/recommendations/search-based', { query }),
-
-  // Check LLM service status
   getStatus: () => api.get('/recommendations/status'),
 };
 
 export const reviewAPI = {
-  // Get reviews for a trip (public)
-  getTripReviews: (tripId: number) => 
+  getTripReviews: (tripId: number) =>
     api.get(`/reviews/trip/${tripId}`),
-  
-  // Submit a review (requires auth)
-  createReview: (data: { trip_id: number; rating: number; comment?: string }) => 
+  createReview: (data: { trip_id: number; rating: number; comment?: string }) =>
     api.post('/reviews', data),
-  
-  // Delete own review (requires auth)
-  deleteReview: (id: number) => 
+  deleteReview: (id: number) =>
     api.delete(`/reviews/${id}`),
 };
 
 export const organizerReviewAPI = {
-  // Get all reviews for organizer's trips
-  getAll: (status?: string) => 
+  getAll: (status?: string) =>
     api.get('/organizer/reviews', { params: { status } }),
-  
-  // Approve a review
-  approve: (id: number) => 
+  approve: (id: number) =>
     api.put(`/organizer/reviews/${id}/approve`),
-  
-  // Reject a review
-  reject: (id: number) => 
+  reject: (id: number) =>
     api.put(`/organizer/reviews/${id}/reject`),
-  
-  // Respond to a review
-  respond: (id: number, response: string) => 
+  respond: (id: number, response: string) =>
     api.put(`/organizer/reviews/${id}/respond`, { response }),
 };
 
@@ -171,34 +146,51 @@ export const paymentAPI = {
   refund: (bookingId: number) => api.post(`/payments/refund/${bookingId}`),
 };
 
+// ── Loyalty API ───────────────────────────────────────────
+export const loyaltyAPI = {
+  // User : voir ses points et son historique
+  getPoints: () =>
+    api.get('/loyalty/points'),
+
+  // User : voir les offres disponibles (filtrées par trip si tripId fourni)
+  getOffers: (tripId?: number) =>
+    api.get('/loyalty/offers', { params: tripId ? { trip_id: tripId } : {} }),
+
+  // Organisateur : créer une offre fidélité
+  createOffer: (data: {
+    title: string;
+    description?: string;
+    discount_type: 'percentage_discount' | 'fixed_discount';
+    discount_value: string;
+    points_required: string;
+    trip_id?: number;
+    expires_at?: string;
+  }) => api.post('/loyalty/offers', data),
+
+  // Organisateur : désactiver une offre
+  deleteOffer: (id: number) =>
+    api.delete(`/loyalty/offers/${id}`),
+};
+
 // Admin APIs
 export const adminAPI = {
-  // Stats
   getStats: () => api.get('/admin/stats'),
   getDetailedStats: () => api.get('/admin/stats/detailed'),
   getFinancialStats: () => api.get('/admin/financial'),
   getSystemHealth: () => api.get('/admin/system/health'),
-  
-  // Users
   getUsers: () => api.get('/admin/users'),
-  updateUserStatus: (id: number, isActive: boolean) => 
+  updateUserStatus: (id: number, isActive: boolean) =>
     api.put(`/admin/users/${id}/status`, { is_active: isActive }),
-  
-  // Organizers
   getOrganizers: () => api.get('/admin/organizers'),
-  approveOrganizer: (id: number) => 
+  approveOrganizer: (id: number) =>
     api.put(`/admin/organizers/${id}/approve`),
-  blockOrganizer: (id: number) => 
+  blockOrganizer: (id: number) =>
     api.put(`/admin/organizers/${id}/block`),
-  
-  // Categories
   getCategories: () => api.get('/admin/categories'),
   getCategory: (id: number) => api.get(`/admin/categories/${id}`),
   createCategory: (data: any) => api.post('/admin/categories', data),
   updateCategory: (id: number, data: any) => api.put(`/admin/categories/${id}`, data),
   deleteCategory: (id: number) => api.delete(`/admin/categories/${id}`),
-  
-  // Destinations
   getDestinations: () => api.get('/admin/destinations'),
   getDestination: (id: number) => api.get(`/admin/destinations/${id}`),
   createDestination: (data: any) => api.post('/admin/destinations', data),

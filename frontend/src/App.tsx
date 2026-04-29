@@ -25,6 +25,7 @@ import Contact from './pages/Contact';
 import Moments from './pages/Moments';
 import TravelTypesArticle from './pages/Traveltypesarticle';
 import CheckoutPage from './pages/CheckoutPage';
+import LoyaltyOffresPage from './pages/LoyaltyOffersPage';
 
 
 // Organizer pages
@@ -40,6 +41,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminOrganizers from './pages/admin/AdminOrganizers';
 
 import { store } from './store';
+import LoyaltyOffersPage from './pages/LoyaltyOffersPage';
 
 function App() {
   return (
@@ -49,7 +51,7 @@ function App() {
         <BrowserRouter>
           <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Navbar />
-            <Box component="main" sx={{ flexGrow: 1 }}>
+            <Box component="main" sx={{ flexGrow: 1, pt: '72px' }}>
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<Home />} />
@@ -60,7 +62,9 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/travel-types" element={<TravelTypesArticle />} />
+                <Route path="/LoyaltyOffresPage" element={<LoyaltyOffersPage />} />
 
+                
                 {/* User routes */}
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/bookings" element={<BookingHistory />} />

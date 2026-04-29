@@ -12,8 +12,9 @@ import {
 import { alpha } from '@mui/material/styles';
 import {
   Lock, CheckCircle, CreditCard, FlightTakeoff, ArrowBack,
+  EmojiEvents, CheckCircleOutline,
 } from '@mui/icons-material';
-import api, { bookingAPI, paymentAPI } from '../services/api';
+import api, { bookingAPI, paymentAPI, loyaltyAPI } from '../services/api';
 import { RootState } from '../store';
 
 const stripePromise = loadStripe('pk_test_51TP0JYFOyBxjmoiQzrrt5PIp2IZ2TQcmaNXUKcBOVaqj3NnmNbXlOwdxihKocqWhXQvZXr6yZbh32ip8QK6sxXXu00OijvduD5');
@@ -24,26 +25,17 @@ const T = {
   border: '#E2E8F0', green: '#16A34A',
 };
 
-  const StripeForm: React.FC<{ booking: any; onSuccess: () => void }> = ({ booking, onSuccess }) => {
-   const stripe   = useStripe();
-   const elements = useElements();
-   const [loading, setLoading] = useState(false);
-   const [error, setError]     = useState<string | null>(null);
+// ── Stripe Form ──────────────────────────────────────────
+const StripeForm: React.FC<{ booking: any; onSuccess: () => void }> = ({ booking, onSuccess }) => {
+  const stripe   = useStripe();
+  const elements = useElements();
+  const [ready, setReady]     = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
-   // Check if PaymentElement is ready
-   const isReady = stripe && elements && elements.getElement('payment');
-
-   const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
-
-    // Verify PaymentElement is mounted
-    const paymentElement = elements.getElement('payment');
-    if (!paymentElement) {
-      setError('Le formulaire de paiement n\'est pas encore chargé. Veuillez patienter.');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
@@ -53,26 +45,28 @@ const T = {
     });
 
     if (stripeErr) {
+      if (stripeErr.code === 'payment_intent_unexpected_state') {
+        onSuccess();
+        return;
+      }
       setError(stripeErr.message ?? 'Paiement refusé');
       setLoading(false);
       return;
     }
 
-    try {
-      await paymentAPI.confirm(paymentIntent?.id!);
+    if (paymentIntent?.status === 'succeeded') {
       onSuccess();
-    } catch (err: any) {
-      setError(err.response?.data?.error ?? 'Erreur serveur');
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    setLoading(false);
   };
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
-      <PaymentElement options={{ layout: 'tabs' }} />
+      <PaymentElement options={{ layout: 'tabs' }} onReady={() => setReady(true)} />
       {error && <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>{error}</Alert>}
-       <Button type="submit" fullWidth disabled={!isReady || loading}
+      <Button type="submit" fullWidth disabled={!ready || loading}
         sx={{
           mt: 3, py: 1.5, borderRadius: 2, bgcolor: T.navy, color: T.white,
           fontWeight: 700, fontSize: 15, textTransform: 'none',
@@ -90,6 +84,7 @@ const T = {
   );
 };
 
+// ── Checkout Page ────────────────────────────────────────
 const CheckoutPage: React.FC = () => {
   const { bookingId }         = useParams<{ bookingId: string }>();
   const navigate              = useNavigate();
@@ -100,21 +95,60 @@ const CheckoutPage: React.FC = () => {
   const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Loyalty
+  const [offers, setOffers]               = useState<any[]>([]);
+  const [userPoints, setUserPoints]       = useState(0);
+  const [selectedOffer, setSelectedOffer] = useState<any>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+
   useEffect(() => {
     if (!token) { navigate('/login'); return; }
+    let cancelled = false;
     (async () => {
       try {
         const bRes = await bookingAPI.get(Number(bookingId));
+        if (cancelled) return;
         setBooking(bRes.data);
+
+        // Charger les offres fidélité
+        try {
+          const tripId = bRes.data?.trip?.id;
+          const oRes = await loyaltyAPI.getOffers(tripId);
+          if (!cancelled) {
+            setOffers(oRes.data.offers || []);
+            setUserPoints(oRes.data.available_points || 0);
+          }
+        } catch (_) {}
+
         const iRes = await paymentAPI.createIntent(Number(bookingId));
+        if (cancelled) return;
         setCS(iRes.data.client_secret);
       } catch (err: any) {
+        if (cancelled) return;
         setError(err.response?.data?.error ?? 'Impossible de charger le paiement');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => { cancelled = true; };
   }, [bookingId]);
+
+  // Calculer la réduction quand on sélectionne une offre
+  const handleSelectOffer = (offer: any) => {
+    if (selectedOffer?.id === offer.id) {
+      setSelectedOffer(null);
+      setDiscountAmount(0);
+      return;
+    }
+    setSelectedOffer(offer);
+    const price = parseFloat(booking?.total_price || 0);
+    const disc  = offer.discount_type === 'percentage_discount'
+      ? price * (parseFloat(offer.discount_value) / 100)
+      : Math.min(parseFloat(offer.discount_value), price);
+    setDiscountAmount(Math.round(disc * 100) / 100);
+  };
+
+  const finalPrice = Math.max(0, parseFloat(booking?.total_price || 0) - discountAmount);
 
   if (loading) return (
     <Box sx={{ minHeight: '100vh', bgcolor: T.paper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -130,9 +164,14 @@ const CheckoutPage: React.FC = () => {
           <CheckCircle sx={{ fontSize: 36, color: T.green }} />
         </Box>
         <Typography sx={{ fontSize: 20, fontWeight: 700, color: T.ink, mb: 1 }}>Paiement confirmé !</Typography>
-        <Typography sx={{ fontSize: 14, color: T.slate, mb: 3 }}>
+        <Typography sx={{ fontSize: 14, color: T.slate, mb: 1 }}>
           Réservation <strong>{booking?.trip?.title}</strong> confirmée.
         </Typography>
+        {discountAmount > 0 && (
+          <Typography sx={{ fontSize: 13, color: T.teal, fontWeight: 600, mb: 2 }}>
+            🎯 Vous avez économisé {discountAmount} EUR grâce à vos points fidélité !
+          </Typography>
+        )}
         <Button fullWidth onClick={() => navigate('/bookings')}
           sx={{ bgcolor: T.navy, color: T.white, borderRadius: 2, textTransform: 'none', fontWeight: 600, py: 1.2 }}>
           Voir mes réservations
@@ -151,28 +190,103 @@ const CheckoutPage: React.FC = () => {
         {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
 
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 360px' }, gap: 3 }}>
-          <Paper sx={{ p: 3, borderRadius: 3, border: `1px solid ${T.border}`, boxShadow: 'none' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-              <CreditCard sx={{ color: T.teal }} />
-              <Typography sx={{ fontSize: 16, fontWeight: 700, color: T.ink }}>Informations de paiement</Typography>
-            </Box>
-            <Alert severity="info" sx={{ mb: 3, borderRadius: 2, fontSize: 12 }}>
-              <strong>🧪 Mode test Stripe</strong><br />
-              ✅ Succès: <code>4242 4242 4242 4242</code> — date future — CVC quelconque<br />
-              ❌ Refus: <code>4000 0000 0000 0002</code><br />
-              🔐 3D Secure: <code>4000 0025 0000 3155</code><br />
-              ⚠️ Dispute auto: <code>4000 0000 0000 0259</code>
-            </Alert>
-      {clientSecret && (
-        <Elements stripe={stripePromise} options={{
-          clientSecret,
-          appearance: { theme: 'stripe', variables: { colorPrimary: T.teal, colorText: T.ink, borderRadius: '8px' } },
-        }}>
-          <StripeForm booking={booking} onSuccess={() => setSuccess(true)} />
-        </Elements>
-      )}
-          </Paper>
 
+          {/* ── Left: paiement ── */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+            {/* Section points fidélité */}
+            {userPoints > 0 && (
+              <Paper sx={{ p: 3, borderRadius: 3, border: `1px solid ${T.border}`, boxShadow: 'none' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                  <EmojiEvents sx={{ color: '#D97706' }} />
+                  <Box>
+                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.ink }}>
+                      Vos points fidélité
+                    </Typography>
+                    <Typography sx={{ fontSize: 12, color: T.slate }}>
+                      {userPoints} points disponibles
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {offers.length === 0 && (
+                  <Typography sx={{ fontSize: 12, color: T.slate, fontStyle: 'italic' }}>
+                    Aucune offre disponible pour ce voyage pour l'instant.
+                  </Typography>
+                )}
+
+                {offers.map(offer => {
+                  const selected  = selectedOffer?.id === offer.id;
+                  const canUse    = offer.can_use;
+                  return (
+                    <Box key={offer.id}
+                      onClick={() => canUse && handleSelectOffer(offer)}
+                      sx={{
+                        p: 2, mb: 1, borderRadius: 2,
+                        cursor: canUse ? 'pointer' : 'not-allowed',
+                        border: `1.5px solid ${selected ? T.teal : T.border}`,
+                        bgcolor: selected ? alpha(T.teal, 0.06) : canUse ? T.white : alpha(T.slate, 0.04),
+                        opacity: canUse ? 1 : 0.5,
+                        transition: 'all 0.18s',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      }}>
+                      <Box>
+                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: selected ? T.teal : T.ink }}>
+                          {offer.title}
+                        </Typography>
+                        <Typography sx={{ fontSize: 11, color: T.slate }}>
+                          {offer.discount_type === 'percentage_discount'
+                            ? `${offer.discount_value}% de réduction`
+                            : `${offer.discount_value} EUR de réduction`}
+                          {' · '}{offer.points_required} pts requis
+                        </Typography>
+                        {!canUse && (
+                          <Typography sx={{ fontSize: 10, color: '#DC2626', mt: 0.3 }}>
+                            Il vous manque {offer.points_required - userPoints} points
+                          </Typography>
+                        )}
+                      </Box>
+                      {selected
+                        ? <CheckCircleOutline sx={{ color: T.teal, fontSize: 20 }} />
+                        : <Chip label={`-${offer.discount_value}${offer.discount_type === 'percentage_discount' ? '%' : '€'}`}
+                            size="small"
+                            sx={{ bgcolor: alpha('#D97706', 0.1), color: '#D97706', fontWeight: 700, fontSize: 11 }} />
+                      }
+                    </Box>
+                  );
+                })}
+
+                {selectedOffer && (
+                  <Alert severity="success" sx={{ mt: 1, borderRadius: 2, fontSize: 12 }}>
+                    Offre "<strong>{selectedOffer.title}</strong>" appliquée — économie de <strong>{discountAmount} EUR</strong>
+                  </Alert>
+                )}
+              </Paper>
+            )}
+
+            {/* Section paiement Stripe */}
+            <Paper sx={{ p: 3, borderRadius: 3, border: `1px solid ${T.border}`, boxShadow: 'none' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                <CreditCard sx={{ color: T.teal }} />
+                <Typography sx={{ fontSize: 16, fontWeight: 700, color: T.ink }}>Informations de paiement</Typography>
+              </Box>
+              <Alert severity="info" sx={{ mb: 3, borderRadius: 2, fontSize: 12 }}>
+                <strong>🧪 Mode test Stripe</strong><br />
+                ✅ Succès: <code>4242 4242 4242 4242</code><br />
+                ❌ Refus: <code>4000 0000 0000 0002</code>
+              </Alert>
+              {clientSecret && (
+                <Elements stripe={stripePromise} options={{
+                  clientSecret,
+                  appearance: { theme: 'stripe', variables: { colorPrimary: T.teal, colorText: T.ink, borderRadius: '8px' } },
+                }}>
+                  <StripeForm booking={booking} onSuccess={() => setSuccess(true)} />
+                </Elements>
+              )}
+            </Paper>
+          </Box>
+
+          {/* ── Right: résumé ── */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Paper sx={{ p: 3, borderRadius: 3, border: `1px solid ${T.border}`, boxShadow: 'none' }}>
               <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.ink, mb: 2 }}>Résumé</Typography>
@@ -188,10 +302,32 @@ const CheckoutPage: React.FC = () => {
                 </Box>
               </Box>
               <Divider sx={{ my: 1.5 }} />
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
+                <Typography sx={{ fontSize: 13, color: T.slate }}>Prix de base</Typography>
+                <Typography sx={{ fontSize: 13, color: T.ink }}>{booking?.total_price} EUR</Typography>
+              </Box>
+
+              {discountAmount > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
+                  <Typography sx={{ fontSize: 13, color: T.teal }}>🎯 Réduction fidélité</Typography>
+                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: T.teal }}>-{discountAmount} EUR</Typography>
+                </Box>
+              )}
+
+              <Divider sx={{ my: 1 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Total</Typography>
-                <Typography sx={{ fontSize: 17, fontWeight: 800, color: T.teal }}>{booking?.total_price} EUR</Typography>
+                <Typography sx={{ fontSize: 17, fontWeight: 800, color: T.teal }}>{finalPrice.toFixed(2)} EUR</Typography>
               </Box>
+
+              {userPoints > 0 && (
+                <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: alpha('#D97706', 0.07) }}>
+                  <Typography sx={{ fontSize: 11, color: '#D97706', fontWeight: 600 }}>
+                    🌟 Ce paiement vous rapportera ~{Math.floor(finalPrice * 0.1)} points fidélité
+                  </Typography>
+                </Box>
+              )}
             </Paper>
 
             <Paper sx={{ p: 3, borderRadius: 3, border: `1px solid ${T.border}`, boxShadow: 'none' }}>
@@ -204,7 +340,8 @@ const CheckoutPage: React.FC = () => {
               ].map(r => (
                 <Box key={r.label} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
                   <Typography sx={{ fontSize: 12, color: T.slate }}>{r.label}</Typography>
-                  <Chip label={r.value} size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700, bgcolor: alpha(r.color, 0.1), color: r.color }} />
+                  <Chip label={r.value} size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700,
+                    bgcolor: alpha(r.color, 0.1), color: r.color }} />
                 </Box>
               ))}
             </Paper>

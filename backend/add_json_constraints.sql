@@ -1,0 +1,3 @@
+ALTER TABLE trips MODIFY COLUMN tags LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`tags`));
+ALTER TABLE trips MODIFY COLUMN inclusions LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`inclusions`));
+ALTER TABLE trips MODIFY COLUMN exclusions LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`exclusions`));

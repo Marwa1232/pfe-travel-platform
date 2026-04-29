@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  Dashboard.tsx  — User Dashboard (redesigned)
+//  Dashboard.tsx  — User Dashboard with Loyalty Points
 // ═══════════════════════════════════════════════════════
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -20,7 +20,7 @@ import {
   WorkspacePremium, Celebration, AttachMoney, Menu as MenuIcon,
   BookmarkBorder as BookingsIcon, Explore, BeachAccess,
   Terrain, Restaurant, Spa, DirectionsBike,
-  ArrowUpward, People, Bookmark,
+  ArrowUpward, People, Bookmark, CardGiftcard,
 } from '@mui/icons-material';
 import { logout } from '../store/authSlice';
 import { tripAPI, recommendationAPI, fixImageUrl } from '../services/api';
@@ -94,8 +94,17 @@ const getBadge = (n: number) => {
   return        { name: 'Nouveau Voyageur',              color: T.slate,   icon: <FlightTakeoff />,    next: { target: 1,  name: 'Explorateur Débutant' } };
 };
 
+// ─── Points badge level ───────────────────────────────
+const getPointsLevel = (points: number) => {
+  if (points >= 500) return { name: 'Platine',  color: '#7C3AED', icon: '💎' };
+  if (points >= 200) return { name: 'Or',       color: '#D97706', icon: '🥇' };
+  if (points >= 100) return { name: 'Argent',   color: '#64748B', icon: '🥈' };
+  if (points >= 50)  return { name: 'Bronze',   color: '#92400E', icon: '🥉' };
+  return                    { name: 'Débutant', color: T.slate,   icon: '⭐' };
+};
+
 // ═══════════════════════════════════════════════════════
-//  TRIP CARD  (redesigned, standalone)
+//  TRIP CARD
 // ═══════════════════════════════════════════════════════
 export const TripCard: React.FC<{ trip: any }> = ({ trip }) => {
   const navigate = useNavigate();
@@ -108,12 +117,9 @@ export const TripCard: React.FC<{ trip: any }> = ({ trip }) => {
     <Box
       onClick={() => navigate(`/trips/${trip.id}`)}
       sx={{
-        borderRadius: '14px',
-        overflow: 'hidden',
-        border: `1px solid ${T.border}`,
-        bgcolor: T.white,
-        cursor: 'pointer',
-        transition: 'all 0.22s ease',
+        borderRadius: '14px', overflow: 'hidden',
+        border: `1px solid ${T.border}`, bgcolor: T.white,
+        cursor: 'pointer', transition: 'all 0.22s ease',
         '&:hover': {
           transform: 'translateY(-4px)',
           boxShadow: '0 16px 40px rgba(0,0,0,0.1)',
@@ -122,50 +128,25 @@ export const TripCard: React.FC<{ trip: any }> = ({ trip }) => {
         },
       }}
     >
-      {/* Image */}
       <Box sx={{ height: 175, overflow: 'hidden', position: 'relative' }}>
-        <Box
-          component="img"
-          className="trip-img"
-          src={imgSrc}
-          alt={trip.title}
+        <Box component="img" className="trip-img" src={imgSrc} alt={trip.title}
           sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.4s ease' }}
           onError={(e: any) => { e.target.src = 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=75'; }}
         />
-        {/* Overlay gradient */}
         <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,18,28,0.55) 0%, transparent 55%)' }} />
-
-        {/* Save button */}
-        <IconButton
-          size="small"
-          onClick={e => { e.stopPropagation(); setSaved(s => !s); }}
-          sx={{
-            position: 'absolute', top: 10, right: 10,
-            width: 32, height: 32,
-            bgcolor: 'rgba(255,255,255,0.15)',
-            backdropFilter: 'blur(6px)',
-            border: '1px solid rgba(255,255,255,0.25)',
-            color: saved ? '#F59E0B' : T.white,
-            '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
-          }}
-        >
+        <IconButton size="small" onClick={e => { e.stopPropagation(); setSaved(s => !s); }}
+          sx={{ position: 'absolute', top: 10, right: 10, width: 32, height: 32,
+            bgcolor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(6px)',
+            border: '1px solid rgba(255,255,255,0.25)', color: saved ? '#F59E0B' : T.white,
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' } }}>
           {saved ? <Bookmark sx={{ fontSize: 15 }} /> : <BookingsIcon sx={{ fontSize: 15 }} />}
         </IconButton>
-
-        {/* Duration badge */}
         {trip.duration_days && (
-          <Box sx={{
-            position: 'absolute', top: 10, left: 10,
-            px: 1.2, py: 0.3, borderRadius: 10,
-            bgcolor: 'rgba(15,18,28,0.55)', backdropFilter: 'blur(6px)',
-          }}>
-            <Typography sx={{ fontSize: 11, fontWeight: 700, color: T.white }}>
-              {trip.duration_days}j
-            </Typography>
+          <Box sx={{ position: 'absolute', top: 10, left: 10, px: 1.2, py: 0.3, borderRadius: 10,
+            bgcolor: 'rgba(15,18,28,0.55)', backdropFilter: 'blur(6px)' }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 700, color: T.white }}>{trip.duration_days}j</Typography>
           </Box>
         )}
-
-        {/* Price + destination overlay */}
         <Box sx={{ position: 'absolute', bottom: 10, left: 12, right: 12 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.3 }}>
             <LocationOn sx={{ fontSize: 12, color: alpha(T.white, 0.8) }} />
@@ -175,23 +156,18 @@ export const TripCard: React.FC<{ trip: any }> = ({ trip }) => {
           </Box>
         </Box>
       </Box>
-
-      {/* Body */}
       <Box sx={{ p: '12px 14px 14px' }}>
         <Typography sx={{ fontSize: 14, fontWeight: 700, color: T.ink, mb: 0.5, lineHeight: 1.3,
           overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
           {trip.title}
         </Typography>
-
         {trip.short_description && (
           <Typography sx={{ fontSize: 12, color: T.slate, lineHeight: 1.6, mb: 1.2,
             overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
             {trip.short_description}
           </Typography>
         )}
-
         <Divider sx={{ mb: 1.2, borderColor: T.border }} />
-
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
             <Typography sx={{ fontSize: 10, color: T.slate, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -204,7 +180,6 @@ export const TripCard: React.FC<{ trip: any }> = ({ trip }) => {
               </Typography>
             </Typography>
           </Box>
-
           {trip.average_rating > 0 && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4,
               px: 1, py: 0.4, borderRadius: 8, bgcolor: alpha('#F59E0B', 0.09) }}>
@@ -230,13 +205,17 @@ const Dashboard: React.FC = () => {
   const userAny   = user as any;
   const photoUrl  = userAny?.profile_photo_url ? fixImageUrl(userAny.profile_photo_url) : null;
 
-  const [anchorEl, setAnchorEl]           = useState<null | HTMLElement>(null);
+  const [anchorEl, setAnchorEl]               = useState<null | HTMLElement>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [upcomingTrips, setUpcomingTrips]  = useState<any[]>([]);
-  const [pastTrips, setPastTrips]          = useState<any[]>([]);
-  const [loading, setLoading]              = useState(true);
-  const [interests, setInterests]          = useState<string[]>(user?.interests || []);
+  const [upcomingTrips, setUpcomingTrips]      = useState<any[]>([]);
+  const [pastTrips, setPastTrips]              = useState<any[]>([]);
+  const [loading, setLoading]                  = useState(true);
+  const [interests, setInterests]              = useState<string[]>(user?.interests || []);
   const [editingInterests, setEditingInterests] = useState(false);
+
+  // ── Loyalty state ─────────────────────────────────
+  const [loyaltyData, setLoyaltyData]         = useState<any>(null);
+  const [loyaltyLoading, setLoyaltyLoading]   = useState(false);
 
   useEffect(() => {
     if (!token) { navigate('/login'); return; }
@@ -246,6 +225,8 @@ const Dashboard: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+
+      // Bookings
       try {
         const res = await fetch('http://localhost:8000/api/user/bookings/upcoming', {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -257,6 +238,7 @@ const Dashboard: React.FC = () => {
         }
       } catch (e) { console.error(e); }
 
+      // Recommendations
       let recs: any[] = [];
       try {
         const r = await recommendationAPI.getTrending(4);
@@ -271,7 +253,25 @@ const Dashboard: React.FC = () => {
         } catch (_) {}
       }
       setRecommendations(recs);
+
+      // Loyalty points
+      await loadLoyaltyData();
+
     } finally { setLoading(false); }
+  };
+
+  const loadLoyaltyData = async () => {
+    setLoyaltyLoading(true);
+    try {
+      const res = await fetch('http://localhost:8000/api/loyalty/points', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setLoyaltyData(d);
+      }
+    } catch (_) {}
+    finally { setLoyaltyLoading(false); }
   };
 
   const handleLogout = () => { dispatch(logout() as any); navigate('/'); };
@@ -317,7 +317,6 @@ const Dashboard: React.FC = () => {
               {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
             </Typography>
           </Box>
-         
         </Box>
 
         {/* Menu */}
@@ -350,20 +349,12 @@ const Dashboard: React.FC = () => {
 
               {/* Profile card */}
               <SCard sx={{ overflow: 'hidden', animation: `${fadeUp} 0.4s ease 0.05s both` }}>
-                {/* Cover */}
                 <Box sx={{ height: 80, background: `linear-gradient(135deg, ${T.teal}, ${T.navy})`, position: 'relative' }} />
-                {/* Avatar */}
                 <Box sx={{ px: 3, pb: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mt: -4, mb: 2 }}>
-                    <Avatar
-                      src={photoUrl || undefined}
-                      sx={{ width: 120, height: 120, border: `3px solid ${T.white}`, bgcolor: T.navy, fontSize: 34, fontWeight: 700  }}
-                    >
-                    </Avatar>
-                   
+                    <Avatar src={photoUrl || undefined}
+                      sx={{ width: 120, height: 120, border: `3px solid ${T.white}`, bgcolor: T.navy, fontSize: 34, fontWeight: 700 }} />
                   </Box>
-
-            
 
                   {/* Badge */}
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, p: '10px 12px', borderRadius: 2,
@@ -377,7 +368,6 @@ const Dashboard: React.FC = () => {
                     </Box>
                   </Box>
 
-                  {/* Progress bar */}
                   {badge.next && (
                     <Box sx={{ mb: 2 }}>
                       <LinearProgress variant="determinate" value={progress}
@@ -389,12 +379,10 @@ const Dashboard: React.FC = () => {
                     </Box>
                   )}
 
-          
-
-                  {/* Organizer status */}
                   {user?.status_organizer !== 'approved' && (
                     user?.status_organizer === 'pending' ? (
-                      <Box sx={{ p: '10px 12px', borderRadius: 2, bgcolor: alpha(T.amber, 0.07), border: `1px solid ${alpha(T.amber, 0.2)}`, display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <Box sx={{ p: '10px 12px', borderRadius: 2, bgcolor: alpha(T.amber, 0.07),
+                        border: `1px solid ${alpha(T.amber, 0.2)}`, display: 'flex', gap: 1, alignItems: 'center' }}>
                         <AccessTime sx={{ fontSize: 16, color: T.amber }} />
                         <Box>
                           <Typography sx={{ fontSize: 12, fontWeight: 700, color: T.amber }}>Demande en attente</Typography>
@@ -420,8 +408,8 @@ const Dashboard: React.FC = () => {
                   <Typography sx={{ fontSize: 13, fontWeight: 700, color: T.ink }}>Centres d'intérêt</Typography>
                   {editingInterests ? (
                     <Button size="small" onClick={saveInterests}
-                      sx={{ fontSize: 11, textTransform: 'none', bgcolor: T.teal, color: T.white, px: 1.5, py: 0.4, borderRadius: 1.5,
-                        '&:hover': { bgcolor: '#0c9490' } }}>
+                      sx={{ fontSize: 11, textTransform: 'none', bgcolor: T.teal, color: T.white,
+                        px: 1.5, py: 0.4, borderRadius: 1.5, '&:hover': { bgcolor: '#0c9490' } }}>
                       Enregistrer
                     </Button>
                   ) : (
@@ -434,22 +422,16 @@ const Dashboard: React.FC = () => {
                   {(editingInterests ? INTERESTS : INTERESTS.filter(i => interests.includes(i.value))).map(item => {
                     const selected = interests.includes(item.value);
                     return (
-                      <Chip key={item.value}
-                        icon={item.icon as React.ReactElement}
-                        label={item.label}
-                        size="small"
+                      <Chip key={item.value} icon={item.icon as React.ReactElement} label={item.label} size="small"
                         onClick={editingInterests ? () => setInterests(p => p.includes(item.value) ? p.filter(x => x !== item.value) : [...p, item.value]) : undefined}
-                        sx={{
-                          fontSize: 11, fontWeight: 600, height: 26,
+                        sx={{ fontSize: 11, fontWeight: 600, height: 26,
                           bgcolor: selected ? alpha(item.color, 0.12) : alpha(T.border, 0.6),
                           color: selected ? item.color : T.slate,
                           border: `1px solid ${selected ? alpha(item.color, 0.3) : 'transparent'}`,
-                          cursor: editingInterests ? 'pointer' : 'default',
-                          transition: 'all 0.15s',
+                          cursor: editingInterests ? 'pointer' : 'default', transition: 'all 0.15s',
                           '& .MuiChip-icon': { color: item.color, fontSize: 13 },
                           '&:hover': editingInterests ? { bgcolor: alpha(item.color, 0.18) } : {},
-                        }}
-                      />
+                        }} />
                     );
                   })}
                   {!editingInterests && interests.length === 0 && (
@@ -463,13 +445,13 @@ const Dashboard: React.FC = () => {
               {/* Quick links */}
               <SCard sx={{ p: 2, animation: `${fadeUp} 0.4s ease 0.15s both` }}>
                 {[
-                  { label: 'Mes réservations', icon: <BookingsIcon />, path: '/bookings', color: T.teal },
-                  { label: 'Mes favoris',       icon: <Favorite />,    path: '/saved',    color: '#E11D48' },
+                  { label: 'Mes réservations', icon: <BookingsIcon />, path: '/bookings',  color: T.teal },
+                  { label: 'Mes favoris',       icon: <Favorite />,    path: '/saved',     color: '#E11D48' },
                   { label: 'Déconnexion',       icon: <Logout />,      action: handleLogout, color: T.slate },
                 ].map((item, i) => (
                   <Box key={i} onClick={item.action || (() => navigate(item.path!))}
-                    sx={{ display: 'flex', alignItems: 'center', gap: 1.2, p: '9px 10px', borderRadius: 2, cursor: 'pointer',
-                      transition: 'all 0.15s', '&:hover': { bgcolor: alpha(item.color, 0.06) } }}>
+                    sx={{ display: 'flex', alignItems: 'center', gap: 1.2, p: '9px 10px', borderRadius: 2,
+                      cursor: 'pointer', transition: 'all 0.15s', '&:hover': { bgcolor: alpha(item.color, 0.06) } }}>
                     <Box sx={{ color: item.color, display: 'flex', '& svg': { fontSize: 18 } }}>{item.icon}</Box>
                     <Typography sx={{ fontSize: 13, fontWeight: 500, color: item.color === T.slate ? T.slate : T.ink }}>
                       {item.label}
@@ -484,6 +466,161 @@ const Dashboard: React.FC = () => {
           {/* ── Main content ──────────────────────── */}
           <Grid item xs={12} md={8} lg={9}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+
+              {/* ══════════════════════════════════════
+                  LOYALTY POINTS SECTION
+              ══════════════════════════════════════ */}
+              <SCard sx={{ p: 3, animation: `${fadeUp} 0.4s ease 0.05s both` }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: alpha(T.amber, 0.1),
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.amber }}>
+                      <EmojiEvents sx={{ fontSize: 18 }} />
+                    </Box>
+                    <Box>
+                      <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Points Fidélité</Typography>
+                      <Typography sx={{ fontSize: 11, color: T.slate }}>
+                        Gagnez 1 point par 10 EUR payés
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {loyaltyData && (
+                    <Chip
+                      label={getPointsLevel(loyaltyData.available_points).icon + ' ' + getPointsLevel(loyaltyData.available_points).name}
+                      size="small"
+                      sx={{
+                        bgcolor: alpha(getPointsLevel(loyaltyData.available_points).color, 0.1),
+                        color: getPointsLevel(loyaltyData.available_points).color,
+                        fontWeight: 700, fontSize: 11, height: 24,
+                      }}
+                    />
+                  )}
+                </Box>
+
+                {loyaltyLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                    <CircularProgress size={28} sx={{ color: T.amber }} />
+                  </Box>
+                ) : loyaltyData ? (
+                  <>
+                    {/* Points stats */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1.5, mb: 2.5 }}>
+                      {[
+                        { label: 'Disponibles', value: loyaltyData.available_points, color: T.teal,  bg: alpha(T.teal, 0.06) },
+                        { label: 'Gagnés total', value: loyaltyData.total_points,    color: T.amber, bg: alpha(T.amber, 0.06) },
+                        { label: 'Utilisés',     value: loyaltyData.used_points,     color: T.slate, bg: alpha(T.slate, 0.06) },
+                      ].map(stat => (
+                        <Box key={stat.label} sx={{ p: 2, borderRadius: 2, bgcolor: stat.bg, textAlign: 'center' }}>
+                          <Typography sx={{ fontSize: 24, fontWeight: 800, color: stat.color, lineHeight: 1 }}>
+                            {stat.value}
+                          </Typography>
+                          <Typography sx={{ fontSize: 11, color: T.slate, mt: 0.5 }}>{stat.label}</Typography>
+                        </Box>
+                      ))}
+                    </Box>
+
+                    {/* Progress vers niveau suivant */}
+                    {(() => {
+                      const pts   = loyaltyData.available_points;
+                      const level = getPointsLevel(pts);
+                      const nextThresholds = [50, 100, 200, 500];
+                      const nextTarget     = nextThresholds.find(t => t > pts);
+                      const prevTarget     = nextThresholds.filter(t => t <= pts).pop() || 0;
+                      const prog = nextTarget
+                        ? Math.min(((pts - prevTarget) / (nextTarget - prevTarget)) * 100, 100)
+                        : 100;
+                      return nextTarget ? (
+                        <Box sx={{ mb: 2.5 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
+                            <Typography sx={{ fontSize: 11, color: T.slate }}>
+                              Progression vers le niveau suivant
+                            </Typography>
+                            <Typography sx={{ fontSize: 11, fontWeight: 700, color: T.amber }}>
+                              {pts} / {nextTarget} pts
+                            </Typography>
+                          </Box>
+                          <LinearProgress variant="determinate" value={prog}
+                            sx={{ height: 6, borderRadius: 3, bgcolor: alpha(T.amber, 0.12),
+                              '& .MuiLinearProgress-bar': { bgcolor: T.amber, borderRadius: 3 } }} />
+                          <Typography sx={{ fontSize: 10, color: T.slate, mt: 0.5 }}>
+                            Encore {nextTarget - pts} points pour atteindre le niveau suivant
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <Box sx={{ mb: 2.5, p: 1.5, borderRadius: 2, bgcolor: alpha('#7C3AED', 0.07),
+                          border: `1px solid ${alpha('#7C3AED', 0.2)}`, textAlign: 'center' }}>
+                          <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#7C3AED' }}>
+                            💎 Vous avez atteint le niveau maximum — Platine !
+                          </Typography>
+                        </Box>
+                      );
+                    })()}
+
+                    {/* Historique transactions */}
+                    {loyaltyData.history?.length > 0 && (
+                      <Box>
+                        <Typography sx={{ fontSize: 12, fontWeight: 700, color: T.ink, mb: 1.2 }}>
+                          Historique récent
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
+                          {loyaltyData.history.slice(0, 4).map((tx: any) => (
+                            <Box key={tx.id} sx={{ display: 'flex', justifyContent: 'space-between',
+                              alignItems: 'center', py: 1, px: 1.5, borderRadius: 2,
+                              bgcolor: tx.type === 'earn' ? alpha(T.green, 0.04) : alpha(T.red, 0.04),
+                              border: `1px solid ${tx.type === 'earn' ? alpha(T.green, 0.1) : alpha(T.red, 0.1)}` }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ width: 28, height: 28, borderRadius: '50%', display: 'flex',
+                                  alignItems: 'center', justifyContent: 'center',
+                                  bgcolor: tx.type === 'earn' ? alpha(T.green, 0.1) : alpha(T.red, 0.1) }}>
+                                  {tx.type === 'earn'
+                                    ? <EmojiEvents sx={{ fontSize: 14, color: T.green }} />
+                                    : <CardGiftcard sx={{ fontSize: 14, color: T.red }} />}
+                                </Box>
+                                <Box>
+                                  <Typography sx={{ fontSize: 12, fontWeight: 500, color: T.ink }}>
+                                    {tx.description}
+                                  </Typography>
+                                  <Typography sx={{ fontSize: 10, color: T.slate }}>{tx.created_at}</Typography>
+                                </Box>
+                              </Box>
+                              <Typography sx={{ fontSize: 13, fontWeight: 800,
+                                color: tx.type === 'earn' ? T.green : T.red }}>
+                                {tx.type === 'earn' ? '+' : ''}{tx.points} pts
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+
+                    {/* CTA si aucun point */}
+                    {loyaltyData.total_points === 0 && (
+                      <Box sx={{ textAlign: 'center', py: 2, px: 3,
+                        border: `2px dashed ${T.border}`, borderRadius: 3 }}>
+                        <EmojiEvents sx={{ fontSize: 36, color: T.border, mb: 1 }} />
+                        <Typography sx={{ fontSize: 13, fontWeight: 600, color: T.ink, mb: 0.5 }}>
+                          Vous n'avez pas encore de points
+                        </Typography>
+                        <Typography sx={{ fontSize: 12, color: T.slate, mb: 2 }}>
+                          Faites votre premier voyage et gagnez des points fidélité !
+                        </Typography>
+                        <Button size="small" onClick={() => navigate('/trips')}
+                          sx={{ bgcolor: T.teal, color: T.white, borderRadius: 2, textTransform: 'none',
+                            fontWeight: 600, fontSize: 12, px: 2.5,
+                            '&:hover': { bgcolor: '#0c9490' } }}>
+                          Découvrir les voyages
+                        </Button>
+                      </Box>
+                    )}
+                  </>
+                ) : (
+                  <Box sx={{ textAlign: 'center', py: 3 }}>
+                    <Typography sx={{ fontSize: 12, color: T.slate }}>
+                      Impossible de charger vos points
+                    </Typography>
+                  </Box>
+                )}
+              </SCard>
 
               {/* Upcoming trips */}
               <SCard sx={{ p: 3, animation: `${fadeUp} 0.4s ease 0.1s both` }}>
@@ -510,8 +647,8 @@ const Dashboard: React.FC = () => {
 
                 {upcomingTrips.length === 0 ? (
                   <Box sx={{ textAlign: 'center', py: 5, px: 2 }}>
-                    <Box sx={{ width: 60, height: 60, borderRadius: '50%', bgcolor: alpha(T.teal, 0.08), mx: 'auto', mb: 2,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ width: 60, height: 60, borderRadius: '50%', bgcolor: alpha(T.teal, 0.08),
+                      mx: 'auto', mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <FlightTakeoff sx={{ fontSize: 26, color: T.teal }} />
                     </Box>
                     <Typography sx={{ fontSize: 14, fontWeight: 600, color: T.ink, mb: 0.5 }}>Aucun voyage à venir</Typography>
@@ -523,14 +660,14 @@ const Dashboard: React.FC = () => {
                     </Button>
                   </Box>
                 ) : (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pl: 2.5, borderLeft: `2px solid ${alpha(T.teal, 0.2)}`, position: 'relative' }}>
-                    {upcomingTrips.map((booking: any, i: number) => (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pl: 2.5,
+                    borderLeft: `2px solid ${alpha(T.teal, 0.2)}`, position: 'relative' }}>
+                    {upcomingTrips.map((booking: any) => (
                       <Box key={booking.id} sx={{ position: 'relative' }}>
                         <TimelineDot />
                         <Box sx={{ p: 2, borderRadius: 2, border: `1px solid ${T.border}`, bgcolor: T.white,
                           transition: 'all 0.18s', cursor: 'pointer',
-                          '&:hover': { borderColor: alpha(T.teal, 0.5), bgcolor: alpha(T.teal, 0.01),
-                            transform: 'translateX(4px)' } }}
+                          '&:hover': { borderColor: alpha(T.teal, 0.5), bgcolor: alpha(T.teal, 0.01), transform: 'translateX(4px)' } }}
                           onClick={() => navigate(`/trips/${booking.trip?.id}`)}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                             <Typography sx={{ fontSize: 14, fontWeight: 700, color: T.ink }}>
@@ -592,8 +729,9 @@ const Dashboard: React.FC = () => {
                   <Grid container spacing={1.5}>
                     {pastTrips.slice(0, 4).map((booking: any) => (
                       <Grid item xs={12} sm={6} key={booking.id}>
-                        <Box sx={{ p: '12px 14px', borderRadius: 2, border: `1px solid ${T.border}`, cursor: 'pointer',
-                          transition: 'all 0.15s', '&:hover': { borderColor: alpha(T.teal, 0.4), bgcolor: alpha(T.teal, 0.01) } }}
+                        <Box sx={{ p: '12px 14px', borderRadius: 2, border: `1px solid ${T.border}`,
+                          cursor: 'pointer', transition: 'all 0.15s',
+                          '&:hover': { borderColor: alpha(T.teal, 0.4), bgcolor: alpha(T.teal, 0.01) } }}
                           onClick={() => navigate(`/trips/${booking.trip?.id}`)}>
                           <Typography sx={{ fontSize: 13, fontWeight: 600, color: T.ink, mb: 0.3,
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

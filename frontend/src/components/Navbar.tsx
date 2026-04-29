@@ -610,7 +610,7 @@ const Navbar: React.FC = () => {
 
               {/* Offres — pill colorée */}
               <Button
-                onClick={() => handleNavClick('/trips?promo=true')}
+                onClick={() => handleNavClick('/LoyaltyOffresPage')}
                 sx={{
                   textTransform: 'none', fontWeight: 700, fontSize: '0.9rem',
                   color: '#FF6D00',
