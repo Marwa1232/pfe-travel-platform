@@ -42,7 +42,6 @@ import {
   LocalActivity,
   Restaurant,
   Hotel,
-  Info,
   Close,
   NavigateBefore,
   NavigateNext,
@@ -54,47 +53,71 @@ import {
   ErrorOutline,
   PeopleAlt,
   Cancel,
+  Flight,
+  Umbrella,
+  SixK,
 } from '@mui/icons-material';
-import { styled, alpha } from '@mui/material/styles';
+import { styled, alpha, keyframes } from '@mui/material/styles';
 import { tripAPI, bookingAPI, fixImageUrl } from '../services/api';
 import { RootState } from '../store';
 import BookingForm from '../components/BookingForm';
 import TripReviews from '../components/TripReviews';
 import CancellationPolicyModal from '../components/CancellationPolicyModal';
 
-// ─── Styled components ────────────────────────────────────────────────────────
+// ─── 2 COULEURS UNIQUEMENT ──────────────────────────────────────
+const COLORS = {
+  teal: '#0EA5A0',
+  navy: '#0F2D5C',
+  white: '#FFFFFF',
+};
 
+const fadeUp = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
+
+// ─── Inclusion options pour Quick Info Cards ─────────────────────
+const inclusionOptions = [
+  { value: 'transport', label: 'Transport', icon: <Flight sx={{ fontSize: 20 }} /> },
+  { value: 'hebergement', label: 'Hébergement', icon: <Hotel sx={{ fontSize: 20 }} /> },
+  { value: 'guide', label: 'Guide', icon: <Verified sx={{ fontSize: 20 }} /> },
+  { value: 'assurance', label: 'Assurance', icon: <Umbrella sx={{ fontSize: 20 }} /> },
+  { value: 'repas', label: 'Repas', icon: <Restaurant sx={{ fontSize: 20 }} /> },
+  { value: 'activites', label: 'Activités', icon: <LocalActivity sx={{ fontSize: 20 }} /> },
+];
+
+// ─── Styled components ──────────────────────────────────────────
 const HeroSection = styled(Box)(({ theme }) => ({
   position: 'relative',
   width: '100%',
   height: '54vh',
   minHeight: 420,
   overflow: 'hidden',
-  borderRadius: 22,
+  borderRadius: 2,
   marginBottom: theme.spacing(4),
-  boxShadow: '0 18px 42px rgba(15, 23, 42, 0.22)',
+  boxShadow: `0 18px 42px ${alpha(COLORS.navy, 0.22)}`,
   [theme.breakpoints.down('md')]: {
     height: '46vh',
     minHeight: 360,
   },
 }));
 
-const HeroOverlay = styled(Box)(({ theme }) => ({
+const HeroOverlay = styled(Box)({
   position: 'absolute',
   top: 0,
   left: 0,
   right: 0,
   bottom: 0,
-  background: `linear-gradient(to bottom, ${alpha(theme.palette.common.black, 0.3)} 0%, ${alpha(theme.palette.common.black, 0.7)} 100%)`,
+  background: `linear-gradient(to bottom, ${alpha(COLORS.navy, 0.3)} 0%, ${alpha(COLORS.navy, 0.7)} 100%)`,
   zIndex: 1,
-}));
+});
 
 const HeroContent = styled(Box)(({ theme }) => ({
   position: 'absolute',
   bottom: theme.spacing(6),
   left: theme.spacing(6),
   right: theme.spacing(6),
-  color: theme.palette.common.white,
+  color: COLORS.white,
   zIndex: 2,
   [theme.breakpoints.down('sm')]: {
     left: theme.spacing(3),
@@ -113,29 +136,29 @@ const GalleryContainer = styled(Box)(({ theme }) => ({
   },
 }));
 
-const GalleryItem = styled(Box)(({ theme }) => ({
+const GalleryItem = styled(Box)({
   position: 'relative',
   height: 150,
-  borderRadius: theme.shape.borderRadius,
+  borderRadius: 2,
   overflow: 'hidden',
   cursor: 'pointer',
   '&:hover': {
     '& .gallery-overlay': { opacity: 1 },
     '& img': { transform: 'scale(1.1)' },
   },
-}));
+});
 
-const GalleryOverlay = styled(Box)(({ theme }) => ({
+const GalleryOverlay = styled(Box)({
   position: 'absolute',
   top: 0, left: 0, right: 0, bottom: 0,
-  background: alpha(theme.palette.common.black, 0.3),
+  background: alpha(COLORS.navy, 0.4),
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   opacity: 0,
   transition: 'opacity 0.3s ease',
   zIndex: 1,
-}));
+});
 
 const StyledImage = styled('img')({
   width: '100%',
@@ -151,14 +174,15 @@ const MainImage = styled('img')({
 });
 
 const InfoCard = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
+  padding: theme.spacing(2),
   height: '100%',
-  borderRadius: 16,
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+  borderRadius: 2,
+  border: `1px solid ${alpha(COLORS.teal, 0.12)}`,
   transition: 'all 0.3s ease',
+  backgroundColor: COLORS.white,
   '&:hover': {
     transform: 'translateY(-4px)',
-    boxShadow: '0 16px 30px rgba(15, 23, 42, 0.16)',
+    boxShadow: `0 16px 30px ${alpha(COLORS.navy, 0.16)}`,
   },
 }));
 
@@ -169,15 +193,15 @@ const PriceTag = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(2),
 }));
 
-const ModalCloseButton = styled(IconButton)(({ theme }) => ({
+const ModalCloseButton = styled(IconButton)({
   position: 'absolute',
-  top: theme.spacing(2),
-  right: theme.spacing(2),
-  backgroundColor: alpha(theme.palette.common.black, 0.5),
-  color: theme.palette.common.white,
+  top: 16,
+  right: 16,
+  backgroundColor: alpha(COLORS.navy, 0.6),
+  color: COLORS.white,
   zIndex: 3,
-  '&:hover': { backgroundColor: alpha(theme.palette.common.black, 0.7) },
-}));
+  '&:hover': { backgroundColor: alpha(COLORS.navy, 0.8) },
+});
 
 const ModalControls = styled(Box)(({ theme }) => ({
   position: 'absolute',
@@ -202,25 +226,23 @@ const ImageCounter = styled(Box)(({ theme }) => ({
   bottom: theme.spacing(2),
   left: '50%',
   transform: 'translateX(-50%)',
-  backgroundColor: alpha(theme.palette.common.black, 0.6),
-  color: theme.palette.common.white,
+  backgroundColor: alpha(COLORS.navy, 0.7),
+  color: COLORS.white,
   padding: theme.spacing(0.5, 2),
-  borderRadius: 20,
+  borderRadius: 2,
   fontSize: '0.875rem',
   zIndex: 3,
 }));
 
-// ─── Counter button ───────────────────────────────────────────────────────────
 const CounterButton = styled(IconButton)(({ theme }) => ({
   width: 36,
   height: 36,
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+  border: `1px solid ${alpha(COLORS.teal, 0.3)}`,
   borderRadius: '50%',
-  '&:hover': { background: alpha(theme.palette.primary.main, 0.08) },
+  '&:hover': { background: alpha(COLORS.teal, 0.08) },
   '&:disabled': { opacity: 0.35 },
 }));
 
-// ─── Session card ─────────────────────────────────────────────────────────────
 const SessionCard = styled(Paper, {
   shouldForwardProp: (p) => p !== 'selected' && p !== 'disabled',
 })<{ selected?: boolean; disabled?: boolean }>(({ theme, selected, disabled }) => ({
@@ -228,21 +250,52 @@ const SessionCard = styled(Paper, {
   cursor: disabled ? 'not-allowed' : 'pointer',
   opacity: disabled ? 0.55 : 1,
   border: selected
-    ? `2px solid ${theme.palette.primary.main}`
-    : `1px solid ${alpha(theme.palette.divider, 0.4)}`,
-  background: selected ? alpha(theme.palette.primary.main, 0.05) : 'transparent',
+    ? `2px solid ${COLORS.teal}`
+    : `1px solid ${alpha(COLORS.teal, 0.15)}`,
+  background: selected ? alpha(COLORS.teal, 0.05) : 'transparent',
   transition: 'all 0.2s ease',
-  borderRadius: 10,
+  borderRadius: 2,
   '&:hover': !disabled
     ? {
-        borderColor: selected ? theme.palette.primary.main : alpha(theme.palette.primary.main, 0.5),
-        background: alpha(theme.palette.primary.main, 0.04),
+        borderColor: selected ? COLORS.teal : alpha(COLORS.teal, 0.5),
+        background: alpha(COLORS.teal, 0.04),
       }
     : {},
 }));
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const GradientButton = styled(Button)({
+  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+  borderRadius: 10,
+  fontWeight: 700,
+  textTransform: 'none',
+  fontSize: '1rem',
+  padding: '12px 24px',
+  color: COLORS.white,
+  '&:hover': {
+    background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.teal})`,
+    transform: 'translateY(-2px)',
+  },
+  '&:disabled': {
+    background: alpha(COLORS.navy, 0.4),
+    color: COLORS.white,
+  },
+});
 
+const ExclusionsCard = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
+  borderRadius: 2,
+  border: `1px solid ${alpha(COLORS.navy, 0.15)}`,
+  backgroundColor: alpha(COLORS.navy, 0.02),
+}));
+
+const PolicyCard = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2),
+  borderRadius: 2,
+  border: `1px solid ${alpha(COLORS.navy, 0.2)}`,
+  backgroundColor: alpha(COLORS.navy, 0.04),
+}));
+
+// ─── Helpers ────────────────────────────────────────────────────
 const getAvailableSeats = (session: any): number => {
   if (session.status !== 'OPEN') return 0;
   const startDate = new Date(session.start_date);
@@ -265,8 +318,7 @@ const getAvailStatus = (avail: number, total: number) => {
   return 'ok';
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
+// ─── Component ──────────────────────────────────────────────────
 const TripDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -282,7 +334,6 @@ const TripDetail: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // ── New booking state ──────────────────────────────────────────────────────
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [participantCount, setParticipantCount] = useState(1);
   const [bookingAlert, setBookingAlert] = useState<{
@@ -301,7 +352,6 @@ const TripDetail: React.FC = () => {
     if (id) loadTrip();
   }, [id]);
 
-  // Re-validate whenever session or count changes
   useEffect(() => {
     validateBooking();
   }, [selectedSession, participantCount]);
@@ -322,18 +372,15 @@ const TripDetail: React.FC = () => {
     }
   };
 
-  // ── Session selection ──────────────────────────────────────────────────────
   const handleSelectSession = (session: any) => {
     const avail = getAvailableSeats(session);
-    if (avail === 0) return; // complet, on bloque
+    if (avail === 0) return;
     setSelectedSession(session);
-    // Ajuster le count si besoin
     if (participantCount > avail) {
       setParticipantCount(avail);
     }
   };
 
-  // ── Participant counter ────────────────────────────────────────────────────
   const handleCountChange = (delta: number) => {
     if (!selectedSession) return;
     const avail = getAvailableSeats(selectedSession);
@@ -342,7 +389,6 @@ const TripDetail: React.FC = () => {
     setParticipantCount(next);
   };
 
-  // ── Validation ─────────────────────────────────────────────────────────────
   const validateBooking = (): boolean => {
     if (!selectedSession) {
       setBookingAlert(null);
@@ -362,7 +408,7 @@ const TripDetail: React.FC = () => {
     if (participantCount > avail) {
       setBookingAlert({
         type: 'error',
-        message: `Il ne reste que ${avail} place${avail > 1 ? 's' : ''} pour cette session. Réduisez le nombre de participants.`,
+        message: `Il ne reste que ${avail} place${avail > 1 ? 's' : ''} pour cette session.`,
       });
       return false;
     }
@@ -370,7 +416,7 @@ const TripDetail: React.FC = () => {
     if (avail <= 3) {
       setBookingAlert({
         type: 'warning',
-        message: `Attention : seulement ${avail} place${avail > 1 ? 's' : ''} restante${avail > 1 ? 's' : ''} pour cette date !`,
+        message: `Attention : seulement ${avail} place${avail > 1 ? 's' : ''} restante${avail > 1 ? 's' : ''} !`,
       });
       return true;
     }
@@ -382,7 +428,6 @@ const TripDetail: React.FC = () => {
     return true;
   };
 
-  // ── Book handler ──────────────────────────────────────────────────────────
   const handleBook = () => {
     if (!token) {
       navigate('/login', { state: { returnTo: `/trips/${id}` } });
@@ -398,7 +443,7 @@ const TripDetail: React.FC = () => {
       return;
     }
     if (participantCount > avail) {
-      setSnackbar(`Seulement ${avail} place${avail > 1 ? 's' : ''} disponible${avail > 1 ? 's' : ''}. Réduisez le nombre de participants.`);
+      setSnackbar(`Seulement ${avail} place${avail > 1 ? 's' : ''} disponible${avail > 1 ? 's' : ''}.`);
       return;
     }
     setShowBookingForm(true);
@@ -418,7 +463,7 @@ const TripDetail: React.FC = () => {
       navigator.share({ title: trip.title, text: trip.short_description, url: window.location.href });
     } else {
       navigator.clipboard.writeText(window.location.href);
-      setSnackbar('Lien copié dans le presse-papier !');
+      setSnackbar('Lien copié !');
     }
   };
 
@@ -432,8 +477,6 @@ const TripDetail: React.FC = () => {
 
   const handlePrev = () =>
     setCurrentImageIndex((p) => (p === 0 ? galleryImages.length - 1 : p - 1));
-
-  // ── Loading / Error states ─────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -466,6 +509,7 @@ const TripDetail: React.FC = () => {
         <Fade in>
           <Alert
             severity="error"
+            sx={{ borderRadius: 2, bgcolor: alpha(COLORS.navy, 0.05), borderLeft: `4px solid ${COLORS.navy}` }}
             action={
               <Button color="inherit" size="small" onClick={() => navigate('/trips')}>
                 Voir tous les voyages
@@ -491,7 +535,6 @@ const TripDetail: React.FC = () => {
   }) || [];
   const galleryImages = trip.images?.map((img: any) => fixImageUrl(img.url)) || [];
 
-  // Derived booking values
   const selectedAvail = selectedSession ? getAvailableSeats(selectedSession) : 0;
   const totalPrice = participantCount * (trip.base_price || 0);
   const canBook =
@@ -500,24 +543,56 @@ const TripDetail: React.FC = () => {
     participantCount >= 1 &&
     participantCount <= selectedAvail;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // Liste des inclusions pour les Quick Info Cards
+  const inclusionsList = trip.inclusions || [];
+  const exclusionsList = trip.exclusions || [];
+
+  // Quick info cards - Toutes les inclusions (6 cartes)
+  const quickInfoItems = inclusionOptions.map(option => ({
+    icon: React.cloneElement(option.icon, { sx: { fontSize: 20, color: COLORS.teal } }),
+    label: option.label,
+    value: inclusionsList.includes(option.value) ? 'Inclus' : 'Non inclus',
+    isIncluded: inclusionsList.includes(option.value),
+  }));
+
+  const getExclusionLabel = (item: string) => {
+    const labels: Record<string, string> = {
+      depenses_personnelles: 'Dépenses personnelles',
+      activites_optionnelles: 'Activités optionnelles',
+      repas_libres: 'Repas libres',
+      boissons: 'Boissons',
+      pourboires: 'Pourboires',
+    };
+    return labels[item] || item;
+  };
+
   return (
     <>
-      {/* Breadcrumbs */}
-      <Container maxWidth="lg" sx={{ mt: 3, mb: 2 }}>
-        <Breadcrumbs aria-label="breadcrumb">
-          <Link color="inherit" href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }} sx={{ cursor: 'pointer' }}>
-            Accueil
-          </Link>
-          <Link color="inherit" href="#" onClick={(e) => { e.preventDefault(); navigate('/trips'); }} sx={{ cursor: 'pointer' }}>
-            Voyages
-          </Link>
-          <Typography color="text.primary">{trip.title}</Typography>
-        </Breadcrumbs>
-      </Container>
-
-      {/* Hero Section */}
       <Container maxWidth="xl" sx={{ mt: 2, mb: 5 }}>
+        {/* Breadcrumbs */}
+        <Container maxWidth="lg" sx={{ mt: 3, mb: 2 }}>
+          <Breadcrumbs aria-label="breadcrumb">
+            <Link
+              color="inherit"
+              href="#"
+              onClick={(e) => { e.preventDefault(); navigate('/'); }}
+              sx={{ cursor: 'pointer', color: alpha(COLORS.navy, 0.7), textDecoration: 'none', '&:hover': { color: COLORS.teal } }}
+            >
+              Accueil
+            </Link>
+            <Link
+              color="inherit"
+              href="#"
+              onClick={(e) => { e.preventDefault(); navigate('/trips'); }}
+              sx={{ cursor: 'pointer', color: alpha(COLORS.navy, 0.7), textDecoration: 'none', '&:hover': { color: COLORS.teal } }}
+            >
+              Voyages
+            </Link>
+            <Typography sx={{ color: COLORS.navy, fontWeight: 600 }}>{trip.title}</Typography>
+          </Breadcrumbs>
+        </Container>
+
+        {/* Hero Section */}
         <HeroSection>
           {coverImage && <MainImage src={coverImage} alt={trip.title} />}
           <HeroOverlay />
@@ -529,10 +604,9 @@ const TripDetail: React.FC = () => {
                   label={cat.name}
                   size="small"
                   sx={{
-                    bgcolor: alpha(theme.palette.common.white, 0.2),
-                    color: 'common.white',
+                    bgcolor: alpha(COLORS.white, 0.2),
+                    color: COLORS.white,
                     backdropFilter: 'blur(10px)',
-                    '&:hover': { bgcolor: alpha(theme.palette.common.white, 0.3) },
                   }}
                 />
               ))}
@@ -542,20 +616,20 @@ const TripDetail: React.FC = () => {
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ xs: 'flex-start', sm: 'center' }} flexWrap="wrap">
               <Stack direction="row" spacing={0.5} alignItems="center">
-                <LocationOn />
+                <LocationOn sx={{ color: COLORS.teal }} />
                 <Typography variant="body1">
                   {trip.destinations?.map((d: any) => d.name).join(' • ') || 'Destination non spécifiée'}
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={0.5} alignItems="center">
-                <AccessTime />
+                <AccessTime sx={{ color: COLORS.teal }} />
                 <Typography variant="body1">
                   {trip.duration_days} jour{trip.duration_days > 1 ? 's' : ''}
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={0.5} alignItems="center">
-                <Rating value={trip.avg_rating || 0} precision={0.5} readOnly size="small" />
-                <Typography variant="body2">({trip.review_count || 0} avis)</Typography>
+                <Rating value={trip.avg_rating || 0} precision={0.5} readOnly size="small" sx={{ '& .MuiRating-iconFilled': { color: COLORS.teal } }} />
+                <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>({trip.review_count || 0} avis)</Typography>
               </Stack>
             </Stack>
           </HeroContent>
@@ -568,10 +642,10 @@ const TripDetail: React.FC = () => {
               <GalleryItem key={index} onClick={() => openModal(index + 1)}>
                 <StyledImage src={image} alt={`${trip.title} - Image ${index + 2}`} />
                 <GalleryOverlay className="gallery-overlay">
-                  <ZoomIn sx={{ color: 'white', fontSize: 30 }} />
+                  <ZoomIn sx={{ color: COLORS.white, fontSize: 30 }} />
                 </GalleryOverlay>
                 {index === 3 && galleryImages.length > 5 && (
-                  <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: alpha(theme.palette.common.black, 0.5), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.5rem', fontWeight: 'bold', zIndex: 2 }}>
+                  <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: alpha(COLORS.navy, 0.5), display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.white, fontSize: '1.5rem', fontWeight: 'bold', zIndex: 2 }}>
                     +{galleryImages.length - 5}
                   </Box>
                 )}
@@ -585,105 +659,128 @@ const TripDetail: React.FC = () => {
           <Tooltip title="Ajouter aux favoris">
             <IconButton
               onClick={() => setIsFavorite(!isFavorite)}
-              sx={{ bgcolor: '#fff', border: `1px solid ${alpha(theme.palette.primary.main, 0.16)}`, '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) } }}
+              sx={{ bgcolor: COLORS.white, border: `1px solid ${alpha(COLORS.teal, 0.16)}`, borderRadius: 2, '&:hover': { bgcolor: alpha(COLORS.teal, 0.05) } }}
             >
-              {isFavorite ? <Favorite color="error" /> : <FavoriteBorder />}
+              {isFavorite ? <Favorite sx={{ color: COLORS.teal }} /> : <FavoriteBorder sx={{ color: COLORS.navy }} />}
             </IconButton>
           </Tooltip>
           <Tooltip title="Partager">
             <IconButton
               onClick={handleShare}
-              sx={{ bgcolor: '#fff', border: `1px solid ${alpha(theme.palette.primary.main, 0.16)}`, '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) } }}
+              sx={{ bgcolor: COLORS.white, border: `1px solid ${alpha(COLORS.teal, 0.16)}`, borderRadius: 2, '&:hover': { bgcolor: alpha(COLORS.teal, 0.05) } }}
             >
-              <Share />
+              <Share sx={{ color: COLORS.navy }} />
             </IconButton>
           </Tooltip>
         </Box>
 
         {/* Main Content */}
         <Grid container spacing={4}>
-          {/* ── Left Column ── */}
+          {/* Left Column */}
           <Grid item xs={12} md={8}>
             <Stack spacing={4}>
-              {/* Quick Info Cards */}
+
+              {/* Quick Info Cards - Toutes les inclusions (6 cartes) */}
               <Grid container spacing={2}>
-                {[
-                  { icon: <LocalActivity color="primary" />, label: 'Activités', value: '12+' },
-                  { icon: <Group color="primary" />, label: 'Groupe', value: '8-12 pers.' },
-                  { icon: <Restaurant color="primary" />, label: 'Repas', value: 'Inclus' },
-                  { icon: <Hotel color="primary" />, label: 'Hébergement', value: '4*' },
-                ].map((item, i) => (
-                  <Grid item xs={6} sm={3} key={i}>
+                {quickInfoItems.map((item, i) => (
+                  <Grid item xs={6} sm={4} md={2} key={i}>
                     <InfoCard elevation={2}>
                       <Stack alignItems="center" spacing={1}>
-                        {item.icon}
-                        <Typography variant="body2" color="text.secondary" align="center">{item.label}</Typography>
-                        <Typography variant="h6">{item.value}</Typography>
+                        <Box sx={{ 
+                          bgcolor: item.isIncluded ? alpha(COLORS.teal, 0.1) : alpha(COLORS.navy, 0.05),
+                          borderRadius: '50%', 
+                          p: 1.5, 
+                          display: 'flex',
+                          color: item.isIncluded ? COLORS.teal : COLORS.navy
+                        }}>
+                          {item.icon}
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" align="center">
+                          {item.label}
+                        </Typography>
+                        <Typography 
+                          variant="body1" 
+                          fontWeight="bold" 
+                          sx={{ 
+                            color: item.isIncluded ? COLORS.teal : COLORS.navy,
+                            fontSize: '0.9rem'
+                          }}
+                        >
+                          {item.value}
+                        </Typography>
                       </Stack>
                     </InfoCard>
                   </Grid>
                 ))}
               </Grid>
 
+              {/* Ce qui n'est pas inclus */}
+              {exclusionsList.length > 0 && (
+                <ExclusionsCard elevation={0}>
+                  <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ color: COLORS.navy }}>
+                    Ce qui n'est pas inclus
+                  </Typography>
+                  <Divider sx={{ mb: 3 }} />
+                  <Grid container spacing={2}>
+                    {exclusionsList.map((item: string, index: number) => (
+                      <Grid item xs={12} sm={6} key={index}>
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Box sx={{ bgcolor: alpha(COLORS.navy, 0.1), borderRadius: '50%', p: 1, display: 'flex' }}>
+                            <Cancel sx={{ color: COLORS.navy }} />
+                          </Box>
+                          <Typography variant="body1" sx={{ color: COLORS.navy }}>{getExclusionLabel(item)}</Typography>
+                        </Stack>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </ExclusionsCard>
+              )}
+
               {/* Description */}
-              <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`, boxShadow: '0 8px 24px rgba(15,23,42,0.08)' }}>
-                <Typography variant="h5" gutterBottom fontWeight="bold">À propos de ce voyage</Typography>
+              <Paper elevation={0} sx={{ p: 4, borderRadius: 2, border: `1px solid ${alpha(COLORS.teal, 0.12)}`, boxShadow: '0 8px 24px rgba(15,23,42,0.08)' }}>
+                <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ color: COLORS.navy }}>
+                  À propos de ce voyage
+                </Typography>
                 <Divider sx={{ mb: 3 }} />
-                <Typography variant="body1" paragraph color="text.secondary"  sx={{
-                            fontSize: '1.1rem',
-                            lineHeight: 1.8,
-                            whiteSpace: 'normal',    
-                            wordBreak: 'break-word',   
-                            overflow: 'visible',      
-                            display: 'block'
-                          }}>
+                <Typography variant="body1" paragraph color="text.secondary" sx={{
+                  fontSize: '1.1rem',
+                  lineHeight: 1.8,
+                  whiteSpace: 'normal',
+                  wordBreak: 'break-word',
+                  overflow: 'visible',
+                  display: 'block'
+                }}>
                   {trip.long_description || trip.short_description}
                 </Typography>
               </Paper>
 
-              {/* Highlights */}
-              <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`, boxShadow: '0 8px 24px rgba(15,23,42,0.08)' }}>
-                <Typography variant="h5" gutterBottom fontWeight="bold">Points forts</Typography>
-                <Divider sx={{ mb: 3 }} />
-                <Grid container spacing={2}>
-                  {(trip.inclusions?.length > 0 ? trip.inclusions : ['Guide expert local', 'Transport inclus', 'Petits groupes', 'Annulation gratuite']).slice(0, 6).map((item: any, index: number) => (
-                    <Grid item xs={12} sm={6} key={index}>
-                      <Stack direction="row" spacing={2} alignItems="center">
-                        <Box sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), borderRadius: '50%', p: 1, display: 'flex' }}>
-                          <Verified color="primary" />
-                        </Box>
-                        <Typography variant="body1">{item}</Typography>
-                      </Stack>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Paper>
-
               {/* Itinerary */}
-              <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`, boxShadow: '0 8px 24px rgba(15,23,42,0.08)' }}>
-                <Typography variant="h5" gutterBottom fontWeight="bold">Itinéraire</Typography>
+              <Paper elevation={0} sx={{ p: 4, borderRadius: 2, border: `1px solid ${alpha(COLORS.teal, 0.12)}`, boxShadow: '0 8px 24px rgba(15,23,42,0.08)' }}>
+                <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ color: COLORS.navy }}>
+                  Itinéraire
+                </Typography>
                 <Divider sx={{ mb: 3 }} />
                 <Stack spacing={3}>
                   {(trip.programs?.length > 0 ? trip.programs : []).slice(0, 3).map((program: any, index: number) => (
                     <Box key={index}>
-                      <Typography variant="h6" gutterBottom color="primary">
+                      <Typography variant="h6" gutterBottom sx={{ color: COLORS.teal }}>
                         Jour {program.dayNumber || program.day_number || index + 1}: {program.title}
                       </Typography>
                       <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            fontSize: '1.1rem',
-                            lineHeight: 1.8,
-                            whiteSpace: 'normal',    
-                            wordBreak: 'break-word',   
-                            overflow: 'visible',      
-                            display: 'block'
-                          }}
-                          paragraph
-                        >
-                          {program.description || 'Description non disponible'}
-                        </Typography>
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          fontSize: '1.1rem',
+                          lineHeight: 1.8,
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word',
+                          overflow: 'visible',
+                          display: 'block'
+                        }}
+                        paragraph
+                      >
+                        {program.description || 'Description non disponible'}
+                      </Typography>
                       {index < 2 && <Divider sx={{ my: 2 }} />}
                     </Box>
                   ))}
@@ -691,11 +788,6 @@ const TripDetail: React.FC = () => {
                     <Typography variant="body2" color="text.secondary">
                       L'itinéraire détaillé sera bientôt disponible.
                     </Typography>
-                  )}
-                  {trip.programs?.length > 3 && (
-                    <Button variant="outlined" color="primary" sx={{ alignSelf: 'flex-start' }} onClick={() => navigate(`/trips/${trip.id}/itinerary`)}>
-                      Voir l'itinéraire complet
-                    </Button>
                   )}
                 </Stack>
               </Paper>
@@ -705,7 +797,7 @@ const TripDetail: React.FC = () => {
             </Stack>
           </Grid>
 
-          {/* ── Right Column – Booking Sidebar ── */}
+          {/* Right Column – Booking Sidebar */}
           <Grid item xs={12} md={4}>
             <Box sx={{ position: 'sticky', top: 24 }}>
               <Zoom in timeout={500}>
@@ -713,14 +805,14 @@ const TripDetail: React.FC = () => {
                   elevation={0}
                   sx={{
                     p: 3,
-                    borderRadius: 3,
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.14)}`,
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(COLORS.teal, 0.14)}`,
                     boxShadow: '0 14px 30px rgba(15,23,42,0.14)',
                   }}
                 >
-                  {/* ── Price ── */}
+                  {/* Price */}
                   <PriceTag>
-                    <Typography variant="h3" fontWeight="bold" color="primary">
+                    <Typography variant="h3" fontWeight="bold" sx={{ color: COLORS.teal }}>
                       {trip.base_price?.toLocaleString('fr-FR')}
                     </Typography>
                     <Typography variant="body1" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -730,16 +822,16 @@ const TripDetail: React.FC = () => {
 
                   <Divider sx={{ mb: 2.5 }} />
 
-                  {/* ── Session list ── */}
+                  {/* Session list */}
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
                     <CalendarMonth color="action" fontSize="small" />
-                    <Typography variant="subtitle2" fontWeight="bold">
+                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy }}>
                       Choisir une date de départ
                     </Typography>
                   </Stack>
 
                   {availableSessions.length === 0 ? (
-                    <Alert severity="info" sx={{ mb: 2 }}>
+                    <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
                       Aucune session disponible pour le moment.
                     </Alert>
                   ) : (
@@ -753,18 +845,13 @@ const TripDetail: React.FC = () => {
                         const isFull = status === 'full';
                         const isSelected = selectedSession?.id === session.id;
 
-                        const barColor =
-                          isFull
-                            ? theme.palette.error.main
-                            : status === 'low'
-                            ? theme.palette.warning.main
-                            : theme.palette.success.main;
+                        const barColor = isFull ? COLORS.navy : COLORS.teal;
 
                         const chipProps = isFull
-                          ? { label: 'Complet', color: 'error' as const }
+                          ? { label: 'Complet', sx: { bgcolor: alpha(COLORS.navy, 0.1), color: COLORS.navy, fontWeight: 'bold' } }
                           : status === 'low'
-                          ? { label: `${avail} place${avail > 1 ? 's' : ''}`, color: 'warning' as const }
-                          : { label: `${avail} dispo.`, color: 'success' as const };
+                          ? { label: `${avail} place${avail > 1 ? 's' : ''}`, sx: { bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, fontWeight: 'bold' } }
+                          : { label: `${avail} dispo.`, sx: { bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, fontWeight: 'bold' } };
 
                         return (
                           <SessionCard
@@ -774,32 +861,25 @@ const TripDetail: React.FC = () => {
                             variant="outlined"
                             onClick={() => handleSelectSession(session)}
                           >
-                            {/* Date + badge */}
                             <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                              <Typography variant="body2" fontWeight="bold">
+                              <Typography variant="body2" fontWeight="bold" sx={{ color: COLORS.navy }}>
                                 {new Date(session.start_date).toLocaleDateString('fr-FR', {
                                   day: 'numeric',
                                   month: 'long',
                                   year: 'numeric',
                                 })}
                               </Typography>
-                              <Chip
-                                {...chipProps}
-                                size="small"
-                                sx={{ fontWeight: 'bold', fontSize: '0.7rem', flexShrink: 0 }}
-                              />
                             </Stack>
 
-                            {/* Availability bar */}
                             <Box sx={{ mt: 1 }}>
                               <LinearProgress
                                 variant="determinate"
                                 value={pct}
                                 sx={{
                                   height: 5,
-                                  borderRadius: 3,
+                                  borderRadius: 2,
                                   bgcolor: alpha(barColor, 0.15),
-                                  '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 3 },
+                                  '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 2 },
                                 }}
                               />
                               <Stack direction="row" justifyContent="space-between" mt={0.5}>
@@ -807,10 +887,7 @@ const TripDetail: React.FC = () => {
                                   {booked}/{total} réservés
                                 </Typography>
                                 {!isFull && (
-                                  <Typography
-                                    variant="caption"
-                                    sx={{ color: barColor, fontWeight: 500 }}
-                                  >
+                                  <Typography variant="caption" sx={{ color: barColor, fontWeight: 500 }}>
                                     {avail} libre{avail > 1 ? 's' : ''}
                                   </Typography>
                                 )}
@@ -824,32 +901,24 @@ const TripDetail: React.FC = () => {
 
                   <Divider sx={{ mb: 2.5 }} />
 
-                  {/* ── Participant counter ── */}
+                  {/* Participant counter */}
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
                     <PeopleAlt color="action" fontSize="small" />
-                    <Typography variant="subtitle2" fontWeight="bold">
+                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy }}>
                       Nombre de participants
                     </Typography>
                   </Stack>
 
                   <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 0.5 }}>
-                    <CounterButton
-                      size="small"
-                      onClick={() => handleCountChange(-1)}
-                      disabled={participantCount <= 1}
-                    >
+                    <CounterButton size="small" onClick={() => handleCountChange(-1)} disabled={participantCount <= 1}>
                       <Remove fontSize="small" />
                     </CounterButton>
 
-                    <Typography variant="h5" fontWeight="bold" sx={{ minWidth: 32, textAlign: 'center' }}>
+                    <Typography variant="h5" fontWeight="bold" sx={{ minWidth: 32, textAlign: 'center', color: COLORS.navy }}>
                       {participantCount}
                     </Typography>
 
-                    <CounterButton
-                      size="small"
-                      onClick={() => handleCountChange(1)}
-                      disabled={!selectedSession || participantCount >= selectedAvail}
-                    >
+                    <CounterButton size="small" onClick={() => handleCountChange(1)} disabled={!selectedSession || participantCount >= selectedAvail}>
                       <Add fontSize="small" />
                     </CounterButton>
 
@@ -860,18 +929,14 @@ const TripDetail: React.FC = () => {
                     )}
                   </Stack>
 
-                  {/* ── Booking alert ── */}
+                  {/* Booking alert */}
                   {bookingAlert && (
                     <Alert
                       severity={bookingAlert.type}
                       icon={
-                        bookingAlert.type === 'error' ? (
-                          <ErrorOutline fontSize="small" />
-                        ) : bookingAlert.type === 'warning' ? (
-                          <WarningAmber fontSize="small" />
-                        ) : (
-                          <CheckCircleOutline fontSize="small" />
-                        )
+                        bookingAlert.type === 'error' ? <ErrorOutline fontSize="small" /> :
+                        bookingAlert.type === 'warning' ? <WarningAmber fontSize="small" /> :
+                        <CheckCircleOutline fontSize="small" />
                       }
                       sx={{ mt: 1.5, mb: 1, borderRadius: 2, fontSize: '0.8rem', py: 0.5 }}
                     >
@@ -881,8 +946,8 @@ const TripDetail: React.FC = () => {
 
                   <Divider sx={{ my: 2 }} />
 
-                  {/* ── Tarif détaillé ── */}
-                  <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+                  {/* Tarif détaillé */}
+                  <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy, mb: 1 }}>
                     Récapitulatif du tarif
                   </Typography>
 
@@ -891,63 +956,86 @@ const TripDetail: React.FC = () => {
                       <Typography variant="body2" color="text.secondary">
                         {participantCount} personne{participantCount > 1 ? 's' : ''} × {trip.base_price?.toLocaleString('fr-FR')} TND
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body2" sx={{ color: COLORS.navy }}>
                         {(participantCount * (trip.base_price || 0)).toLocaleString('fr-FR')} TND
                       </Typography>
                     </Stack>
                     <Stack direction="row" justifyContent="space-between">
                       <Typography variant="body2" color="text.secondary">Frais de service</Typography>
-                      <Typography variant="body2" color="success.main">Gratuit</Typography>
+                      <Typography variant="body2" sx={{ color: COLORS.teal, fontWeight: 600 }}>Gratuit</Typography>
                     </Stack>
                     <Divider sx={{ my: 1 }} />
                     <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="subtitle1" fontWeight="bold">Total</Typography>
-                      <Typography variant="subtitle1" fontWeight="bold" color="primary">
+                      <Typography variant="subtitle1" fontWeight="bold" sx={{ color: COLORS.navy }}>Total</Typography>
+                      <Typography variant="subtitle1" fontWeight="bold" sx={{ color: COLORS.teal }}>
                         {totalPrice.toLocaleString('fr-FR')} TND
                       </Typography>
                     </Stack>
                   </Stack>
 
-                  {/* ── Organizer ── */}
+                  {/* Organizer */}
                   {trip.organizer && (
                     <>
                       <Divider sx={{ mb: 2 }} />
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Avatar src={trip.organizer.logo} sx={{ width: 40, height: 40 }}>
+                        <Avatar src={trip.organizer.logo} sx={{ width: 40, height: 40, bgcolor: COLORS.teal, color: COLORS.white }}>
                           {trip.organizer.agency_name?.[0]}
                         </Avatar>
                         <Box>
                           <Typography variant="caption" color="text.secondary">Organisé par</Typography>
-                          <Typography variant="body2" fontWeight="bold">{trip.organizer.agency_name}</Typography>
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: COLORS.navy }}>{trip.organizer.agency_name}</Typography>
                         </Box>
                       </Stack>
                     </>
                   )}
 
-                  {/* ── Difficulty ── */}
+                  {/* Difficulty */}
                   <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
                     <Typography variant="body2" color="text.secondary">Niveau :</Typography>
                     <Chip
                       label={
-                        trip.difficulty_level === 'easy'
-                          ? 'Facile'
-                          : trip.difficulty_level === 'medium'
-                          ? 'Intermédiaire'
-                          : 'Difficile'
-                      }
-                      color={
-                        trip.difficulty_level === 'easy'
-                          ? 'success'
-                          : trip.difficulty_level === 'medium'
-                          ? 'warning'
-                          : 'error'
+                        trip.difficulty_level === 'easy' ? 'Facile' :
+                        trip.difficulty_level === 'medium' ? 'Intermédiaire' : 'Difficile'
                       }
                       size="small"
-                      sx={{ fontWeight: 'bold' }}
+                      sx={{ 
+                        bgcolor: trip.difficulty_level === 'easy' ? alpha(COLORS.teal, 0.1) : alpha(COLORS.navy, 0.1),
+                        color: trip.difficulty_level === 'easy' ? COLORS.teal : COLORS.navy,
+                        fontWeight: 'bold',
+                        borderRadius: 3
+                      }}
                     />
                   </Stack>
 
-                  {/* ── Booking form or button ── */}
+                  {/* Politique d'annulation - Carte séparée */}
+                  {policy && (
+                    <PolicyCard elevation={0}>
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy, mb: 1 }}>
+                        Politique d'annulation
+                      </Typography>
+                      <Stack spacing={1}>
+                        {policy.rules?.slice(0, 3).map((rule, idx) => (
+                          <Stack key={idx} direction="row" justifyContent="space-between">
+                            <Typography variant="caption" color="text.secondary">
+                              {rule.days === 0 ? 'Moins de 7 jours' : `Plus de ${rule.days} jours`}
+                            </Typography>
+                            <Typography variant="caption" fontWeight="bold" sx={{ color: COLORS.teal }}>
+                              {rule.refund}% remboursé
+                            </Typography>
+                          </Stack>
+                        ))}
+                        <Button
+                          size="small"
+                          onClick={() => setPolicyModalOpen(true)}
+                          sx={{ mt: 1, color: COLORS.teal, justifyContent: 'flex-start', p: 0 }}
+                        >
+                          Voir tous les détails →
+                        </Button>
+                      </Stack>
+                    </PolicyCard>
+                  )}
+                  <Divider sx={{ mb: 2.5 }} />
+                  {/* Booking form or button */}
                   {showBookingForm ? (
                     <BookingForm
                       trip={trip}
@@ -958,26 +1046,10 @@ const TripDetail: React.FC = () => {
                       onCancel={() => setShowBookingForm(false)}
                     />
                   ) : (
-                    <Button
+                    <GradientButton
                       fullWidth
-                      variant="contained"
-                      size="large"
                       onClick={handleBook}
                       disabled={availableSessions.length === 0}
-                      sx={{
-                        py: 1.5,
-                        fontSize: '1rem',
-                        fontWeight: 'bold',
-                        borderRadius: 2,
-                        background: canBook
-                          ? `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.light} 90%)`
-                          : undefined,
-                        '&:hover': {
-                          background: canBook
-                            ? `linear-gradient(45deg, ${theme.palette.primary.dark} 30%, ${theme.palette.primary.main} 90%)`
-                            : undefined,
-                        },
-                      }}
                     >
                       {availableSessions.length === 0
                         ? 'Aucune session disponible'
@@ -986,10 +1058,10 @@ const TripDetail: React.FC = () => {
                         : !canBook
                         ? 'Vérifier les disponibilités'
                         : `Réserver — ${totalPrice.toLocaleString('fr-FR')} TND`}
-                    </Button>
+                    </GradientButton>
                   )}
 
-                  {/* ── Trust badges ── */}
+                  {/* Trust badges */}
                   <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2, gap: 0.5 }}>
                     {['Paiement sécurisé', 'Meilleur prix garanti'].map((txt) => (
                       <Chip
@@ -997,18 +1069,10 @@ const TripDetail: React.FC = () => {
                         label={txt}
                         size="small"
                         variant="outlined"
-                        sx={{ fontSize: '0.7rem' }}
+                        sx={{ fontSize: '0.7rem', borderColor: alpha(COLORS.teal, 0.3), color: alpha(COLORS.navy, 0.7) }}
                       />
                     ))}
                   </Stack>
-                  <Button
-                    size="small"
-                    startIcon={<Cancel />}
-                    onClick={() => setPolicyModalOpen(true)}
-                    sx={{ mt: 1.5 }}
-                  >
-                    Voir la politique d'annulation
-                  </Button>
                 </Paper>
               </Zoom>
             </Box>
@@ -1016,13 +1080,13 @@ const TripDetail: React.FC = () => {
         </Grid>
       </Container>
 
-      {/* ── Image Gallery Modal ── */}
+      {/* Image Gallery Modal */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         closeAfterTransition
         slots={{ backdrop: Backdrop }}
-        slotProps={{ backdrop: { timeout: 500, sx: { backgroundColor: 'rgba(0,0,0,0.9)' } } }}
+        slotProps={{ backdrop: { timeout: 500, sx: { backgroundColor: alpha(COLORS.navy, 0.95) } } }}
       >
         <Fade in={modalOpen}>
           <Box
@@ -1033,7 +1097,7 @@ const TripDetail: React.FC = () => {
               transform: 'translate(-50%, -50%)',
               width: '90vw',
               height: '90vh',
-              bgcolor: 'background.paper',
+              bgcolor: COLORS.white,
               borderRadius: 2,
               overflow: 'hidden',
               outline: 'none',
@@ -1043,10 +1107,10 @@ const TripDetail: React.FC = () => {
               <Close />
             </ModalCloseButton>
             <ModalControls>
-              <IconButton onClick={handlePrev} sx={{ bgcolor: alpha(theme.palette.common.black, 0.5), color: 'white', '&:hover': { bgcolor: alpha(theme.palette.common.black, 0.7) } }}>
+              <IconButton onClick={handlePrev} sx={{ bgcolor: alpha(COLORS.navy, 0.6), color: COLORS.white, '&:hover': { bgcolor: alpha(COLORS.navy, 0.8) } }}>
                 <NavigateBefore fontSize="large" />
               </IconButton>
-              <IconButton onClick={handleNext} sx={{ bgcolor: alpha(theme.palette.common.black, 0.5), color: 'white', '&:hover': { bgcolor: alpha(theme.palette.common.black, 0.7) } }}>
+              <IconButton onClick={handleNext} sx={{ bgcolor: alpha(COLORS.navy, 0.6), color: COLORS.white, '&:hover': { bgcolor: alpha(COLORS.navy, 0.8) } }}>
                 <NavigateNext fontSize="large" />
               </IconButton>
             </ModalControls>
@@ -1060,7 +1124,7 @@ const TripDetail: React.FC = () => {
         </Fade>
       </Modal>
 
-      {/* ── Snackbar ── */}
+      {/* Snackbar */}
       <Snackbar
         open={!!snackbar}
         autoHideDuration={4000}
@@ -1069,7 +1133,7 @@ const TripDetail: React.FC = () => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
 
-      {/* ── Cancellation Policy Modal ── */}
+      {/* Cancellation Policy Modal */}
       <CancellationPolicyModal
         open={policyModalOpen}
         onClose={() => setPolicyModalOpen(false)}

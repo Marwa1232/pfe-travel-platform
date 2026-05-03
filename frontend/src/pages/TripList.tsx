@@ -1,98 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
-  Container,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Typography,
-  Box,
-  Paper,
-  Chip,
-  Slider,
-  FormGroup,
-  FormControlLabel,
-  Checkbox,
-  Pagination,
-  Skeleton,
-  InputAdornment,
-  IconButton,
-  Drawer,
-  Button,
-  useTheme,
-  useMediaQuery,
-  Fab,
-  Badge,
-  Divider,
+  Container, TextField, Select, MenuItem, FormControl,
+  Typography, Box, Paper, Chip, Slider, FormGroup,
+  FormControlLabel, Checkbox, Pagination, Skeleton,
+  InputAdornment, IconButton, Drawer, Button,
+  useTheme, useMediaQuery, Fab, Badge, Stack,
   Breadcrumbs,
-  Stack,
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 import { styled, alpha } from '@mui/material/styles';
 import {
-  Search,
-  FilterList,
-  Clear,
-  Sort,
-  AttachMoney,
-  LocationOn,
-  Category,
-  AccessTime,
-  Close,
-  Tune,
-  ViewList,
-  ViewModule,
+  Search, FilterList, Clear, Sort, AttachMoney,
+  LocationOn, Category, AccessTime, Close, Tune,
   TrendingUp,
 } from '@mui/icons-material';
 import { tripAPI, destinationAPI } from '../services/api';
 import TripCard2 from '../pages/TripCard2';
 
-// ─── Styled components ────────────────────────────────────────────────────────
+// ─── Design tokens ─────────────────────────────────────────────────
+const T = {
+  teal:   '#0EA5A0',
+  navy:   '#0F2D5C',
+  paper:  '#FFFFFF',
+  white:  '#FFFFFF',
+  border: '#E8EDF2',
+  slate:  '#64748B',
+};
 
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
-  borderRadius: theme.spacing(2),
-  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  backdropFilter: 'blur(10px)',
-  border: '1px solid rgba(0,191,165,0.1)',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
-}));
+// ─── Styled ────────────────────────────────────────────────────────
+const FilterPanel = styled(Paper)({
+  padding: 24,
+  borderRadius: 20,
+  backgroundColor: T.white,
+  border: `1px solid ${T.border}`,
+  boxShadow: '0 4px 20px rgba(15,45,92,0.06)',
+});
 
-const FilterSection = styled(Box)(({ theme }) => ({
-  marginBottom: theme.spacing(3),
-  '&:last-child': { marginBottom: 0 },
-}));
-
-const FilterTitle = styled(Typography)(({ theme }) => ({
-  fontWeight: 600,
-  marginBottom: theme.spacing(2),
+const SectionTitle = styled(Typography)({
+  fontWeight: 700,
+  fontSize: 12,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: T.navy,
+  marginBottom: 12,
   display: 'flex',
   alignItems: 'center',
-  gap: theme.spacing(1),
-  color: theme.palette.text.primary,
-}));
+  gap: 6,
+});
 
-const StyledChip = styled(Chip)(({ theme }) => ({
-  margin: theme.spacing(0.5),
-  borderRadius: theme.spacing(1.5),
-  transition: 'all 0.2s ease',
-  '&:hover': {
-    transform: 'translateY(-2px)',
-    boxShadow: '0 4px 12px rgba(0,191,165,0.2)',
-  },
-}));
-
-const StyledBadge = styled(Badge)(() => ({
-  '& .MuiBadge-badge': {
-    backgroundColor: '#00BFA5',
-    color: 'white',
-  },
-}));
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
+// ─── Types ─────────────────────────────────────────────────────────
 interface Trip {
   id: number;
   title: string;
@@ -113,124 +70,125 @@ interface Destination {
   trips_count?: number;
 }
 
-interface Category {
-  id: number;
-  name: string;
-  trips_count?: number;
+// ─── Filter state (single source of truth) ────────────────────────
+interface Filters {
+  search: string;
+  destination: string;
+  category: string;
+  min_price: string;
+  max_price: string;
+  difficulty: string;
+  duration: string;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+const DEFAULT_FILTERS: Filters = {
+  search: '',
+  destination: '',
+  category: '',
+  min_price: '',
+  max_price: '',
+  difficulty: '',
+  duration: '',
+};
 
+const CATEGORIES = [
+  { id: 1, name: 'Aventure' },
+  { id: 2, name: 'Détente' },
+  { id: 3, name: 'Culturel' },
+  { id: 4, name: 'Gastronomique' },
+  { id: 5, name: 'Sportif' },
+];
+
+const DIFFICULTIES = [
+  { value: 'easy',     label: 'Facile' },
+  { value: 'medium',   label: 'Intermédiaire' },
+  { value: 'hard',     label: 'Difficile' },
+];
+
+const DURATIONS = [
+  { value: '',      label: 'Toutes les durées' },
+  { value: '1-3',   label: '1-3 jours' },
+  { value: '4-7',   label: '4-7 jours' },
+  { value: '8-14',  label: '8-14 jours' },
+  { value: '15+',   label: '15+ jours' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
 const TripList: React.FC = () => {
   const [searchParams] = useSearchParams();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile  = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet  = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const [trips, setTrips] = useState<Trip[]>([]);
+  const [trips, setTrips]               = useState<Trip[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // défaut list pour TripCard2
-  const [sortBy, setSortBy] = useState('popular');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
-  const [selectedDestinations, setSelectedDestinations] = useState<number[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [mobileOpen, setMobileOpen]     = useState(false);
+  const [page, setPage]                 = useState(1);
+  const [totalPages, setTotalPages]     = useState(1);
+  const [totalItems, setTotalItems]     = useState(0);
 
-  const [filters, setFilters] = useState({
-    destination: '',
-    category: '',
-    min_price: '',
-    max_price: '',
-    search: '',
-    difficulty: '',
-    duration: '',
-  });
+  // ── Single filter state ──────────────────────────────────────────
+  const [filters, setFilters] = useState<Filters>(() => ({
+    ...DEFAULT_FILTERS,
+    search:      searchParams.get('search')      || '',
+    destination: searchParams.get('destination') || '',
+    category:    searchParams.get('category')    || '',
+    max_price:   searchParams.get('max_price')   || '',
+  }));
 
-  const staticCategories: Category[] = [
-    { id: 1, name: 'Aventure', trips_count: 12 },
-    { id: 2, name: 'Détente', trips_count: 8 },
-    { id: 3, name: 'Culturel', trips_count: 15 },
-    { id: 4, name: 'Gastronomique', trips_count: 6 },
-    { id: 5, name: 'Sportif', trips_count: 9 },
-  ];
+  // Local slider state (committed on release)
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
 
+  // ── Load destinations once ───────────────────────────────────────
   useEffect(() => {
-    loadInitialData();
-
-    const urlSearch = searchParams.get('search') || '';
-    const urlDestination = searchParams.get('destination') || '';
-    const urlCategory = searchParams.get('category') || '';
-    const urlMaxPrice = searchParams.get('max_price') || '';
-
-    if (urlSearch || urlDestination || urlCategory || urlMaxPrice) {
-      setFilters(prev => ({
-        ...prev,
-        search: urlSearch,
-        destination: urlDestination,
-        category: urlCategory,
-        max_price: urlMaxPrice,
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    destinationAPI.list()
+      .then(r => setDestinations(Array.isArray(r.data) ? r.data : []))
+      .catch(console.error);
   }, []);
 
+  // ── Load trips whenever filters/page change ─────────────────
   useEffect(() => {
     loadTrips();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, page, sortBy, selectedDestinations, selectedCategories, searchParams]);
-
-  const loadInitialData = async () => {
-    try {
-      const destinationsRes = await destinationAPI.list();
-      setDestinations(destinationsRes.data);
-      setCategories(staticCategories);
-    } catch (error) {
-      console.error('Error loading filters data:', error);
-    }
-  };
+  }, [filters, page]);
 
   const loadTrips = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-
       const urlIds = searchParams.get('ids');
 
       if (urlIds) {
-        const tripIds = urlIds
-          .split(',')
-          .map(id => parseInt(id.trim(), 10))
-          .filter(id => !isNaN(id));
-
-        if (tripIds.length > 0) {
-          const responses = await Promise.all(tripIds.map(id => tripAPI.get(id)));
-          setTrips(responses.map(r => r.data));
-          setTotalPages(1);
-        } else {
-          setTrips([]);
-          setTotalPages(1);
-        }
-      } else {
-        const params: any = { ...filters, page, limit: 12 };
-
-        if (selectedDestinations.length > 0)
-          params.destination = selectedDestinations.join(',');
-        if (selectedCategories.length > 0)
-          params.category = selectedCategories.join(',');
-        if (sortBy === 'price_asc') params.order = { base_price: 'asc' };
-        if (sortBy === 'price_desc') params.order = { base_price: 'desc' };
-
-        const response = await tripAPI.list(params);
-        const tripsData = response.data['hydra:member'] || response.data;
-        setTrips(Array.isArray(tripsData) ? tripsData : []);
-        const totalItems =
-          response.data['hydra:totalItems'] ||
-          (Array.isArray(tripsData) ? tripsData.length : 0);
-        setTotalPages(Math.ceil(totalItems / 12));
+        // AI search result — load specific trip IDs
+        const ids = urlIds.split(',').map(Number).filter(Boolean);
+        const responses = await Promise.all(ids.map(id => tripAPI.get(id)));
+        setTrips(responses.map(r => r.data));
+        setTotalPages(1);
+        setTotalItems(ids.length);
+        return;
       }
+
+      // Build params — only send non-empty values
+      const params: Record<string, any> = { page, limit: 12 };
+
+      if (filters.search)      params.search      = filters.search;
+      if (filters.destination) params.destination = filters.destination;
+      if (filters.category)    params.category    = filters.category;
+      if (filters.difficulty)  params.difficulty  = filters.difficulty;
+      if (filters.duration)    params.duration    = filters.duration;
+      if (filters.min_price)   params.min_price   = filters.min_price;
+      if (filters.max_price)   params.max_price   = filters.max_price;
+
+      const response = await tripAPI.list(params);
+      const data = response.data;
+
+      // Handle both API Platform hydra format and plain array
+      const tripsData: Trip[] = data['hydra:member'] ?? (Array.isArray(data) ? data : []);
+      const total: number     = data['hydra:totalItems'] ?? tripsData.length;
+
+      setTrips(tripsData);
+      setTotalItems(total);
+      setTotalPages(Math.max(1, Math.ceil(total / 12)));
     } catch (error) {
       console.error('Error loading trips:', error);
       setTrips([]);
@@ -239,291 +197,274 @@ const TripList: React.FC = () => {
     }
   };
 
-  const handleFilterChange = (name: string, value: any) => {
-    setFilters(prev => ({ ...prev, [name]: value }));
+  // ── Filter helpers ───────────────────────────────────────────────
+  const setFilter = useCallback((key: keyof Filters, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
     setPage(1);
+  }, []);
+
+  const toggleDestination = (id: number) => {
+    setFilter('destination', filters.destination === String(id) ? '' : String(id));
   };
 
-  const handleDestinationToggle = (destinationId: number) => {
-    setSelectedDestinations(prev =>
-      prev.includes(destinationId)
-        ? prev.filter(id => id !== destinationId)
-        : [...prev, destinationId],
-    );
-    setPage(1);
+  const toggleCategory = (id: number) => {
+    setFilter('category', filters.category === String(id) ? '' : String(id));
   };
 
-  const handleCategoryToggle = (categoryId: number) => {
-    setSelectedCategories(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId],
-    );
-    setPage(1);
+  const toggleDifficulty = (value: string) => {
+    setFilter('difficulty', filters.difficulty === value ? '' : value);
   };
 
   const clearFilters = () => {
-    setFilters({
-      destination: '',
-      category: '',
-      min_price: '',
-      max_price: '',
-      search: '',
-      difficulty: '',
-      duration: '',
-    });
-    setSelectedDestinations([]);
-    setSelectedCategories([]);
-    setPriceRange([0, 1000]);
+    setFilters(DEFAULT_FILTERS);
+    setPriceRange([0, 5000]);
     setPage(1);
   };
 
-  const activeFiltersCount =
-    Object.values(filters).filter(v => v && v !== '').length +
-    selectedDestinations.length +
-    selectedCategories.length;
+  const activeCount =
+    Object.values(filters).filter(v => v !== '').length;
 
-  // ── Skeleton ─────────────────────────────────────────────────────────────────
-  // Skeleton calqué sur la hauteur fixe de TripCard2 (220px)
-  const renderSkeletons = () =>
-    Array(6)
-      .fill(0)
-      .map((_, index) => (
-        <Box key={index} sx={{ width: '100%', mb: 0 }}>
-          <Skeleton
-            variant="rectangular"
-            height={220}
-            sx={{ borderRadius: 2 }}
-          />
-        </Box>
-      ));
-
-  // ── Filter panel ─────────────────────────────────────────────────────────────
+  // ── Filter sidebar ───────────────────────────────────────────────
   const FilterContent = () => (
-    <Box>
-      <FilterSection>
-        <TextField
-          fullWidth
-          placeholder="Rechercher un voyage..."
-          value={filters.search}
-          onChange={e => handleFilterChange('search', e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search sx={{ color: '#00BFA5' }} />
-              </InputAdornment>
-            ),
-            sx: { borderRadius: 3, backgroundColor: alpha(theme.palette.common.white, 0.8) },
-          }}
-        />
-      </FilterSection>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
 
-      <FilterSection>
-        <FilterTitle variant="body2">
-          <LocationOn sx={{ color: '#00BFA5', fontSize: 18 }} />
+      {/* Search */}
+      <TextField
+        fullWidth size="small"
+        placeholder="Rechercher un voyage..."
+        value={filters.search}
+        onChange={e => setFilter('search', e.target.value)}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <Search sx={{ color: T.teal, fontSize: 18 }} />
+            </InputAdornment>
+          ),
+          endAdornment: filters.search ? (
+            <InputAdornment position="end">
+              <IconButton size="small" onClick={() => setFilter('search', '')}>
+                <Clear sx={{ fontSize: 16 }} />
+              </IconButton>
+            </InputAdornment>
+          ) : null,
+          sx: { borderRadius: '12px' },
+        }}
+      />
+
+      {/* Destinations */}
+      <Box>
+        <SectionTitle>
+          <LocationOn sx={{ fontSize: 14, color: T.teal }} />
           Destinations
-        </FilterTitle>
-        <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
-          {destinations.map(dest => (
-            <StyledChip
-              key={dest.id}
-              label={`${dest.name}${dest.trips_count ? ` (${dest.trips_count})` : ''}`}
-              onClick={() => handleDestinationToggle(dest.id)}
-              color={selectedDestinations.includes(dest.id) ? 'primary' : 'default'}
-              variant={selectedDestinations.includes(dest.id) ? 'filled' : 'outlined'}
-              size="small"
-              sx={{
-                backgroundColor: selectedDestinations.includes(dest.id)
-                  ? '#00BFA5'
-                  : 'transparent',
-              }}
-            />
-          ))}
+        </SectionTitle>
+        <Box sx={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {destinations.map(dest => {
+            const active = filters.destination === String(dest.id);
+            return (
+              <Chip key={dest.id}
+                label={dest.name}
+                size="small"
+                onClick={() => toggleDestination(dest.id)}
+                sx={{
+                  height: 28, fontSize: 12, fontWeight: 600, borderRadius: '10px',
+                  bgcolor: active ? T.navy : 'transparent',
+                  color: active ? T.white : T.navy,
+                  border: `1.5px solid ${active ? T.navy : alpha(T.navy, 0.15)}`,
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: active ? T.navy : alpha(T.teal, 0.08), borderColor: T.teal },
+                }}
+              />
+            );
+          })}
         </Box>
-      </FilterSection>
+      </Box>
 
-      <FilterSection>
-        <FilterTitle variant="body2">
-          <Category sx={{ color: '#00BFA5', fontSize: 18 }} />
+      {/* Categories */}
+      <Box>
+        <SectionTitle>
+          <Category sx={{ fontSize: 14, color: T.teal }} />
           Catégories
-        </FilterTitle>
-        <Box>
-          {categories.map(cat => (
-            <StyledChip
-              key={cat.id}
-              label={`${cat.name}${cat.trips_count ? ` (${cat.trips_count})` : ''}`}
-              onClick={() => handleCategoryToggle(cat.id)}
-              color={selectedCategories.includes(cat.id) ? 'primary' : 'default'}
-              variant={selectedCategories.includes(cat.id) ? 'filled' : 'outlined'}
-              size="small"
-            />
-          ))}
+        </SectionTitle>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {CATEGORIES.map(cat => {
+            const active = filters.category === String(cat.id);
+            return (
+              <Chip key={cat.id}
+                label={cat.name}
+                size="small"
+                onClick={() => toggleCategory(cat.id)}
+                sx={{
+                  height: 28, fontSize: 12, fontWeight: 600, borderRadius: '10px',
+                  bgcolor: active ? T.teal : 'transparent',
+                  color: active ? T.white : T.navy,
+                  border: `1.5px solid ${active ? T.teal : alpha(T.navy, 0.15)}`,
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: active ? T.teal : alpha(T.teal, 0.08), borderColor: T.teal },
+                }}
+              />
+            );
+          })}
         </Box>
-      </FilterSection>
+      </Box>
 
-      <FilterSection>
-        <FilterTitle variant="body2">
-          <AttachMoney sx={{ color: '#00BFA5', fontSize: 18 }} />
+      {/* Price range */}
+      <Box>
+        <SectionTitle>
+          <AttachMoney sx={{ fontSize: 14, color: T.teal }} />
           Budget
-        </FilterTitle>
+        </SectionTitle>
         <Box sx={{ px: 1 }}>
           <Slider
             value={priceRange}
-            onChange={(_, newValue) => setPriceRange(newValue as [number, number])}
-            onChangeCommitted={() => {
-              handleFilterChange('min_price', priceRange[0]);
-              handleFilterChange('max_price', priceRange[1]);
+            onChange={(_, val) => setPriceRange(val as [number, number])}
+            onChangeCommitted={(_, val) => {
+              const [min, max] = val as [number, number];
+              setFilters(prev => ({ ...prev, min_price: String(min), max_price: String(max) }));
+              setPage(1);
             }}
             valueLabelDisplay="auto"
-            min={0}
-            max={1000}
-            step={50}
+            min={0} max={5000} step={100}
             sx={{
-              color: '#00BFA5',
-              '& .MuiSlider-thumb': {
-                '&:hover, &.Mui-focusVisible': {
-                  boxShadow: `0 0 0 8px ${alpha('#00BFA5', 0.16)}`,
-                },
+              color: T.teal,
+              '& .MuiSlider-thumb': { 
+                '&:hover, &.Mui-focusVisible': { boxShadow: `0 0 0 8px ${alpha(T.teal, 0.14)}` } 
               },
             }}
           />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-            <Typography variant="caption" color="text.secondary">{priceRange[0]} DT</Typography>
-            <Typography variant="caption" color="text.secondary">{priceRange[1]} DT</Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+            <Typography sx={{ fontSize: 11, color: T.slate }}>{priceRange[0].toLocaleString()} DT</Typography>
+            <Typography sx={{ fontSize: 11, color: T.slate }}>{priceRange[1].toLocaleString()} DT</Typography>
           </Box>
         </Box>
-      </FilterSection>
+      </Box>
 
-      <FilterSection>
-        <FilterTitle variant="body2">
-          <TrendingUp sx={{ color: '#00BFA5', fontSize: 18 }} />
+      {/* Difficulty */}
+      <Box>
+        <SectionTitle>
+          <TrendingUp sx={{ fontSize: 14, color: T.teal }} />
           Difficulté
-        </FilterTitle>
+        </SectionTitle>
         <FormGroup>
-          {['Facile', 'Intermédiaire', 'Difficile'].map(level => (
-            <FormControlLabel
-              key={level}
+          {DIFFICULTIES.map(d => (
+            <FormControlLabel key={d.value}
               control={
                 <Checkbox
-                  checked={filters.difficulty === level.toLowerCase()}
-                  onChange={e =>
-                    handleFilterChange('difficulty', e.target.checked ? level.toLowerCase() : '')
-                  }
-                  sx={{ color: 'text.secondary', '&.Mui-checked': { color: '#00BFA5' } }}
+                  size="small"
+                  checked={filters.difficulty === d.value}
+                  onChange={() => toggleDifficulty(d.value)}
+                  sx={{ 
+                    color: T.slate, 
+                    '&.Mui-checked': { color: T.teal }, 
+                    p: 0.5 
+                  }}
                 />
               }
-              label={<Typography variant="body2">{level}</Typography>}
+              label={<Typography sx={{ fontSize: 13, color: T.navy }}>{d.label}</Typography>}
             />
           ))}
         </FormGroup>
-      </FilterSection>
+      </Box>
 
-      <FilterSection>
-        <FilterTitle variant="body2">
-          <AccessTime sx={{ color: '#00BFA5', fontSize: 18 }} />
+      {/* Duration */}
+      <Box>
+        <SectionTitle>
+          <AccessTime sx={{ fontSize: 14, color: T.teal }} />
           Durée
-        </FilterTitle>
+        </SectionTitle>
         <Select
-          fullWidth
-          value={filters.duration}
-          onChange={e => handleFilterChange('duration', e.target.value)}
-          displayEmpty
-          size="small"
-          sx={{ borderRadius: 2 }}
-        >
-          <MenuItem value="">Toutes les durées</MenuItem>
-          <MenuItem value="1-3">1-3 jours</MenuItem>
-          <MenuItem value="4-7">4-7 jours</MenuItem>
-          <MenuItem value="8-14">8-14 jours</MenuItem>
-          <MenuItem value="15+">15+ jours</MenuItem>
-        </Select>
-      </FilterSection>
-
-      {activeFiltersCount > 0 && (
-        <Button
-          fullWidth
-          variant="outlined"
-          startIcon={<Clear />}
-          onClick={clearFilters}
-          sx={{
-            mt: 2,
-            borderRadius: 2,
-            borderColor: alpha(theme.palette.primary.main, 0.3),
-            color: theme.palette.primary.main,
-            '&:hover': {
-              borderColor: theme.palette.primary.main,
-              backgroundColor: alpha(theme.palette.primary.main, 0.05),
-            },
+          fullWidth size="small" value={filters.duration}
+          onChange={e => setFilter('duration', e.target.value)}
+          sx={{ 
+            borderRadius: '12px', 
+            fontSize: 13,
+            '& .MuiSelect-select': { py: 1.2 },
           }}
         >
-          Effacer les filtres ({activeFiltersCount})
+          {DURATIONS.map(d => (
+            <MenuItem key={d.value} value={d.value} sx={{ fontSize: 13 }}>{d.label}</MenuItem>
+          ))}
+        </Select>
+      </Box>
+
+      {/* Clear */}
+      {activeCount > 0 && (
+        <Button fullWidth variant="outlined" startIcon={<Clear />} onClick={clearFilters}
+          sx={{ 
+            borderRadius: '12px', 
+            borderColor: alpha(T.navy, 0.2), 
+            color: T.navy,
+            fontWeight: 600, 
+            textTransform: 'none', 
+            fontSize: 13,
+            py: 1,
+            '&:hover': { borderColor: T.teal, color: T.teal, bgcolor: alpha(T.teal, 0.04) } 
+          }}>
+          Effacer les filtres ({activeCount})
         </Button>
       )}
     </Box>
   );
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Skeletons ────────────────────────────────────────────────────
+  const Skeletons = () => (
+    <Stack spacing={2}>
+      {Array(6).fill(0).map((_, i) => (
+        <Skeleton key={i} variant="rectangular" height={250}
+          sx={{ borderRadius: '16px', bgcolor: alpha(T.navy, 0.04) }} />
+      ))}
+    </Stack>
+  );
+
+  // ── Render ───────────────────────────────────────────────────────
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
-        pt: 4,
-        pb: 6,
-      }}
-    >
+    <Box sx={{ minHeight: '100vh', bgcolor: '#F8FAFE', pt: 4, pb: 8 }}>
       <Container maxWidth="xl">
+
         {/* Breadcrumbs */}
-        <Breadcrumbs sx={{ mb: 3, color: 'text.secondary' }}>
-          <Link to="/" style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}>
-            Accueil
-          </Link>
-          <Typography color="text.primary">Voyages</Typography>
+        <Breadcrumbs sx={{ mb: 3, fontSize: 13 }}>
+          <Link to="/" style={{ textDecoration: 'none', color: T.slate }}>Accueil</Link>
+          <Typography sx={{ fontSize: 13, color: T.navy, fontWeight: 600 }}>Voyages</Typography>
         </Breadcrumbs>
 
-        {/* Header */}
+        {/* Header with results count */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
+          <Typography sx={{ fontSize: 32, fontWeight: 800, color: T.navy, mb: 1 }}>
             Découvrez nos voyages
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {trips.length}+ voyages extraordinaires vous attendent
+          <Typography sx={{ fontSize: 15, color: T.slate }}>
+            {loading ? 'Chargement en cours...' : `${totalItems} voyage${totalItems !== 1 ? 's' : ''} disponible${totalItems !== 1 ? 's' : ''}`}
           </Typography>
         </Box>
 
-        {/* Mobile Filter FAB */}
+        {/* Mobile FAB */}
         {isMobile && (
-          <Fab
-            variant="extended"
-            color="primary"
-            sx={{
-              position: 'fixed',
-              bottom: 20,
-              right: 20,
+          <Fab variant="extended" onClick={() => setMobileOpen(true)}
+            sx={{ 
+              position: 'fixed', 
+              bottom: 20, 
+              right: 20, 
               zIndex: 1000,
-              background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-            }}
-            onClick={() => setMobileFilterOpen(true)}
-          >
-            <StyledBadge badgeContent={activeFiltersCount} color="primary">
-              <Tune sx={{ mr: 1 }} />
-            </StyledBadge>
+              bgcolor: T.navy, 
+              color: T.white, 
+              fontWeight: 700, 
+              fontSize: 13,
+              '&:hover': { bgcolor: T.teal },
+              boxShadow: `0 4px 20px ${alpha(T.navy, 0.3)}` 
+            }}>
+            <Badge badgeContent={activeCount || undefined}
+              sx={{ '& .MuiBadge-badge': { bgcolor: T.teal, color: T.white } }}>
+              <Tune sx={{ mr: 1, fontSize: 18 }} />
+            </Badge>
             Filtres
           </Fab>
         )}
 
-        {/* Mobile Drawer */}
-        <Drawer
-          anchor="left"
-          open={mobileFilterOpen}
-          onClose={() => setMobileFilterOpen(false)}
-          PaperProps={{
-            sx: { width: '85%', maxWidth: 360, p: 3, backgroundColor: 'background.default' },
-          }}
-        >
+        {/* Mobile drawer */}
+        <Drawer anchor="left" open={mobileOpen} onClose={() => setMobileOpen(false)}
+          PaperProps={{ sx: { width: '85%', maxWidth: 360, p: 3, bgcolor: T.white } }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h6" fontWeight={600}>Filtres</Typography>
-            <IconButton onClick={() => setMobileFilterOpen(false)}>
+            <Typography sx={{ fontSize: 18, fontWeight: 800, color: T.navy }}>Filtres</Typography>
+            <IconButton onClick={() => setMobileOpen(false)} size="small" sx={{ color: T.slate }}>
               <Close />
             </IconButton>
           </Box>
@@ -531,169 +472,114 @@ const TripList: React.FC = () => {
         </Drawer>
 
         <Grid container spacing={3}>
-          {/* Desktop Filters */}
+
+          {/* Desktop sidebar */}
           {!isMobile && (
             <Grid xs={12} md={3}>
-              <StyledPaper>
-                <FilterContent />
-              </StyledPaper>
+              <Box sx={{ position: 'sticky', top: 24 }}>
+                <FilterPanel>
+                  <FilterContent />
+                </FilterPanel>
+              </Box>
             </Grid>
           )}
 
-          {/* Trip List */}
+          {/* Main content */}
           <Grid xs={12} md={!isMobile ? 9 : 12}>
-            {/* Toolbar */}
-            <Paper
-              sx={{
-                p: 2,
-                mb: 3,
-                borderRadius: 2,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 2,
-                backgroundColor: 'rgba(255,255,255,0.8)',
-                backdropFilter: 'blur(10px)',
-              }}
-            >
+
+            {/* Simple toolbar with only results count and active filters */}
+            <Paper sx={{ 
+              p: '16px 20px', 
+              mb: 3, 
+              borderRadius: '16px',
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              flexWrap: 'wrap', 
+              gap: 2, 
+              bgcolor: T.white, 
+              border: `1px solid ${T.border}`,
+              boxShadow: '0 2px 8px rgba(15,45,92,0.04)' 
+            }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {trips.length} voyages trouvés
+                <Typography sx={{ fontSize: 14, color: T.slate, fontWeight: 500 }}>
+                  {loading ? 'Chargement...' : `${totalItems} résultat${totalItems !== 1 ? 's' : ''}`}
                 </Typography>
-                {activeFiltersCount > 0 && !isMobile && (
-                  <Chip
-                    label={`${activeFiltersCount} filtre${activeFiltersCount > 1 ? 's' : ''} actif${activeFiltersCount > 1 ? 's' : ''}`}
+                {activeCount > 0 && !isMobile && (
+                  <Chip 
+                    label={`${activeCount} filtre${activeCount > 1 ? 's actif' : ' actif'}`}
                     onDelete={clearFilters}
-                    size="small"
-                    sx={{ borderRadius: 1.5 }}
+                    sx={{ 
+                      height: 28, 
+                      fontSize: 12, 
+                      fontWeight: 600, 
+                      borderRadius: '10px',
+                      bgcolor: alpha(T.teal, 0.1), 
+                      color: T.teal,
+                      '& .MuiChip-deleteIcon': { color: T.teal, fontSize: 16 }
+                    }} 
                   />
-                )}
-              </Box>
-
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                  <Select
-                    value={sortBy}
-                    onChange={e => setSortBy(e.target.value)}
-                    displayEmpty
-                    sx={{ borderRadius: 2 }}
-                    startAdornment={
-                      <InputAdornment position="start">
-                        <Sort sx={{ color: '#00BFA5', fontSize: 20 }} />
-                      </InputAdornment>
-                    }
-                  >
-                    <MenuItem value="popular">Les plus populaires</MenuItem>
-                    <MenuItem value="price_asc">Prix croissant</MenuItem>
-                    <MenuItem value="price_desc">Prix décroissant</MenuItem>
-                    <MenuItem value="newest">Nouveautés</MenuItem>
-                  </Select>
-                </FormControl>
-
-                {/* View Toggle */}
-                {!isTablet && (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      gap: 1,
-                      backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                      padding: '4px',
-                      borderRadius: 2,
-                    }}
-                  >
-                    <IconButton
-                      size="small"
-                      onClick={() => setViewMode('grid')}
-                      sx={{
-                        backgroundColor: viewMode === 'grid' ? 'primary.main' : 'transparent',
-                        color: viewMode === 'grid' ? 'white' : 'text.secondary',
-                        '&:hover': {
-                          backgroundColor:
-                            viewMode === 'grid'
-                              ? 'primary.dark'
-                              : alpha(theme.palette.primary.main, 0.1),
-                        },
-                      }}
-                    >
-                      <ViewModule />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => setViewMode('list')}
-                      sx={{
-                        backgroundColor: viewMode === 'list' ? 'primary.main' : 'transparent',
-                        color: viewMode === 'list' ? 'white' : 'text.secondary',
-                        '&:hover': {
-                          backgroundColor:
-                            viewMode === 'list'
-                              ? 'primary.dark'
-                              : alpha(theme.palette.primary.main, 0.1),
-                        },
-                      }}
-                    >
-                      <ViewList />
-                    </IconButton>
-                  </Box>
                 )}
               </Box>
             </Paper>
 
-            {/* ── Trip Cards ── */}
+            {/* Results */}
             {loading ? (
-              // Skeletons à hauteur fixe 220px comme TripCard2
-              <Stack spacing={2}>
-                {renderSkeletons()}
-              </Stack>
+              <Skeletons />
             ) : trips.length === 0 ? (
-              <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
-                <Typography variant="h6" color="text.secondary" gutterBottom>
+              <Paper sx={{ 
+                p: 6, 
+                textAlign: 'center', 
+                borderRadius: '20px', 
+                border: `1px solid ${T.border}`,
+                bgcolor: T.white 
+              }}>
+                <Typography sx={{ fontSize: 18, fontWeight: 700, color: T.navy, mb: 1 }}>
                   Aucun voyage trouvé
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography sx={{ fontSize: 14, color: T.slate, mb: 3 }}>
                   Essayez de modifier vos filtres
                 </Typography>
-                <Button
-                  variant="contained"
-                  onClick={clearFilters}
-                  sx={{ mt: 2, borderRadius: 2 }}
-                >
+                <Button variant="contained" onClick={clearFilters}
+                  sx={{ 
+                    bgcolor: T.teal, 
+                    borderRadius: '12px', 
+                    textTransform: 'none',
+                    fontWeight: 700, 
+                    px: 3,
+                    '&:hover': { bgcolor: T.navy } 
+                  }}>
                   Effacer les filtres
                 </Button>
               </Paper>
-            ) : viewMode === 'list' ? (
-              // ── MODE LIST : cartes empilées, largeur 100%, hauteur fixe ──
-              <Stack spacing={2}>
-                {trips.map(trip => (
-                  <TripCard2 key={trip.id} trip={trip} />
-                ))}
-              </Stack>
             ) : (
-              // ── MODE GRID : 2 colonnes en grille ──
-              // En mode grid, TripCard2 n'est pas idéale (conçue pour list),
-              // mais on force quand même une hauteur fixe via le wrapper
-              <Grid container spacing={2}>
-                {trips.map(trip => (
-                  <Grid xs={12} sm={6} key={trip.id}>
-                    {/* Wrapper avec overflow hidden pour bloquer tout débordement */}
-                    <Box sx={{ width: '100%', height: 220, overflow: 'hidden' }}>
-                      <TripCard2 trip={trip} />
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
+              <Stack spacing={2.5}>
+                {trips.map(trip => <TripCard2 key={trip.id} trip={trip} />)}
+              </Stack>
             )}
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                <Pagination
-                  count={totalPages}
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
+                <Pagination 
+                  count={totalPages} 
                   page={page}
-                  onChange={(_, value) => setPage(value)}
-                  color="primary"
-                  size={isMobile ? 'medium' : 'large'}
-                  sx={{ '& .MuiPaginationItem-root': { borderRadius: 2 } }}
+                  onChange={(_, v) => { setPage(v); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  sx={{ 
+                    '& .MuiPaginationItem-root': { 
+                      borderRadius: '10px', 
+                      fontWeight: 600,
+                      fontSize: 14,
+                    },
+                    '& .Mui-selected': { 
+                      bgcolor: T.navy, 
+                      color: T.white,
+                      '&:hover': { bgcolor: T.navy }
+                    },
+                    '& .MuiPaginationItem-page:hover': {
+                      bgcolor: alpha(T.teal, 0.08),
+                    }
+                  }} 
                 />
               </Box>
             )}

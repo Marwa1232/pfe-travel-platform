@@ -12,7 +12,8 @@ import {
 import { alpha } from '@mui/material/styles';
 import {
   Lock, CheckCircle, CreditCard, FlightTakeoff, ArrowBack,
-  EmojiEvents, CheckCircleOutline,
+  EmojiEvents, CheckCircleOutline, Star, MilitaryTech, 
+  WorkspacePremium, Celebration, RocketLaunch
 } from '@mui/icons-material';
 import api, { bookingAPI, paymentAPI, loyaltyAPI } from '../services/api';
 import { RootState } from '../store';
@@ -20,9 +21,16 @@ import { RootState } from '../store';
 const stripePromise = loadStripe('pk_test_51TP0JYFOyBxjmoiQzrrt5PIp2IZ2TQcmaNXUKcBOVaqj3NnmNbXlOwdxihKocqWhXQvZXr6yZbh32ip8QK6sxXXu00OijvduD5');
 
 const T = {
-  teal: '#0EA5A0', navy: '#0F2D5C', slate: '#64748B',
-  ink: '#0F172A', paper: '#F8FAFC', white: '#FFFFFF',
-  border: '#E2E8F0', green: '#16A34A',
+  teal: '#0EA5A0', 
+  navy: '#0F2D5C', 
+  slate: '#64748B',
+  ink: '#0F172A', 
+  paper: '#F8FAFC', 
+  white: '#FFFFFF',
+  border: '#E2E8F0', 
+  green: '#16A34A',
+  amber: '#D97706',
+  red: '#DC2626',
 };
 
 // ── Stripe Form ──────────────────────────────────────────
@@ -70,7 +78,7 @@ const StripeForm: React.FC<{ booking: any; onSuccess: () => void }> = ({ booking
         sx={{
           mt: 3, py: 1.5, borderRadius: 2, bgcolor: T.navy, color: T.white,
           fontWeight: 700, fontSize: 15, textTransform: 'none',
-          '&:hover': { bgcolor: '#0D2550' },
+          '&:hover': { bgcolor: '#1A3F7A' },
           '&:disabled': { bgcolor: alpha(T.navy, 0.4), color: T.white },
         }}>
         {loading
@@ -78,7 +86,7 @@ const StripeForm: React.FC<{ booking: any; onSuccess: () => void }> = ({ booking
           : <><Lock sx={{ fontSize: 16, mr: 1 }} />Payer {booking?.total_price} EUR</>}
       </Button>
       <Typography sx={{ textAlign: 'center', fontSize: 11, color: T.slate, mt: 1.5 }}>
-        🔒 Paiement sécurisé Stripe — données jamais stockées sur nos serveurs
+        <Lock sx={{ fontSize: 10, mr: 0.5 }} /> Paiement sécurisé Stripe — données jamais stockées sur nos serveurs
       </Typography>
     </Box>
   );
@@ -169,7 +177,8 @@ const CheckoutPage: React.FC = () => {
         </Typography>
         {discountAmount > 0 && (
           <Typography sx={{ fontSize: 13, color: T.teal, fontWeight: 600, mb: 2 }}>
-            🎯 Vous avez économisé {discountAmount} EUR grâce à vos points fidélité !
+            <Celebration sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
+            Vous avez économisé {discountAmount} EUR grâce à vos points fidélité !
           </Typography>
         )}
         <Button fullWidth onClick={() => navigate('/bookings')}
@@ -198,7 +207,7 @@ const CheckoutPage: React.FC = () => {
             {userPoints > 0 && (
               <Paper sx={{ p: 3, borderRadius: 3, border: `1px solid ${T.border}`, boxShadow: 'none' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                  <EmojiEvents sx={{ color: '#D97706' }} />
+                  <EmojiEvents sx={{ color: T.amber }} />
                   <Box>
                     <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.ink }}>
                       Vos points fidélité
@@ -241,7 +250,7 @@ const CheckoutPage: React.FC = () => {
                           {' · '}{offer.points_required} pts requis
                         </Typography>
                         {!canUse && (
-                          <Typography sx={{ fontSize: 10, color: '#DC2626', mt: 0.3 }}>
+                          <Typography sx={{ fontSize: 10, color: T.red, mt: 0.3 }}>
                             Il vous manque {offer.points_required - userPoints} points
                           </Typography>
                         )}
@@ -250,7 +259,7 @@ const CheckoutPage: React.FC = () => {
                         ? <CheckCircleOutline sx={{ color: T.teal, fontSize: 20 }} />
                         : <Chip label={`-${offer.discount_value}${offer.discount_type === 'percentage_discount' ? '%' : '€'}`}
                             size="small"
-                            sx={{ bgcolor: alpha('#D97706', 0.1), color: '#D97706', fontWeight: 700, fontSize: 11 }} />
+                            sx={{ bgcolor: alpha(T.amber, 0.1), color: T.amber, fontWeight: 700, fontSize: 11 }} />
                       }
                     </Box>
                   );
@@ -270,11 +279,6 @@ const CheckoutPage: React.FC = () => {
                 <CreditCard sx={{ color: T.teal }} />
                 <Typography sx={{ fontSize: 16, fontWeight: 700, color: T.ink }}>Informations de paiement</Typography>
               </Box>
-              <Alert severity="info" sx={{ mb: 3, borderRadius: 2, fontSize: 12 }}>
-                <strong>🧪 Mode test Stripe</strong><br />
-                ✅ Succès: <code>4242 4242 4242 4242</code><br />
-                ❌ Refus: <code>4000 0000 0000 0002</code>
-              </Alert>
               {clientSecret && (
                 <Elements stripe={stripePromise} options={{
                   clientSecret,
@@ -310,7 +314,10 @@ const CheckoutPage: React.FC = () => {
 
               {discountAmount > 0 && (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
-                  <Typography sx={{ fontSize: 13, color: T.teal }}>🎯 Réduction fidélité</Typography>
+                  <Typography sx={{ fontSize: 13, color: T.teal }}>
+                    <WorkspacePremium sx={{ fontSize: 12, mr: 0.5, verticalAlign: 'middle' }} />
+                    Réduction fidélité
+                  </Typography>
                   <Typography sx={{ fontSize: 13, fontWeight: 700, color: T.teal }}>-{discountAmount} EUR</Typography>
                 </Box>
               )}
@@ -322,28 +329,13 @@ const CheckoutPage: React.FC = () => {
               </Box>
 
               {userPoints > 0 && (
-                <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: alpha('#D97706', 0.07) }}>
-                  <Typography sx={{ fontSize: 11, color: '#D97706', fontWeight: 600 }}>
-                    🌟 Ce paiement vous rapportera ~{Math.floor(finalPrice * 0.1)} points fidélité
+                <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: alpha(T.amber, 0.07) }}>
+                  <Typography sx={{ fontSize: 11, color: T.amber, fontWeight: 600 }}>
+                    <Star sx={{ fontSize: 11, mr: 0.5, verticalAlign: 'middle' }} />
+                    Ce paiement vous rapportera ~{Math.floor(finalPrice * 0.1)} points fidélité
                   </Typography>
                 </Box>
               )}
-            </Paper>
-
-            <Paper sx={{ p: 3, borderRadius: 3, border: `1px solid ${T.border}`, boxShadow: 'none' }}>
-              <Typography sx={{ fontSize: 13, fontWeight: 700, color: T.ink, mb: 1.5 }}>Politique d'annulation</Typography>
-              {[
-                { label: '> 30 jours avant départ', value: '100% remboursé', color: T.green },
-                { label: '15–30 jours',              value: '70% remboursé',  color: '#D97706' },
-                { label: '7–15 jours',               value: '40% remboursé',  color: '#EA580C' },
-                { label: '< 7 jours',                value: 'Non remboursé',  color: '#DC2626' },
-              ].map(r => (
-                <Box key={r.label} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
-                  <Typography sx={{ fontSize: 12, color: T.slate }}>{r.label}</Typography>
-                  <Chip label={r.value} size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700,
-                    bgcolor: alpha(r.color, 0.1), color: r.color }} />
-                </Box>
-              ))}
             </Paper>
           </Box>
         </Box>

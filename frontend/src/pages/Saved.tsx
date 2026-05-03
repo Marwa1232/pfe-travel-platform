@@ -1,30 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
-  Container,
-  Typography,
-  Box,
-  Paper,
-  Button,
-  Card,
-  CardContent,
-  CardMedia,
-  IconButton,
-  Chip,
-  Fade,
+  Container, Typography, Box, Button, Grid,
+  Fade, Skeleton, Chip,
 } from '@mui/material';
-import Grid from '@mui/material/Unstable_Grid2';
 import { styled, alpha } from '@mui/material/styles';
-import {
-  Favorite,
-  FavoriteBorder,
-  Delete,
-  Explore,
-  FlightTakeoff,
-  LocationOn,
-} from '@mui/icons-material';
-import { favoriteAPI, fixImageUrl } from '../services/api';
+import { Favorite, FavoriteBorder, Explore, FlightTakeoff } from '@mui/icons-material';
+import { favoriteAPI } from '../services/api';
+import TripCard from '../components/TripCard';
+import { RootState } from '../store';
 
+// ─── Tokens ───────────────────────────────────────────────────────
+const T = {
+  teal:   '#0EA5A0',
+  tealDk: '#0C8F8A',
+  navy:   '#0F2D5C',
+  navyLt: '#1A3F7A',
+  white:  '#FFFFFF',
+  paper:  '#F0F4F8',
+  border: '#DDE3EB',
+  slate:  '#64748B',
+  ink:    '#0F172A',
+  Navy:  '#0F2D5C',
+};
+
+// ─── Styled ───────────────────────────────────────────────────────
+const PageWrapper = styled(Box)({
+  minHeight: '100vh',
+  backgroundColor: T.paper,
+  paddingTop: 40,
+  paddingBottom: 80,
+});
+
+const EmptyCard = styled(Box)({
+  backgroundColor: T.white,
+  borderRadius: 20,
+  border: `1px solid ${T.border}`,
+  boxShadow: '0 2px 12px rgba(15,45,92,0.06)',
+  padding: '64px 32px',
+  textAlign: 'center',
+});
+
+// ─── Types ────────────────────────────────────────────────────────
 interface FavoriteTrip {
   id: number;
   title: string;
@@ -34,300 +52,192 @@ interface FavoriteTrip {
   duration_days: number;
   difficulty_level: string;
   status: string;
+  cover_image: string | null;
   images: Array<{ url: string; is_cover: boolean }>;
   destinations: Array<{ id: number; name: string }>;
   favorite_id: number;
   favorited_at: string;
 }
 
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(4),
-  borderRadius: theme.spacing(2),
-  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-  border: '1px solid rgba(0,191,165,0.1)',
-}));
-
-const StyledCard = styled(Card)(({ theme }) => ({
-  width: 320,
-  height: 480,
-  display: 'flex',
-  flexDirection: 'column',
-  borderRadius: theme.spacing(1.5),
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-  boxShadow: '0 4px 12px rgba(105, 100, 100, 0.05)',
-  transition: 'all 0.3s ease',
-  overflow: 'hidden',
-  position: 'relative',
-  '&:hover': {
-    transform: 'translateY(-4px)',
-    boxShadow: '0 12px 24px rgba(210, 218, 217, 0.15)',
-  },
-}));
-
+// ─── Component ────────────────────────────────────────────────────
 const Saved: React.FC = () => {
   const navigate = useNavigate();
-  const [favorites, setFavorites] = useState<FavoriteTrip[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const token = useSelector((state: RootState) => state.auth.token);
+  const isLoggedIn = !!token;
+
+  const [favorites, setFavorites]   = useState<FavoriteTrip[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [removing, setRemoving]     = useState<number | null>(null);
 
   useEffect(() => {
-    loadFavorites();
-  }, []);
+    if (isLoggedIn) {
+      loadFavorites();
+    } else {
+      setLoading(false);
+    }
+  }, [isLoggedIn]);
 
   const loadFavorites = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
+    setLoading(true);
     try {
       const response = await favoriteAPI.list();
-      setFavorites(response.data);
+      const data = Array.isArray(response.data) ? response.data : [];
+      setFavorites(data);
     } catch (error) {
       console.error('Error loading favorites:', error);
+      setFavorites([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRemoveFavorite = async (tripId: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
+  const handleRemoveFavorite = async (tripId: number) => {
+    setRemoving(tripId);
     try {
       await favoriteAPI.remove(tripId);
       setFavorites(prev => prev.filter(f => f.id !== tripId));
     } catch (error) {
       console.error('Error removing favorite:', error);
+    } finally {
+      setRemoving(null);
     }
   };
 
-  const renderFavoriteCard = (trip: FavoriteTrip) => {
-    const coverImage = fixImageUrl(trip.images?.find(img => img.is_cover)?.url || trip.images?.[0]?.url || '');
-    const destinationName = trip.destinations?.[0]?.name || '';
-
-    return (
-      <Grid xs={12} sm={6} md={4} key={trip.id}>
-        <StyledCard>
-          <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
-            <CardMedia
-              component="img"
-              image={coverImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=80'}
-              alt={trip.title}
-              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                background: 'linear-gradient(to top, rgba(0,0,0,0.5), rgba(0,0,0,0.2))'
-              }}
-            />
-          </Box>
-
-          <IconButton
-            sx={{
-              position: 'absolute',
-              top: 10,
-              left: 10,
-              backgroundColor: 'rgba(255,255,255,0.9)',
-              padding: 0.5,
-              zIndex: 2,
-              '&:hover': { backgroundColor: 'white' },
-            }}
-            size="small"
-            onClick={(e) => handleRemoveFavorite(trip.id, e)}
-          >
-            <Favorite sx={{ fontSize: 30, color: '#FF6B6B' }} />
-          </IconButton>
-
-          <Box
-            sx={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              width: '100%',
-              height: '50%',
-              zIndex: 1,
-              backdropFilter: 'blur(3px)',
-              maskImage: 'linear-gradient(to top, black 0%, black 70%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to top, black 0%, black 70%, transparent 100%)',
-              background: 'linear-gradient(to top, rgba(172, 168, 168, 0.6) 0%, rgba(213, 210, 210, 0.2) 100%)',
-            }}
-          />
-
-          <CardContent
-            sx={{
-              position: 'relative',
-              zIndex: 2,
-              marginTop: 'auto',
-              padding: '16px',
-              color: 'white',
-            }}
-          >
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: 700,
-                fontSize: '1.1rem',
-                lineHeight: 1.3,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                mb: 0.5,
-                textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-              }}
-            >
-              {trip.title}
-            </Typography>
-
-            {destinationName && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-                <LocationOn sx={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }} />
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }} noWrap>
-                  {destinationName}
-                </Typography>
-              </Box>
-            )}
-
-            <Typography
-              variant="body2"
-              sx={{
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                lineHeight: 1.4,
-                fontSize: '0.85rem',
-                mb: 1.5,
-                textShadow: '0 1px 1px rgba(0,0,0,0.3)',
-              }}
-            >
-              {trip.short_description || 'Découvrez cette expérience unique.'}
-            </Typography>
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography sx={{ color: '#FFFFFF', fontSize: '1.5rem' }}>
-                a partir de <Box component="span" sx={{ fontWeight: 600 }}>{trip.base_price} {trip.currency}</Box>
-              </Typography>
-            </Box>
-          </CardContent>
-
-          <Box sx={{ position: 'relative', zIndex: 2, padding: '0 16px 16px 16px' }}>
-            <Button
-              component={Link}
-              to={`/trips/${trip.id}`}
-              variant="contained"
-              fullWidth
-              sx={{ 
-                height: 40,
-                background: 'linear-gradient(90deg,rgb(0, 191, 166),rgb(13, 72, 161))',
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-              }}
-            >
-              Voir détails
-            </Button>
-          </Box>
-        </StyledCard>
-      </Grid>
-    );
-  };
-
-  const isLoggedIn = !!localStorage.getItem('token');
+  // ── Skeleton loader ──────────────────────────────────────────
+  const renderSkeletons = () => (
+    <Grid container spacing={3}>
+      {[1, 2, 3, 4, 5, 6].map(i => (
+        <Grid item xs={12} sm={6} md={4} key={i}>
+          <Skeleton variant="rounded" height={360}
+            sx={{ borderRadius: '16px', bgcolor: alpha(T.navy, 0.05) }} />
+        </Grid>
+      ))}
+    </Grid>
+  );
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Fade in timeout={500}>
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-            <Favorite sx={{ fontSize: 32, color: '#FF6B6B' }} />
-            <Typography variant="h4" fontWeight={700} sx={{ color: '#0D47A1' }}>
-              Mes favoris
-            </Typography>
-          </Box>
+    <PageWrapper>
+      <Container maxWidth="lg">
+        <Fade in timeout={400}>
+          <Box>
 
-          {!isLoggedIn ? (
-            <StyledPaper>
-              <Box sx={{ textAlign: 'center', py: 8 }}>
-                <FavoriteBorder sx={{ fontSize: 80, color: alpha('#FF6B6B', 0.3), mb: 2 }} />
-                <Typography variant="h6" color="text.secondary" gutterBottom>
+            {/* ── Header ── */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4,
+              pb: 2.5, borderBottom: `2px solid ${alpha(T.teal, 0.15)}` }}>
+              <Box sx={{ width: 48, height: 48, borderRadius: '14px',
+                background: `linear-gradient(135deg, ${T.teal}, ${T.navy})`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: `0 4px 14px ${alpha(T.teal, 0.35)}` }}>
+                <Favorite sx={{ fontSize: 22, color: T.white }} />
+              </Box>
+              <Box>
+                <Typography sx={{ fontSize: 24, fontWeight: 800, color: T.navy, lineHeight: 1.1 }}>
+                  Mes favoris
+                </Typography>
+                <Typography sx={{ fontSize: 12, color: T.slate }}>
+                  Vos voyages sauvegardés
+                </Typography>
+              </Box>
+              {favorites.length > 0 && (
+                <Chip
+                  label={`${favorites.length} voyage${favorites.length > 1 ? 's' : ''}`}
+                  size="small"
+                  sx={{ ml: 'auto', bgcolor: alpha(T.teal, 0.1), color: T.teal,
+                    fontWeight: 700, borderRadius: '8px', fontSize: 12,
+                    border: `1px solid ${alpha(T.teal, 0.2)}` }}
+                />
+              )}
+            </Box>
+
+            {/* ── Not logged in ── */}
+            {!isLoggedIn ? (
+              <EmptyCard>
+                <Box sx={{ width: 88, height: 88, borderRadius: '50%',
+                  bgcolor: alpha(T.navy, 0.07), display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 3 }}>
+                  <FavoriteBorder sx={{ fontSize: 44, color: T.navy, opacity: 0.55 }} />
+                </Box>
+                <Typography sx={{ fontSize: 20, fontWeight: 800, color: T.navy, mb: 1 }}>
                   Connectez-vous pour voir vos favoris
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Connectez-vous pour sauvegarder vos voyages préférés.
+                <Typography sx={{ fontSize: 13, color: T.slate, mb: 4, maxWidth: 380, mx: 'auto' }}>
+                  Sauvegardez vos voyages préférés et retrouvez-les facilement ici.
                 </Typography>
-                <Button
-                  variant="contained"
-                  onClick={() => navigate('/login')}
-                  sx={{
-                    background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-                    borderRadius: 2,
-                    px: 4,
-                    py: 1.2,
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    '&:hover': {
-                      background: 'linear-gradient(90deg, #0D47A1, #00BFA5)',
-                    },
-                  }}
-                >
-                  Se connecter
-                </Button>
-              </Box>
-            </StyledPaper>
-          ) : loading ? (
-            <StyledPaper>
-              <Box sx={{ textAlign: 'center', py: 8 }}>
-                <Typography variant="body1" color="text.secondary">
-                  Chargement...
-                </Typography>
-              </Box>
-            </StyledPaper>
-          ) : favorites.length === 0 ? (
-            <StyledPaper>
-              <Box sx={{ textAlign: 'center', py: 8 }}>
-                <FavoriteBorder sx={{ fontSize: 80, color: alpha('#FF6B6B', 0.3), mb: 2 }} />
-                <Typography variant="h6" color="text.secondary" gutterBottom>
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <Button variant="contained" onClick={() => navigate('/login')}
+                    sx={{ bgcolor: T.teal, color: T.white, borderRadius: '10px', px: 4,
+                      textTransform: 'none', fontWeight: 700,
+                      boxShadow: `0 4px 14px ${alpha(T.teal, 0.35)}`,
+                      '&:hover': { bgcolor: T.tealDk } }}>
+                    Se connecter
+                  </Button>
+                  <Button variant="outlined" onClick={() => navigate('/register')}
+                    sx={{ borderColor: T.navy, color: T.navy, borderRadius: '10px', px: 4,
+                      textTransform: 'none', fontWeight: 700,
+                      '&:hover': { borderColor: T.teal, bgcolor: alpha(T.teal, 0.05), color: T.teal } }}>
+                    Créer un compte
+                  </Button>
+                </Box>
+              </EmptyCard>
+
+            /* ── Loading ── */
+            ) : loading ? (
+              renderSkeletons()
+
+            /* ── Empty favorites ── */
+            ) : favorites.length === 0 ? (
+              <EmptyCard>
+                <Box sx={{ width: 88, height: 88, borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${alpha(T.teal, 0.1)}, ${alpha(T.navy, 0.06)})`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 3 }}>
+                  <FlightTakeoff sx={{ fontSize: 44, color: T.teal, opacity: 0.65 }} />
+                </Box>
+                <Typography sx={{ fontSize: 20, fontWeight: 800, color: T.navy, mb: 1 }}>
                   Aucun favori pour le moment
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                <Typography sx={{ fontSize: 13, color: T.slate, mb: 4, maxWidth: 380, mx: 'auto' }}>
                   Explorez nos voyages et ajoutez vos destinations préférées ici.
                 </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<Explore />}
-                  onClick={() => navigate('/trips')}
-                  sx={{
-                    background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-                    borderRadius: 2,
-                    px: 4,
-                    py: 1.2,
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    '&:hover': {
-                      background: 'linear-gradient(90deg, #0D47A1, #00BFA5)',
-                    },
-                  }}
-                >
+                <Button variant="contained" startIcon={<Explore />} onClick={() => navigate('/trips')}
+                  sx={{ bgcolor: T.navy, color: T.white, borderRadius: '10px', px: 4,
+                    textTransform: 'none', fontWeight: 700,
+                    boxShadow: `0 4px 14px ${alpha(T.navy, 0.25)}`,
+                    '&:hover': { bgcolor: T.navyLt } }}>
                   Explorer les voyages
                 </Button>
-              </Box>
-            </StyledPaper>
-          ) : (
-            <Grid container spacing={3}>
-              {favorites.map(renderFavoriteCard)}
-            </Grid>
-          )}
-        </Box>
-      </Fade>
-    </Container>
+              </EmptyCard>
+
+            /* ── Favorites grid ── */
+            ) : (
+              <Grid container spacing={3}>
+                {favorites.map(trip => (
+                  <Grid item xs={12} sm={6} md={4} key={trip.id}>
+                    <Box sx={{ position: 'relative' }}>
+                      <TripCard trip={trip} />
+                      {/* Remove from favorites button */}
+                      <Box
+                        onClick={() => handleRemoveFavorite(trip.id)}
+                        sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2,
+                          width: 32, height: 32, borderRadius: '50%',
+                          bgcolor: removing === trip.id ? alpha(T.navy, 0.15) : 'rgba(255,255,255,0.9)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer', transition: 'all 0.18s',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                          '&:hover': { bgcolor: alpha(T.navy, 0.12), transform: 'scale(1.1)' } }}>
+                        <Favorite sx={{ fontSize: 15,
+                          color: removing === trip.id ? alpha(T.navy, 0.5) : T.navy }} />
+                      </Box>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+
+          </Box>
+        </Fade>
+      </Container>
+    </PageWrapper>
   );
 };
 

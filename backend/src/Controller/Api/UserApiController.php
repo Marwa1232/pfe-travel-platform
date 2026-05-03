@@ -147,10 +147,6 @@ class UserApiController extends AbstractController
                 return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
             }
 
-            // Check if already an organizer or has pending request
-            if ($user->getStatusOrganizer() === 'approved') {
-                return $this->json(['error' => 'You are already an organizer'], Response::HTTP_CONFLICT);
-            }
 
             if ($user->getStatusOrganizer() === 'PENDING') {
                 return $this->json(['error' => 'You already have a pending request'], Response::HTTP_CONFLICT);
@@ -333,24 +329,28 @@ class UserApiController extends AbstractController
         if (isset($data['preferred_currency'])) {
             $user->setPreferredCurrency($data['preferred_currency']);
         }
-        if (isset($data['profile_photo_url'])) {
-            $user->setProfilePhotoUrl($data['profile_photo_url']);
-        }
+            if (isset($data['profile_photo_url'])) {
+                        $user->setProfilePhotoUrl($data['profile_photo_url']);
+                    }
+                    if (isset($data['interests'])) {
+                        $user->setInterests($data['interests']);
+                    }
 
-        $user->setUpdatedAt(new \DateTimeImmutable());
-        $this->em->flush();
+                    $user->setUpdatedAt(new \DateTimeImmutable());
+                    $this->em->flush();
 
-        return $this->json([
-            'message' => 'Profile updated successfully',
-            'first_name' => $user->getFirstName(),
-            'last_name' => $user->getLastName(),
-            'phone' => $user->getPhone(),
-            'country' => $user->getCountry(),
-            'preferred_language' => $user->getPreferredLanguage(),
-            'preferred_currency' => $user->getPreferredCurrency(),
-            'profile_photo_url' => $user->getProfilePhotoUrl(),
-        ]);
-    }
+            return $this->json([
+                        'message' => 'Profile updated successfully',
+                        'first_name' => $user->getFirstName(),
+                        'last_name' => $user->getLastName(),
+                        'phone' => $user->getPhone(),
+                        'country' => $user->getCountry(),
+                        'preferred_language' => $user->getPreferredLanguage(),
+                        'preferred_currency' => $user->getPreferredCurrency(),
+                        'profile_photo_url' => $user->getProfilePhotoUrl(),
+                        'interests' => $user->getInterests(),
+                    ]);
+                }
 
     #[Route('/change-password', name: 'api_user_change_password', methods: ['POST'])]
     public function changePassword(Request $request): JsonResponse

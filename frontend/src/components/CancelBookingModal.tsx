@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Box, Typography, CircularProgress, Alert,
-  Chip, LinearProgress, Divider,
+  LinearProgress, Stack // <--- Ajoute Stack ici
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import {
@@ -11,46 +11,51 @@ import {
 } from '@mui/icons-material';
 import api, { paymentAPI } from '../services/api';
 
-const T = {
-  teal: '#0EA5A0', navy: '#0F2D5C', slate: '#64748B',
-  ink: '#0F172A', border: '#E2E8F0', white: '#FFFFFF',
-  green: '#16A34A', amber: '#D97706', red: '#DC2626',
+// --- PALETTE LUNA (Mise à jour) ---
+const LUNA = {
+  PALE: '#A7EBF2',   // Accents clairs
+  MED: '#26658C',    // Intermédiaire
+  DEEP: '#023859',   // Profond
+  NIGHT: '#011C40',  // Sombre
+  ERROR: '#FF5252',  // Rouge alerte Luna
+  SUCCESS: '#00BFA5',// Teal de confirmation
+  TEXT_SUBTLE: '#94A3B8'
 };
 
 interface CancelOptions {
-  refundAmount:   number;
-  refundPercent:  number;
-  options:        string[];
-  daysBefore:     number;
-  totalPrice:     number;
-  allowVoucher:   boolean;
+  refundAmount: number;
+  refundPercent: number;
+  options: string[];
+  daysBefore: number;
+  totalPrice: number;
+  allowVoucher: boolean;
   allowRebooking: boolean;
 }
 
 interface Props {
-  open:        boolean;
-  bookingId:   number | null;
+  open: boolean;
+  bookingId: number | null;
   hasPaidStripe: boolean;
-  onClose:     () => void;
+  onClose: () => void;
   onCancelled: () => void;
 }
 
-const policyColor = (pct: number) => {
-  if (pct === 100) return T.green;
-  if (pct >= 50)   return T.amber;
-  if (pct > 0)     return '#EA580C';
-  return T.red;
+// Logique de couleur adaptée à la palette Luna
+const getLunaPolicyColor = (pct: number) => {
+  if (pct === 100) return LUNA.SUCCESS;
+  if (pct >= 50) return LUNA.PALE;
+  return LUNA.ERROR;
 };
 
 const CancelBookingModal: React.FC<Props> = ({
   open, bookingId, hasPaidStripe, onClose, onCancelled,
 }) => {
-  const [options,    setOptions]    = useState<CancelOptions | null>(null);
-  const [choice,     setChoice]     = useState<string>('refund');
-  const [loading,    setLoading]    = useState(false);
+  const [options, setOptions] = useState<CancelOptions | null>(null);
+  const [choice, setChoice] = useState<string>('refund');
+  const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [error,      setError]      = useState<string | null>(null);
-  const [done,       setDone]       = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
   const [refundDone, setRefundDone] = useState<number | null>(null);
 
   useEffect(() => {
@@ -89,7 +94,7 @@ const CancelBookingModal: React.FC<Props> = ({
 
       setDone(true);
     } catch (e: any) {
-      setError(e.response?.data?.error ?? 'Erreur lors de l\'annulation');
+      setError(e.response?.data?.error ?? "Erreur lors de l'annulation");
     } finally {
       setProcessing(false);
     }
@@ -106,161 +111,186 @@ const CancelBookingModal: React.FC<Props> = ({
   const CHOICE_CONFIG = [
     {
       value: 'refund',
-      icon:  <CreditCard sx={{ fontSize: 18 }} />,
+      icon: <CreditCard sx={{ fontSize: 20 }} />,
       label: 'Remboursement',
-      desc:  hasPaidStripe ? 'Sur votre carte — 5 à 10 jours ouvrables' : 'Pas de paiement en ligne',
-      show:  true,
+      desc: hasPaidStripe ? 'Sur votre carte (5-10j)' : 'Paiement non en ligne',
+      show: true,
     },
     {
       value: 'voucher',
-      icon:  <ConfirmationNumber sx={{ fontSize: 18 }} />,
-      label: 'Voucher',
-      desc:  'Bon valable 1 an sur tous nos voyages',
-      show:  options?.allowVoucher ?? false,
+      icon: <ConfirmationNumber sx={{ fontSize: 20 }} />,
+      label: 'Bon d’achat',
+      desc: 'Valable 1 an sur tout le catalogue',
+      show: options?.allowVoucher ?? false,
     },
     {
       value: 'rebooking',
-      icon:  <EventRepeat sx={{ fontSize: 18 }} />,
-      label: 'Rebooking',
-      desc:  'Reporter sur une autre date sans frais',
-      show:  options?.allowRebooking ?? false,
+      icon: <EventRepeat sx={{ fontSize: 20 }} />,
+      label: 'Reporter',
+      desc: 'Changer de date sans frais supplémentaires',
+      show: options?.allowRebooking ?? false,
     },
   ];
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth
-      PaperProps={{ sx: { borderRadius: 3, border: `1px solid ${T.border}`, boxShadow: '0 20px 60px rgba(0,0,0,0.12)' } }}>
-
+    <Dialog 
+      open={open} 
+      onClose={handleClose} 
+      maxWidth="xs" 
+      fullWidth
+      PaperProps={{ 
+        sx: { 
+          borderRadius: 4, 
+          bgcolor: '#FFFFFF',
+          backgroundImage: `linear-gradient(to bottom, ${alpha(LUNA.PALE, 0.05)}, #FFFFFF)`,
+          boxShadow: '0 25px 50px -12px rgba(1, 28, 64, 0.25)' 
+        } 
+      }}
+    >
       {done ? (
-        <>
-          <DialogContent sx={{ textAlign: 'center', py: 5 }}>
-            <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: alpha(T.green, 0.1),
-              mx: 'auto', mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CheckCircle sx={{ fontSize: 30, color: T.green }} />
-            </Box>
-            <Typography sx={{ fontSize: 16, fontWeight: 700, color: T.ink, mb: 1 }}>
-              Réservation annulée
-            </Typography>
-            {choice === 'refund' && refundDone !== null && refundDone > 0 && (
-              <Typography sx={{ fontSize: 13, color: T.slate }}>
-                Remboursement de <strong>{refundDone.toFixed(2)} EUR</strong> initié.<br />
-                Délai: 5–10 jours ouvrables.
-              </Typography>
-            )}
-            {choice === 'voucher' && (
-              <Typography sx={{ fontSize: 13, color: T.slate }}>
-                Votre voucher vous sera envoyé par email sous 24h.
-              </Typography>
-            )}
-            {choice === 'rebooking' && (
-              <Typography sx={{ fontSize: 13, color: T.slate }}>
-                Vous pouvez rebooker gratuitement depuis votre espace réservations.
-              </Typography>
-            )}
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3 }}>
-            <Button fullWidth onClick={handleClose} variant="contained"
-              sx={{ borderRadius: 2, textTransform: 'none', bgcolor: T.navy, fontWeight: 600,
-                '&:hover': { bgcolor: '#0D2550' } }}>
-              Fermer
-            </Button>
-          </DialogActions>
-        </>
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Box sx={{ 
+            width: 70, height: 70, borderRadius: '50%', bgcolor: alpha(LUNA.SUCCESS, 0.1),
+            mx: 'auto', mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' 
+          }}>
+            <CheckCircle sx={{ fontSize: 40, color: LUNA.SUCCESS }} />
+          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 800, color: LUNA.NIGHT, mb: 1 }}>
+            Action confirmée
+          </Typography>
+          <Typography sx={{ fontSize: 14, color: LUNA.DEEP, mb: 4, lineHeight: 1.6 }}>
+            {choice === 'refund' 
+              ? `Remboursement de ${refundDone?.toFixed(2)} EUR initié avec succès.` 
+              : "L'annulation a été enregistrée selon votre choix."}
+          </Typography>
+          <Button 
+            fullWidth 
+            onClick={handleClose} 
+            variant="contained"
+            sx={{ 
+              borderRadius: 3, py: 1.5, textTransform: 'none', 
+              bgcolor: LUNA.NIGHT, fontWeight: 700,
+              '&:hover': { bgcolor: LUNA.DEEP } 
+            }}
+          >
+            Fermer l'espace
+          </Button>
+        </Box>
       ) : (
         <>
-          <DialogTitle sx={{ fontWeight: 700, color: T.ink, pb: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Warning sx={{ color: T.amber, fontSize: 20 }} />
-              Annuler la réservation
+          <DialogTitle sx={{ fontWeight: 800, color: LUNA.NIGHT, pt: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Warning sx={{ color: LUNA.MED, fontSize: 24 }} />
+              Annulation
             </Box>
           </DialogTitle>
 
           <DialogContent>
             {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress size={30} sx={{ color: T.teal }} />
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                <CircularProgress size={40} thickness={5} sx={{ color: LUNA.MED }} />
               </Box>
             ) : error ? (
-              <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>
+              <Alert severity="error" sx={{ borderRadius: 3, bgcolor: alpha(LUNA.ERROR, 0.05), color: LUNA.ERROR }}>
+                {error}
+              </Alert>
             ) : options && (
-              <>
-                <Box sx={{ p: 2, borderRadius: 2, mb: 2,
-                  bgcolor: alpha(policyColor(options.refundPercent), 0.05),
-                  border: `1px solid ${alpha(policyColor(options.refundPercent), 0.2)}` }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
-                    <Typography sx={{ fontSize: 12, color: T.slate }}>Montant total</Typography>
-                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: T.ink }}>
-                      {options.totalPrice.toFixed(2)} EUR
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                    <Typography sx={{ fontSize: 12, color: T.slate }}>Remboursable</Typography>
-                    <Typography sx={{ fontSize: 14, fontWeight: 800, color: policyColor(options.refundPercent) }}>
-                      {options.refundAmount.toFixed(2)} EUR
-                      <Typography component="span" sx={{ fontSize: 11, color: T.slate, ml: 0.5 }}>
-                        ({options.refundPercent}%)
+              <Stack spacing={3} sx={{ mt: 1 }}>
+                {/* Résumé du remboursement */}
+                <Box sx={{ 
+                  p: 2.5, borderRadius: 3, 
+                  bgcolor: alpha(getLunaPolicyColor(options.refundPercent), 0.04),
+                  border: `1px solid ${alpha(getLunaPolicyColor(options.refundPercent), 0.15)}`
+                }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                    <Box>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: LUNA.TEXT_SUBTLE, textTransform: 'uppercase' }}>
+                        À rembourser
                       </Typography>
-                    </Typography>
+                      <Typography sx={{ fontSize: 24, fontWeight: 900, color: getLunaPolicyColor(options.refundPercent) }}>
+                        {options.refundAmount.toFixed(2)}€
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: LUNA.TEXT_SUBTLE, textTransform: 'uppercase' }}>
+                        Taux
+                      </Typography>
+                      <Typography sx={{ fontSize: 20, fontWeight: 700, color: LUNA.NIGHT }}>
+                        {options.refundPercent}%
+                      </Typography>
+                    </Box>
                   </Box>
-                  <LinearProgress variant="determinate" value={options.refundPercent}
-                    sx={{ height: 4, borderRadius: 2, bgcolor: alpha(policyColor(options.refundPercent), 0.12),
-                      '& .MuiLinearProgress-bar': { bgcolor: policyColor(options.refundPercent), borderRadius: 2 } }} />
-                  <Typography sx={{ fontSize: 11, color: T.slate, mt: 0.8 }}>
-                    {options.daysBefore > 0
-                      ? `${options.daysBefore} jours avant le départ`
-                      : 'Départ déjà passé ou aujourd\'hui'}
-                  </Typography>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={options.refundPercent}
+                    sx={{ 
+                      height: 8, borderRadius: 4, bgcolor: alpha(LUNA.PALE, 0.2),
+                      '& .MuiLinearProgress-bar': { bgcolor: getLunaPolicyColor(options.refundPercent) } 
+                    }} 
+                  />
                 </Box>
 
+                {/* Sélecteur d'options stylisé Luna */}
                 {CHOICE_CONFIG.filter(c => c.show).length > 1 && (
-                  <>
-                    <Typography sx={{ fontSize: 12, fontWeight: 700, color: T.slate, mb: 1, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      Choisissez une option
+                  <Box>
+                    <Typography sx={{ fontSize: 11, fontWeight: 800, color: LUNA.TEXT_SUBTLE, mb: 1.5, ml: 0.5, letterSpacing: 1.2 }}>
+                      MODE DE COMPENSATION
                     </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+                    <Stack spacing={1.5}>
                       {CHOICE_CONFIG.filter(c => c.show).map(c => (
-                        <Box key={c.value} onClick={() => setChoice(c.value)}
+                        <Box 
+                          key={c.value} 
+                          onClick={() => setChoice(c.value)}
                           sx={{
-                            display: 'flex', alignItems: 'center', gap: 1.5, p: '10px 12px',
-                            borderRadius: 2, cursor: 'pointer', transition: 'all 0.15s',
-                            border: `1.5px solid ${choice === c.value ? T.teal : T.border}`,
-                            bgcolor: choice === c.value ? alpha(T.teal, 0.04) : 'transparent',
+                            display: 'flex', alignItems: 'center', gap: 2, p: 2,
+                            borderRadius: 3, cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            border: `2px solid ${choice === c.value ? LUNA.MED : alpha(LUNA.PALE, 0.3)}`,
+                            bgcolor: choice === c.value ? alpha(LUNA.MED, 0.05) : 'transparent',
+                            '&:hover': { bgcolor: alpha(LUNA.PALE, 0.1) }
+                          }}
+                        >
+                          <Box sx={{ 
+                            color: choice === c.value ? LUNA.MED : LUNA.TEXT_SUBTLE,
+                            display: 'flex', p: 1, borderRadius: 2, bgcolor: choice === c.value ? alpha(LUNA.MED, 0.1) : 'transparent'
                           }}>
-                          <Box sx={{ color: choice === c.value ? T.teal : T.slate }}>{c.icon}</Box>
+                            {c.icon}
+                          </Box>
                           <Box>
-                            <Typography sx={{ fontSize: 13, fontWeight: 600, color: choice === c.value ? T.teal : T.ink }}>
+                            <Typography sx={{ fontSize: 14, fontWeight: 700, color: LUNA.NIGHT }}>
                               {c.label}
                             </Typography>
-                            <Typography sx={{ fontSize: 11, color: T.slate }}>{c.desc}</Typography>
+                            <Typography sx={{ fontSize: 12, color: LUNA.TEXT_SUBTLE }}>
+                              {c.desc}
+                            </Typography>
                           </Box>
                         </Box>
                       ))}
-                    </Box>
-                  </>
+                    </Stack>
+                  </Box>
                 )}
-
-                {options.refundPercent < 100 && choice === 'refund' && (
-                  <Alert severity="warning" icon={<Info fontSize="small" />} sx={{ fontSize: 12, borderRadius: 2 }}>
-                    {(options.totalPrice - options.refundAmount).toFixed(2)} EUR ne seront pas remboursés (politique d'annulation).
-                  </Alert>
-                )}
-              </>
+              </Stack>
             )}
           </DialogContent>
 
-          <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-            <Button onClick={handleClose} variant="outlined"
-              sx={{ borderRadius: 2, textTransform: 'none', borderColor: alpha(T.slate, 0.3), color: T.slate }}>
-              Retour
+          <DialogActions sx={{ p: 3, pt: 1, gap: 1.5 }}>
+            <Button 
+              onClick={handleClose} 
+              sx={{ color: LUNA.TEXT_SUBTLE, fontWeight: 700, textTransform: 'none' }}
+            >
+              Ignorer
             </Button>
-            <Button onClick={handleConfirm} variant="contained"
+            <Button 
+              onClick={handleConfirm} 
+              variant="contained"
               disabled={loading || processing || !options}
-              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700,
-                bgcolor: T.red, '&:hover': { bgcolor: '#B91C1C' },
-                '&:disabled': { bgcolor: alpha(T.red, 0.4) } }}>
-              {processing
-                ? <CircularProgress size={16} sx={{ color: T.white }} />
-                : choice === 'refund' ? 'Annuler & Rembourser' : `Annuler (${CHOICE_CONFIG.find(c=>c.value===choice)?.label})`}
+              sx={{ 
+                borderRadius: 3, px: 3, py: 1.2, textTransform: 'none', fontWeight: 800,
+                bgcolor: LUNA.ERROR, boxShadow: `0 8px 20px ${alpha(LUNA.ERROR, 0.3)}`,
+                '&:hover': { bgcolor: '#D32F2F', boxShadow: 'none' },
+                '&:disabled': { bgcolor: alpha(LUNA.ERROR, 0.3) } 
+              }}
+            >
+              {processing ? <CircularProgress size={18} sx={{ color: 'white' }} /> : 'Confirmer l\'annulation'}
             </Button>
           </DialogActions>
         </>

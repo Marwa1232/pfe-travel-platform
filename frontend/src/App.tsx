@@ -1,4 +1,3 @@
-// src/App.tsx
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Provider } from 'react-redux';
@@ -25,8 +24,7 @@ import Contact from './pages/Contact';
 import Moments from './pages/Moments';
 import TravelTypesArticle from './pages/Traveltypesarticle';
 import CheckoutPage from './pages/CheckoutPage';
-import LoyaltyOffresPage from './pages/LoyaltyOffersPage';
-
+import LoyaltyOffersPage from './pages/LoyaltyOffersPage';
 
 // Organizer pages
 import OrganizerDashboard from './pages/organizer/OrganizerDashboard';
@@ -35,13 +33,22 @@ import TripForm from './pages/organizer/TripForm';
 import OrganizerBookings from './pages/organizer/OrganizerBookings';
 import OrganizerReviews from './pages/organizer/OrganizerReviews';
 import OrganizerCalendar from './pages/organizer/Organizercalendar';
+
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminOrganizers from './pages/admin/AdminOrganizers';
 
 import { store } from './store';
-import LoyaltyOffersPage from './pages/LoyaltyOffersPage';
+
+// ─── COMPOSANT WRAPPER POUR LE PADDING ──────────────────────────────────────
+// Ce composant ajoute l'espace de 72px en haut pour éviter que le contenu
+// soit caché sous la Navbar. On l'utilise partout SAUF sur la Home.
+const PageContainer = ({ children }: { children: React.ReactNode }) => (
+  <Box sx={{ pt: '72px' }}>
+    {children}
+  </Box>
+);
 
 function App() {
   return (
@@ -51,47 +58,52 @@ function App() {
         <BrowserRouter>
           <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Navbar />
-            <Box component="main" sx={{ flexGrow: 1, pt: '72px' }}>
+            
+            {/* Le padding global 'pt: 72px' a été supprimé ici */}
+            <Box component="main" sx={{ flexGrow: 1 }}>
               <Routes>
-                {/* Public routes */}
+                {/* Home : Pas de PageContainer pour que l'image Hero soit tout en haut */}
                 <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/destinations" element={<Destinations />} />
-                <Route path="/trips" element={<TripList />} />
-                <Route path="/trips/:id" element={<TripDetail />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/travel-types" element={<TravelTypesArticle />} />
-                <Route path="/LoyaltyOffresPage" element={<LoyaltyOffersPage />} />
 
-                
+                {/* Toutes les autres routes sont enveloppées dans PageContainer */}
+                <Route path="/about" element={<PageContainer><About /></PageContainer>} />
+                <Route path="/destinations" element={<PageContainer><Destinations /></PageContainer>} />
+                <Route path="/trips" element={<PageContainer><TripList /></PageContainer>} />
+                <Route path="/trips/:id" element={<PageContainer><TripDetail /></PageContainer>} />
+                <Route path="/login" element={<PageContainer><Login /></PageContainer>} />
+                <Route path="/register" element={<PageContainer><Register /></PageContainer>} />
+                <Route path="/travel-types" element={<PageContainer><TravelTypesArticle /></PageContainer>} />
+                <Route path="/LoyaltyOffresPage" element={<PageContainer><LoyaltyOffersPage /></PageContainer>} />
+
                 {/* User routes */}
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/bookings" element={<BookingHistory />} />
-                <Route path="/saved" element={<Saved />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/organizer-request" element={<OrganizerRequest />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/moments" element={<Moments />} />
-                <Route path="/moments/:tripId" element={<Moments />} />
-                <Route path="/checkout/:bookingId" element={<CheckoutPage />} />
+                <Route path="/dashboard" element={<PageContainer><Dashboard /></PageContainer>} />
+                <Route path="/bookings" element={<PageContainer><BookingHistory /></PageContainer>} />
+                <Route path="/saved" element={<PageContainer><Saved /></PageContainer>} />
+                <Route path="/settings" element={<PageContainer><SettingsPage /></PageContainer>} />
+                <Route path="/organizer-request" element={<PageContainer><OrganizerRequest /></PageContainer>} />
+                <Route path="/terms" element={<PageContainer><Terms /></PageContainer>} />
+                <Route path="/contact" element={<PageContainer><Contact /></PageContainer>} />
+                <Route path="/moments" element={<PageContainer><Moments /></PageContainer>} />
+                <Route path="/moments/:tripId" element={<PageContainer><Moments /></PageContainer>} />
+                <Route path="/checkout/:bookingId" element={<PageContainer><CheckoutPage /></PageContainer>} />
 
                 {/* Organizer routes */}
-                <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
-                <Route path="/organizer/trips" element={<OrganizerTrips />} />
-                <Route path="/organizer/trips/new" element={<TripForm />} />
-                <Route path="/organizer/trips/:id/edit" element={<TripForm />} />
-                <Route path="/organizer/bookings" element={<OrganizerBookings />} />
-                <Route path="/organizer/reviews" element={<OrganizerReviews />} />
-                <Route path="/organizer/calendar" element={<OrganizerCalendar />} />
+                <Route path="/organizer/dashboard" element={<PageContainer><OrganizerDashboard /></PageContainer>} />
+                <Route path="/organizer/trips" element={<PageContainer><OrganizerTrips /></PageContainer>} />
+                <Route path="/organizer/trips/new" element={<PageContainer><TripForm /></PageContainer>} />
+                <Route path="/organizer/trips/:id/edit" element={<PageContainer><TripForm /></PageContainer>} />
+                <Route path="/organizer/bookings" element={<PageContainer><OrganizerBookings /></PageContainer>} />
+                <Route path="/organizer/reviews" element={<PageContainer><OrganizerReviews /></PageContainer>} />
+                <Route path="/organizer/calendar" element={<PageContainer><OrganizerCalendar /></PageContainer>} />
+
                 {/* Admin routes */}
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/admin/users" element={<AdminUsers />} />
-                <Route path="/admin/organizers" element={<AdminOrganizers />} />
-                <Route path="/admin/organizers/:id" element={<AdminOrganizers />} />
+                <Route path="/admin/dashboard" element={<PageContainer><AdminDashboard /></PageContainer>} />
+                <Route path="/admin/users" element={<PageContainer><AdminUsers /></PageContainer>} />
+                <Route path="/admin/organizers" element={<PageContainer><AdminOrganizers /></PageContainer>} />
+                <Route path="/admin/organizers/:id" element={<PageContainer><AdminOrganizers /></PageContainer>} />
               </Routes>
             </Box>
+            
             <Footer />
           </Box>
         </BrowserRouter>

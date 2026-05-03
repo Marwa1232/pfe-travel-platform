@@ -559,39 +559,6 @@ const TravelTypesArticle: React.FC = () => {
             </Grid>
           </Box>
 
-          {/* CTA */}
-          <Box
-            key={`cta-${animKey}`}
-            sx={{
-              mt: 7, p: { xs: 3, md: 5 }, borderRadius: 4,
-              background: `linear-gradient(130deg, ${current.accent}, ${alpha(current.accent, 0.65)})`,
-              display: 'flex', flexDirection: { xs: 'column', md: 'row' },
-              alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 3,
-              animation: `${fadeUp} 0.5s ease 0.35s both`,
-            }}
-          >
-            <Box>
-              <Typography sx={{ fontSize: 22, fontWeight: 700, color: '#fff', mb: 0.5 }}>
-                Découvrir nos voyages {current.label.split(' ')[0].toLowerCase()} au Maghreb
-              </Typography>
-              <Typography sx={{ fontSize: 14, color: alpha('#fff', 0.8), fontFamily: 'sans-serif' }}>
-                Devis personnalisé gratuit — réponse sous 24h
-              </Typography>
-            </Box>
-            <Button
-              endIcon={<ArrowForward />}
-              sx={{
-                bgcolor: '#fff', color: current.accent, fontWeight: 700,
-                fontSize: 14, px: 3.5, py: 1.4, borderRadius: 2,
-                textTransform: 'none', whiteSpace: 'nowrap', flexShrink: 0,
-                fontFamily: 'sans-serif',
-                '&:hover': { bgcolor: alpha('#fff', 0.92) },
-              }}
-            >
-              Voir tous les voyages
-            </Button>
-          </Box>
-
         </Container>
       </Box>
     </Box>

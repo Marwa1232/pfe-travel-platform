@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
+import { 
+  Card, CardContent, CardMedia, Typography, Button, 
+  Box, Chip, IconButton, styled, alpha 
+} from '@mui/material';
 import { Link } from 'react-router-dom';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import IconButton from '@mui/material/IconButton';
-import { styled, alpha } from '@mui/material/styles';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { fixImageUrl, favoriteAPI } from '../services/api';
 
+// --- Couleurs Luna ---
+const LUNA = {
+  TEAL: '#0EA5A0',
+  NAVY: '#0F2D5C',
+  WHITE: '#FFFFFF',
+};
+
+// --- Interfaces ---
 interface Trip {
   id: number;
   title: string;
@@ -30,27 +34,44 @@ interface TripCardProps {
   trip: Trip;
 }
 
+// --- Styled Components ---
 const StyledCard = styled(Card)(({ theme }) => ({
   width: 320,
   height: 480,
   display: 'flex',
   flexDirection: 'column',
-  borderRadius: theme.spacing(1.5),
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-  boxShadow: '0 4px 12px rgba(105, 100, 100, 0.05)',
-  transition: 'all 0.3s ease',
-  overflow: 'hidden',
-  margin: '0 auto',
+  borderRadius: '20px',
   position: 'relative',
+  overflow: 'hidden',
+  transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease',
+  border: `1px solid ${alpha(LUNA.NAVY, 0.1)}`,
   '&:hover': {
-    transform: 'translateY(-4px)',
-    boxShadow: '0 12px 24px rgba(210, 218, 217, 0.15)',
+    transform: 'translateY(-10px)',
+    boxShadow: `0 20px 40px ${alpha(LUNA.NAVY, 0.25)}`,
   },
 }));
 
+const PriceBadge = styled(Box)(({ theme }) => ({
+  position: 'absolute',
+  top: 15,
+  right: 15,
+  backgroundColor: LUNA.WHITE,
+  padding: '6px 12px',
+  borderRadius: '12px',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  zIndex: 3,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+}));
+
 const TripCard: React.FC<TripCardProps> = ({ trip }) => {
-  const coverImage = fixImageUrl(trip.images?.find(img => img.is_cover)?.url || trip.images?.[0]?.url || '');
-  const destinationName = trip.destinations?.[0]?.name || '';
+  // Correction Erreur 2: Typage explicite de 'img'
+  const coverImage = fixImageUrl(
+    trip.images?.find((img: { is_cover: boolean; url: string }) => img.is_cover)?.url || 
+    trip.images?.[0]?.url || ''
+  );
+  
   const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -69,14 +90,13 @@ const TripCard: React.FC<TripCardProps> = ({ trip }) => {
     checkFavorite();
   }, [trip.id]);
 
+  // Correction Erreur 3: Réintégration de handleToggleFavorite
   const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
+    if (!token) return;
 
     setLoading(true);
     try {
@@ -91,6 +111,15 @@ const TripCard: React.FC<TripCardProps> = ({ trip }) => {
 
   return (
     <StyledCard>
+      <PriceBadge>
+        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.65rem', textTransform: 'uppercase' }}>
+          À partir de
+        </Typography>
+        <Typography sx={{ color: LUNA.NAVY, fontWeight: 800, fontSize: '1.1rem' }}>
+          {trip.base_price} {trip.currency === 'USD' ? 'US' : trip.currency}
+        </Typography>
+      </PriceBadge>
+
       <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
         <CardMedia
           component="img"
@@ -101,144 +130,76 @@ const TripCard: React.FC<TripCardProps> = ({ trip }) => {
         <Box
           sx={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.5), rgba(0,0,0,0.2))'
+            inset: 0,
+            background: `linear-gradient(to top, ${alpha(LUNA.NAVY, 0.9)} 0%, ${alpha(LUNA.NAVY, 0.3)} 50%, transparent 100%)`,
           }}
         />
       </Box>
 
       <IconButton
-        sx={{
-          position: 'absolute',
-          top: 10,
-          left: 10,
-          backgroundColor: 'rgba(255,255,255,0.9)',
-          padding: 0.5,
-          zIndex: 2,
-          '&:hover': { backgroundColor: 'white' },
-        }}
-        size="small"
         onClick={handleToggleFavorite}
         disabled={loading}
-      >
-        {isFavorite ? 
-          <FavoriteIcon sx={{ fontSize: 30, color: '#FF6B6B' }} /> : 
-          <FavoriteBorderIcon sx={{ fontSize: 30 }} />
-        }
-      </IconButton>
-
-      <Box
         sx={{
           position: 'absolute',
-          bottom: 0,
-          left: 0,
-          width: '100%',
-          height: '50%',
-          zIndex: 1,
-          backdropFilter: 'blur(3px)',
-          maskImage: 'linear-gradient(to top, black 0%, black 70%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to top, black 0%, black 70%, transparent 100%)',
-          background: 'linear-gradient(to top, rgba(172, 168, 168, 0.6) 0%, rgba(213, 210, 210, 0.2) 100%)',
-        }}
-      />
-
-      <CardContent
-        sx={{
-          position: 'relative',
-          zIndex: 2,
-          marginTop: 'auto',
-          padding: '16px',
-          color: 'white',
+          top: 15,
+          left: 15,
+          zIndex: 3,
+          bgcolor: alpha(LUNA.WHITE, 0.2),
+          backdropFilter: 'blur(8px)',
+          color: LUNA.WHITE,
+          '&:hover': { bgcolor: alpha(LUNA.WHITE, 0.3) },
         }}
       >
-        <Typography
-          variant="subtitle1"
-          sx={{
-            fontWeight: 700,
-            fontSize: '1.1rem',
-            lineHeight: 1.3,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            mb: 0.5,
-            textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-          }}
-        >
-          {trip.title}
-        </Typography>
+        {isFavorite ? <FavoriteIcon sx={{ color: '#0F2D5C' }} /> : <FavoriteBorderIcon />}
+      </IconButton>
 
-        {destinationName && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-            <LocationOnIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }} />
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }} noWrap>
-              {destinationName}
-            </Typography>
-          </Box>
-        )}
-
-        <Typography
-          variant="body2"
-          sx={{
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            lineHeight: 1.4,
-            fontSize: '0.85rem',
-            mb: 1.5,
-            textShadow: '0 1px 1px rgba(0,0,0,0.3)',
-          }}
-        >
-          {trip.short_description || 'Découvrez cette expérience unique.'}
-        </Typography>
-
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-          <Typography sx={{ color: '#FFFFFF', fontSize: '1.5rem' }}>
-          a partir de <Box component="span" sx={{ fontWeight: 600 }}>{trip.base_price} ${trip.currency === 'USD' ? 'US' : trip.currency}</Box>
-        </Typography>
-          
-          </Box>
-
-          {trip.rating && trip.rating > 4.5 && (
-            <Chip
-              label="Populaire"
-              size="small"
-              sx={{
-                backgroundColor: alpha('#00BFA5', 0.2),
-                color: '#00BFA5',
-                fontWeight: 600,
-                height: 22,
-                fontSize: '0.7rem',
-                border: '1px solid rgba(0, 0, 0, 0.5)',
-              }}
+      <CardContent sx={{ position: 'relative', zIndex: 2, mt: 'auto', p: 3, color: LUNA.WHITE }}>
+        <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+          {trip.duration_days && (
+            <Chip 
+              icon={<AccessTimeIcon sx={{ fontSize: '14px !important', color: `${LUNA.TEAL} !important` }} />}
+              label={`${trip.duration_days} jours`}
+              sx={{ bgcolor: alpha(LUNA.WHITE, 0.1), color: LUNA.WHITE, height: 24, fontSize: '0.75rem', backdropFilter: 'blur(4px)' }}
+            />
+          )}
+          {trip.destinations?.[0] && (
+            <Chip 
+              icon={<LocationOnIcon sx={{ fontSize: '14px !important', color: `${LUNA.TEAL} !important` }} />}
+              label={trip.destinations[0].name}
+              sx={{ bgcolor: alpha(LUNA.WHITE, 0.1), color: LUNA.WHITE, height: 24, fontSize: '0.75rem', backdropFilter: 'blur(4px)' }}
             />
           )}
         </Box>
-      </CardContent>
 
-      <Box sx={{ position: 'relative', zIndex: 2, padding: '0 16px 16px 16px' }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, lineHeight: 1.2, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+          {trip.title}
+        </Typography>
+
+        <Typography variant="body2" sx={{ opacity: 0.8, mb: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '0.9rem' }}>
+          {trip.short_description}
+        </Typography>
+
         <Button
           component={Link}
           to={`/trips/${trip.id}`}
           variant="contained"
           fullWidth
           sx={{ 
-            height: 40,
-            background: 'linear-gradient(90deg,rgb(0, 191, 166),rgb(13, 72, 161))',
-            borderRadius: 2,
+            py: 1.2,
+            borderRadius: '12px',
             textTransform: 'none',
-            fontWeight: 600,
-            fontSize: '0.85rem',
+            fontWeight: 700,
+            background: `linear-gradient(135deg, ${LUNA.TEAL} 0%, ${LUNA.NAVY} 100%)`,
+            boxShadow: `0 4px 15px ${alpha(LUNA.TEAL, 0.4)}`,
+            '&:hover': {
+              background: `linear-gradient(135deg, ${LUNA.NAVY} 0%, ${LUNA.TEAL} 100%)`,
+              boxShadow: `0 6px 20px ${alpha(LUNA.TEAL, 0.6)}`,
+            }
           }}
         >
-          Voir détails
+          Découvrir 
         </Button>
-      </Box>
+      </CardContent>
     </StyledCard>
   );
 };

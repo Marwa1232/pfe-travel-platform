@@ -2,44 +2,114 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-  Container,
-  Typography,
-  Box,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  Button,
-  CircularProgress,
-  Alert,
-  IconButton,
-  Stack,
+  Container, Typography, Box, Paper, Table, TableBody,
+  TableCell, TableContainer, TableHead, TableRow, Chip,
+  Button, CircularProgress, Alert, Stack, Avatar, IconButton,
+  Tooltip, Grid, Card, CardContent, Fade, Zoom
 } from '@mui/material';
-import { Delete, PictureAsPdf, Cancel } from '@mui/icons-material';
+import { styled, alpha } from '@mui/material/styles';
+import { 
+  PictureAsPdf, DeleteOutline, ArrowBack, 
+  ConfirmationNumber, EventAvailable, History,
+  TravelExplore, Receipt, Cancel
+} from '@mui/icons-material';
 import { jsPDF } from 'jspdf';
 import { bookingAPI } from '../services/api';
 import { RootState } from '../store/index';
 import CancelBookingModal from '../components/CancelBookingModal';
 
+// ─── 4 COULEURS UNIQUEMENT ──────────────────────────────────────
+const COLORS = {
+  teal: '#0EA5A0',
+  navy: '#0F2D5C',
+  amber: '#D97706',
+  white: '#FFFFFF',
+};
+
+// ─── STYLED COMPONENTS ──────────────────────────────────────────
+const StatsCard = styled(Card)(({ theme }) => ({
+  borderRadius: 12,
+  border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+  background: COLORS.white,
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: `0 12px 24px ${alpha(COLORS.navy, 0.1)}`,
+    borderColor: alpha(COLORS.teal, 0.3),
+  },
+}));
+
+const TableWrapper = styled(Paper)(({ theme }) => ({
+  borderRadius: 12,
+  overflow: 'hidden',
+  border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+  boxShadow: `0 4px 16px ${alpha(COLORS.navy, 0.05)}`,
+  background: COLORS.white,
+}));
+
+const HeaderCell = styled(TableCell)({
+  backgroundColor: alpha(COLORS.navy, 0.03),
+  color: COLORS.navy,
+  fontWeight: 700,
+  fontSize: '0.75rem',
+  letterSpacing: '0.5px',
+  textTransform: 'uppercase',
+  borderBottom: `2px solid ${alpha(COLORS.teal, 0.2)}`,
+});
+
+const GradientButton = styled(Button)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+  borderRadius: 12,
+  padding: theme.spacing(1, 3),
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  color: COLORS.white,
+  '&:hover': {
+    background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.teal})`,
+    transform: 'translateY(-1px)',
+  },
+}));
+
+const OutlinedButton = styled(Button)(({ theme }) => ({
+  borderRadius: 12,
+  padding: theme.spacing(0.8, 2),
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.75rem',
+  borderColor: COLORS.teal,
+  color: COLORS.teal,
+  '&:hover': {
+    borderColor: COLORS.navy,
+    backgroundColor: alpha(COLORS.teal, 0.05),
+  },
+}));
+
+const DangerButton = styled(Button)(({ theme }) => ({
+  borderRadius: 12,
+  padding: theme.spacing(0.8, 2),
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.75rem',
+  borderColor: COLORS.amber,
+  color: COLORS.amber,
+  '&:hover': {
+    borderColor: COLORS.amber,
+    backgroundColor: alpha(COLORS.amber, 0.08),
+  },
+}));
+
 const BookingHistory: React.FC = () => {
   const navigate = useNavigate();
-  const { user, token } = useSelector((state: RootState) => state.auth);
+  const { token } = useSelector((state: RootState) => state.auth);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelBookingId, setCancelId] = useState<number | null>(null);
   const [cancelHasPaid, setCancelHasPaid] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      navigate('/login');
-      return;
-    }
+    if (!token) { navigate('/login'); return; }
     loadBookings();
   }, [token]);
 
@@ -49,266 +119,265 @@ const BookingHistory: React.FC = () => {
       const response = await bookingAPI.myBookings();
       setBookings(response.data);
     } catch (error) {
-      console.error('Error loading bookings:', error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (bookingId: number) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette réservation?')) {
-      return;
-    }
-    try {
-      await bookingAPI.delete(bookingId);
-      loadBookings();
-    } catch (error) {
-      console.error('Error deleting booking:', error);
-    }
-  };
-
   const handleExportPdf = (booking: any) => {
     const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    
-    // Header - Blue background
-    doc.setFillColor(41, 128, 185);
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    
+    doc.setFillColor(15, 45, 92);
+    doc.rect(0, 0, 210, 30, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RÉSERVATION', pageWidth / 2, 20, { align: 'center' });
+    doc.setFontSize(18);
+    doc.text(`CONFIRMATION DE RÉSERVATION #${booking.id}`, 15, 20);
+    doc.setTextColor(15, 45, 92);
     doc.setFontSize(12);
-    doc.text(`#${booking.id}`, pageWidth / 2, 32, { align: 'center' });
-    
-    // Reset text color
-    doc.setTextColor(0, 0, 0);
-    let y = 55;
-    
-    // Trip Info
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Informations du voyage', 15, y);
-    y += 10;
-    
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Voyage: ${booking.trip?.title || '-'}`, 15, y);
-    y += 7;
-    doc.text(`Destinations: ${booking.trip?.destinations?.map((d: any) => d.name).join(', ') || '-'}`, 15, y);
-    y += 15;
-    
-    // Client Info
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Informations du client', 15, y);
-    y += 10;
-    
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    const clientName = booking.user ? `${booking.user.first_name || ''} ${booking.user.last_name || ''}`.trim() : '-';
-    doc.text(`Nom: ${clientName}`, 15, y);
-    y += 7;
-    doc.text(`Email: ${booking.user?.email || '-'}`, 15, y);
-    y += 15;
-    
-    // Booking Details
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Détails de la réservation', 15, y);
-    y += 10;
-    
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    const startDate = booking.tripSession?.start_date 
-      ? new Date(booking.tripSession.start_date).toLocaleDateString('fr-FR')
-      : '-';
-    doc.text(`Date de départ: ${startDate}`, 15, y);
-    y += 7;
-    doc.text(`Nombre de voyageurs: ${booking.num_travelers}`, 15, y);
-    y += 15;
-    
-    // Price - Highlighted
-    doc.setFillColor(236, 240, 241);
-    doc.rect(15, y - 5, pageWidth - 30, 20, 'F');
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Prix total: ${booking.total_price} ${booking.currency}`, 20, y + 5);
-    y += 20;
-    
-    // Status
-    const statusColors: { [key: string]: number[] } = {
-      CONFIRMED: [39, 174, 96],
-      PENDING: [241, 196, 15],
-      CANCELLED: [231, 76, 60],
-    };
-    const statusColor = statusColors[booking.status] || [128, 128, 128];
-    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-    doc.roundedRect(15, y, 60, 10, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.text(getStatusLabel(booking.status), 20, y + 7);
-    
-    // Footer
-    doc.setTextColor(128, 128, 128);
-    doc.setFontSize(9);
-    doc.text(`Document généré le ${new Date().toLocaleDateString('fr-FR')} - TripBooking`, pageWidth / 2, 280, { align: 'center' });
-    
-    // Save PDF
-    doc.save(`reservation_${booking.id}.pdf`);
+    doc.text(`Voyage : ${booking.trip?.title}`, 15, 62);
+    doc.text(`Date : ${new Date(booking.tripSession?.start_date).toLocaleDateString()}`, 15, 70);
+    doc.text(`Prix Total : ${booking.total_price} ${booking.currency}`, 15, 78);
+    doc.save(`TripBooking_${booking.id}.pdf`);
   };
 
-  const handleCancel = async (booking: any) => {
-    setCancelId(booking.id);
-    const hasPaid = booking.payment?.method === 'STRIPE' && booking.payment?.status === 'SUCCEEDED';
-    setCancelHasPaid(hasPaid);
-    setCancelOpen(true);
+  const stats = {
+    total: bookings.length,
+    confirmed: bookings.filter(b => b.status === 'CONFIRMED').length,
+    pending: bookings.filter(b => b.status === 'PENDING').length,
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'CONFIRMED':
-        return 'success';
-      case 'PENDING':
-        return 'warning';
-      case 'CANCELLED':
-        return 'error';
-      case 'REFUNDED':
-        return 'info';
-      default:
-        return 'default';
+  const getStatusConfig = (status: string) => {
+    if (status === 'CONFIRMED') {
+      return { label: 'Confirmé', color: COLORS.teal, bg: alpha(COLORS.teal, 0.1) };
     }
+    if (status === 'PENDING') {
+      return { label: 'En attente', color: COLORS.amber, bg: alpha(COLORS.amber, 0.1) };
+    }
+    return { label: status, color: COLORS.navy, bg: alpha(COLORS.navy, 0.1) };
   };
-
-  const getStatusLabel = (status: string) => {
-    const labels: { [key: string]: string } = {
-      CONFIRMED: 'Confirmée',
-      PENDING: 'En attente de confirmation',
-      CANCELLED: 'Annulée',
-      REFUNDED: 'Remboursée',
-    };
-    return labels[status] || status;
-  };
-
-  if (loading) {
-    return (
-      <Container maxWidth="lg" sx={{ mt: 4, textAlign: 'center' }}>
-        <CircularProgress />
-      </Container>
-    );
-  }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Mes réservations
-      </Typography>
+    <Box sx={{ minHeight: '100vh', bgcolor: alpha(COLORS.navy, 0.02), py: 4 }}>
+      <Container maxWidth="xl">
+        
+        {/* HEADER */}
+        <Fade in>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <IconButton 
+                onClick={() => navigate('/')}
+                sx={{ 
+                  bgcolor: COLORS.white, 
+                  color: COLORS.navy, 
+                  borderRadius: 12,
+                  border: `1px solid ${alpha(COLORS.teal, 0.2)}`,
+                  '&:hover': { bgcolor: alpha(COLORS.teal, 0.05), borderColor: COLORS.teal }
+                }}
+              >
+                <ArrowBack />
+              </IconButton>
+              <Box>
+                <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.navy, letterSpacing: '-0.02em' }}>
+                  Mes Réservations
+                </Typography>
+                <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
+                  Historique et gestion de vos voyages
+                </Typography>
+              </Box>
+            </Stack>
+            <GradientButton startIcon={<TravelExplore />} onClick={() => navigate('/trips')}>
+              Explorer d'autres voyages
+            </GradientButton>
+          </Box>
+        </Fade>
 
-      {bookings.length === 0 ? (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          Vous n'avez aucune réservation pour le moment.
-          <Button
-            variant="text"
-            onClick={() => navigate('/trips')}
-            sx={{ ml: 2 }}
-          >
-            Découvrir les voyages
-          </Button>
-        </Alert>
-      ) : (
-        <TableContainer component={Paper} sx={{ mt: 3 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Voyage</TableCell>
-                <TableCell>Date de départ</TableCell>
-                <TableCell>Voyageurs</TableCell>
-                <TableCell>Prix total</TableCell>
-                <TableCell>Statut</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {bookings.map((booking) => (
-                <TableRow key={booking.id}>
-                  <TableCell>
+        {/* STATS CARDS */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {[
+            { label: 'Total Réservations', val: stats.total, icon: <ConfirmationNumber />, color: COLORS.navy },
+            { label: 'Réservations confirmées', val: stats.confirmed, icon: <EventAvailable />, color: COLORS.teal },
+            { label: 'En attente', val: stats.pending, icon: <History />, color: COLORS.amber },
+          ].map((s, i) => (
+            <Grid item xs={12} md={4} key={i}>
+              <Zoom in timeout={300 + i * 100}>
+                <StatsCard>
+                  <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
+                    <Avatar sx={{ bgcolor: alpha(s.color, 0.1), color: s.color, width: 52, height: 52, borderRadius: 12 }}>
+                      {s.icon}
+                    </Avatar>
                     <Box>
-                      <Typography variant="body1" fontWeight="bold">
-                        {booking.trip?.title}
+                      <Typography variant="body2" fontWeight={600} sx={{ color: alpha(COLORS.navy, 0.6) }}>
+                        {s.label}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {booking.trip?.destinations?.map((d: any) => d.name).join(', ')}
+                      <Typography variant="h3" fontWeight={800} sx={{ color: s.color, lineHeight: 1.2 }}>
+                        {s.val}
                       </Typography>
                     </Box>
-                  </TableCell>
-                  <TableCell>
-                    {booking.tripSession?.start_date
-                      ? new Date(booking.tripSession.start_date).toLocaleDateString('fr-FR')
-                      : '-'}
-                  </TableCell>
-                  <TableCell>{booking.num_travelers}</TableCell>
-                  <TableCell>
-                    {booking.total_price} {booking.currency}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={getStatusLabel(booking.status)}
-                      color={getStatusColor(booking.status) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <IconButton 
-                        color="primary" 
-                        onClick={() => handleExportPdf(booking)}
-                        title="Exporter PDF"
-                      >
-                        <PictureAsPdf />
-                      </IconButton>
-                      {booking.status !== 'CANCELLED' && (
-                        <IconButton 
-                          color="error" 
-                          onClick={() => handleCancel(booking)}
-                          title="Annuler"
-                        >
-                          <Cancel />
-                        </IconButton>
-                      )}
-                      <IconButton 
-                        color="error" 
-                        onClick={() => handleDelete(booking.id)}
-                        title="Supprimer"
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+                  </CardContent>
+                </StatsCard>
+              </Zoom>
+            </Grid>
+          ))}
+        </Grid>
 
-      <CancelBookingModal
-        open={cancelOpen}
-        bookingId={cancelBookingId}
-        hasPaidStripe={cancelHasPaid}
-        onClose={() => {
-          setCancelOpen(false);
-          setCancelId(null);
-          setCancelHasPaid(false);
-        }}
-        onCancelled={() => {
-          setCancelOpen(false);
-          setCancelId(null);
-          setCancelHasPaid(false);
-          loadBookings();
-        }}
-      />
-    </Container>
+        {/* TABLEAU */}
+        {loading ? (
+          <Box sx={{ textAlign: 'center', py: 10 }}>
+            <CircularProgress sx={{ color: COLORS.teal }} />
+          </Box>
+        ) : bookings.length === 0 ? (
+          <Fade in>
+            <Alert 
+              severity="info" 
+              sx={{ 
+                borderRadius: 12, 
+                bgcolor: alpha(COLORS.teal, 0.05), 
+                color: COLORS.navy,
+                '& .MuiAlert-icon': { color: COLORS.teal }
+              }}
+            >
+              Vous n'avez pas encore de réservations.
+            </Alert>
+          </Fade>
+        ) : (
+          <TableWrapper elevation={0}>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <HeaderCell>Détails du Voyage</HeaderCell>
+                    <HeaderCell>Date de Départ</HeaderCell>
+                    <HeaderCell>Prix Total</HeaderCell>
+                    <HeaderCell>Statut</HeaderCell>
+                    <HeaderCell align="right">Actions</HeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {bookings.map((booking, idx) => {
+                    const statusConfig = getStatusConfig(booking.status);
+                    return (
+                      <TableRow 
+                        key={booking.id} 
+                        sx={{ 
+                          '&:hover': { bgcolor: alpha(COLORS.teal, 0.02) },
+                          animation: `fadeIn 0.3s ease ${idx * 0.05}s both`,
+                        }}
+                      >
+                        <TableCell>
+                          <Stack direction="row" spacing={2} alignItems="center">
+                            <Avatar sx={{ 
+                              background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`, 
+                              borderRadius: 10,
+                              width: 44,
+                              height: 44
+                            }}>
+                              <TravelExplore sx={{ fontSize: 22, color: COLORS.white }} />
+                            </Avatar>
+                            <Box>
+                              <Typography fontWeight={700} sx={{ color: COLORS.navy }}>
+                                {booking.trip?.title}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.5) }}>
+                                {booking.num_travelers} voyageur{booking.num_travelers > 1 ? 's' : ''}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={500} sx={{ color: COLORS.navy }}>
+                            {new Date(booking.tripSession?.start_date).toLocaleDateString('fr-FR', { 
+                              day: 'numeric', 
+                              month: 'long', 
+                              year: 'numeric' 
+                            })}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography fontWeight={800} sx={{ color: COLORS.teal }}>
+                            {booking.total_price} {booking.currency}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={statusConfig.label} 
+                            size="small"
+                            sx={{ 
+                              bgcolor: statusConfig.bg,
+                              color: statusConfig.color,
+                              fontWeight: 600,
+                              borderRadius: 8,
+                              fontSize: '0.7rem',
+                              height: 26,
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                            <Tooltip title="Télécharger le reçu">
+                              <OutlinedButton
+                                startIcon={<Receipt fontSize="small" />}
+                                onClick={() => handleExportPdf(booking)}
+                              >
+                                Reçu
+                              </OutlinedButton>
+                            </Tooltip>
+                            
+                            {booking.status !== 'CANCELLED' && (
+                              <Tooltip title="Annuler la réservation">
+                                <DangerButton
+                                  startIcon={<Cancel fontSize="small" />}
+                                  onClick={() => {
+                                    setCancelId(booking.id);
+                                    setCancelHasPaid(booking.payment?.status === 'SUCCEEDED');
+                                    setCancelOpen(true);
+                                  }}
+                                >
+                                  Annuler
+                                </DangerButton>
+                              </Tooltip>
+                            )}
+
+                            <Tooltip title="Supprimer">
+                              <IconButton 
+                                onClick={() => bookingAPI.delete(booking.id).then(loadBookings)}
+                                sx={{ 
+                                  color: alpha(COLORS.navy, 0.3),
+                                  borderRadius: 10,
+                                  '&:hover': { color: COLORS.amber, bgcolor: alpha(COLORS.amber, 0.08) }
+                                }}
+                              >
+                                <DeleteOutline fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </TableWrapper>
+        )}
+
+        <CancelBookingModal
+          open={cancelOpen}
+          bookingId={cancelBookingId}
+          hasPaidStripe={cancelHasPaid}
+          onClose={() => setCancelOpen(false)}
+          onCancelled={() => { setCancelOpen(false); loadBookings(); }}
+        />
+      </Container>
+
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}
+      </style>
+    </Box>
   );
 };
 

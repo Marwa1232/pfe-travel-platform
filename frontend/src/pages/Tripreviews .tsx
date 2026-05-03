@@ -2,27 +2,34 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Rating, Avatar, Button, TextField,
   Paper, Stack, Divider, Chip, CircularProgress, Alert,
-  LinearProgress, Fade, Collapse, IconButton, alpha,
+  LinearProgress, Fade, Collapse, IconButton,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
+import { styled, alpha } from '@mui/material/styles';
 import {
   Star, StarBorder, ThumbUp, Edit, Delete, Send,
-  ExpandMore, ExpandLess, FormatQuote,
+  ExpandMore, ExpandLess, FormatQuote, Verified,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 
-// ─── Styled ────────────────────────────────────────────────────────────────
+// ─── 4 COULEURS UNIQUEMENT ──────────────────────────────────────
+const COLORS = {
+  teal: '#0EA5A0',
+  navy: '#0F2D5C',
+  amber: '#D97706',
+  white: '#FFFFFF',
+};
 
+// ─── Styled ──────────────────────────────────────────────────────
 const ReviewCard = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
-  borderRadius: theme.spacing(2),
-  border: '1px solid',
-  borderColor: theme.palette.divider,
+  borderRadius: 12,
+  border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
   transition: 'all 0.25s ease',
+  backgroundColor: COLORS.white,
   '&:hover': {
-    borderColor: theme.palette.primary.main,
-    boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.1)}`,
+    borderColor: COLORS.teal,
+    boxShadow: `0 4px 20px ${alpha(COLORS.teal, 0.1)}`,
     transform: 'translateY(-2px)',
   },
 }));
@@ -44,8 +51,33 @@ const StarsInput = styled(Box)(({ theme }) => ({
   },
 }));
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+const GradientButton = styled(Button)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+  borderRadius: 10,
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  color: COLORS.white,
+  '&:hover': {
+    background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.teal})`,
+    transform: 'translateY(-1px)',
+  },
+}));
 
+const OutlineButton = styled(Button)(({ theme }) => ({
+  borderRadius: 10,
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  borderColor: COLORS.teal,
+  color: COLORS.teal,
+  '&:hover': {
+    borderColor: COLORS.navy,
+    backgroundColor: alpha(COLORS.teal, 0.05),
+  },
+}));
+
+// ─── Types ───────────────────────────────────────────────────────
 interface Review {
   id: number;
   rating: number;
@@ -59,8 +91,7 @@ interface Props {
   tripTitle?: string;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
+// ─── Helpers ─────────────────────────────────────────────────────
 const API = 'http://localhost:8000';
 
 const ratingLabels: Record<number, string> = {
@@ -71,8 +102,7 @@ const ratingLabels: Record<number, string> = {
   5: 'Excellent !',
 };
 
-// ─── Component ─────────────────────────────────────────────────────────────
-
+// ─── Component ───────────────────────────────────────────────────
 const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
   const { token, user } = useSelector((state: RootState) => state.auth);
 
@@ -85,7 +115,6 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  // Form state
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -151,7 +180,6 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
     }
   };
 
-  // Compute distribution
   const dist = [5, 4, 3, 2, 1].map((star) => ({
     star,
     count: reviews.filter((r) => r.rating === star).length,
@@ -161,54 +189,54 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
   const alreadyReviewed = reviews.some((r) => r.user.id === user?.id);
 
   return (
-    <Paper elevation={2} sx={{ p: 4, borderRadius: 3 }}>
+    <Paper elevation={0} sx={{ p: 4, borderRadius: 16, border: `1px solid ${alpha(COLORS.teal, 0.1)}`, bgcolor: COLORS.white }}>
+      
       {/* ── Header ── */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography variant="h5" fontWeight="bold" gutterBottom>
+          <Typography variant="h5" fontWeight={800} sx={{ color: COLORS.navy, letterSpacing: '-0.02em' }}>
             Avis des voyageurs
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
             {reviews.length} avis pour ce voyage
           </Typography>
         </Box>
         {token && !alreadyReviewed && (
-          <Button
-            variant={showForm ? 'outlined' : 'contained'}
-            startIcon={showForm ? <ExpandLess /> : <Edit />}
-            onClick={() => setShowForm(!showForm)}
-            sx={{ borderRadius: 3 }}
-          >
-            {showForm ? 'Annuler' : 'Donner mon avis'}
-          </Button>
+          showForm ? (
+            <OutlineButton startIcon={<ExpandLess />} onClick={() => setShowForm(false)}>
+              Annuler
+            </OutlineButton>
+          ) : (
+            <GradientButton startIcon={<Edit />} onClick={() => setShowForm(true)}>
+              Donner mon avis
+            </GradientButton>
+          )
         )}
       </Stack>
 
-      <Divider sx={{ mb: 3 }} />
+      <Divider sx={{ mb: 3, borderColor: alpha(COLORS.teal, 0.15) }} />
 
       {/* ── Summary ── */}
       {reviews.length > 0 && (
         <Box sx={{ mb: 4 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={4} alignItems="center">
-            {/* Big number */}
             <Box sx={{ textAlign: 'center', minWidth: 120 }}>
-              <Typography variant="h2" fontWeight="bold" color="primary">
+              <Typography variant="h2" fontWeight={800} sx={{ color: COLORS.teal }}>
                 {avgRating.toFixed(1)}
               </Typography>
-              <Rating value={avgRating} precision={0.1} readOnly size="medium" />
-              <Typography variant="caption" color="text.secondary">
+              <Rating value={avgRating} precision={0.1} readOnly size="medium" sx={{ '& .MuiRating-iconFilled': { color: COLORS.amber } }} />
+              <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.5) }}>
                 sur 5
               </Typography>
             </Box>
 
-            {/* Distribution bars */}
             <Box sx={{ flex: 1, width: '100%' }}>
               {dist.map(({ star, count, pct }) => (
                 <RatingBar key={star}>
-                  <Typography variant="body2" sx={{ minWidth: 16 }}>
+                  <Typography variant="body2" sx={{ minWidth: 16, color: COLORS.navy }}>
                     {star}
                   </Typography>
-                  <Star sx={{ fontSize: 16, color: '#FFB400' }} />
+                  <Star sx={{ fontSize: 16, color: COLORS.amber }} />
                   <Box sx={{ flex: 1 }}>
                     <LinearProgress
                       variant="determinate"
@@ -216,26 +244,25 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
                       sx={{
                         height: 8,
                         borderRadius: 4,
-                        bgcolor: 'grey.200',
+                        bgcolor: alpha(COLORS.teal, 0.1),
                         '& .MuiLinearProgress-bar': {
-                          bgcolor: star >= 4 ? '#00BFA5' : star === 3 ? '#FFA726' : '#EF5350',
+                          bgcolor: star >= 4 ? COLORS.teal : star === 3 ? COLORS.amber : COLORS.amber,
                           borderRadius: 4,
                         },
                       }}
                     />
                   </Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ minWidth: 24 }}>
+                  <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.5), minWidth: 24 }}>
                     {count}
                   </Typography>
                 </RatingBar>
               ))}
             </Box>
 
-            {/* Tags */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {avgRating >= 4.5 && <Chip label="⭐ Recommandé" color="success" size="small" />}
-              {avgRating >= 4 && <Chip label="👍 Très apprécié" color="primary" size="small" />}
-              {reviews.length >= 10 && <Chip label="💬 Populaire" color="secondary" size="small" />}
+              {avgRating >= 4.5 && <Chip label=" Recommandé" sx={{ bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, fontWeight: 600, borderRadius: 8 }} />}
+              {avgRating >= 4 && <Chip label=" Très apprécié" sx={{ bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, fontWeight: 600, borderRadius: 8 }} />}
+              {reviews.length >= 10 && <Chip label="Populaire" sx={{ bgcolor: alpha(COLORS.amber, 0.1), color: COLORS.amber, fontWeight: 600, borderRadius: 8 }} />}
             </Box>
           </Stack>
         </Box>
@@ -244,14 +271,14 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
       {/* ── Alerts ── */}
       {error && (
         <Fade in>
-          <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
+          <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2, borderRadius: 10, bgcolor: alpha(COLORS.amber, 0.05), borderLeft: `4px solid ${COLORS.amber}` }}>
             {error}
           </Alert>
         </Fade>
       )}
       {success && (
         <Fade in>
-          <Alert severity="success" onClose={() => setSuccess('')} sx={{ mb: 2 }}>
+          <Alert severity="success" onClose={() => setSuccess('')} sx={{ mb: 2, borderRadius: 10, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }}>
             {success}
           </Alert>
         </Fade>
@@ -261,15 +288,14 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
       <Collapse in={showForm}>
         <Paper
           variant="outlined"
-          sx={{ p: 3, mb: 4, borderRadius: 2, bgcolor: alpha('#00BFA5', 0.03), borderColor: 'primary.light' }}
+          sx={{ p: 3, mb: 4, borderRadius: 12, bgcolor: alpha(COLORS.teal, 0.02), borderColor: alpha(COLORS.teal, 0.2) }}
         >
-          <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+          <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, mb: 2 }}>
             Votre expérience
           </Typography>
 
-          {/* Star selector */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 1 }}>
               Note globale *
             </Typography>
             <StarsInput>
@@ -282,21 +308,20 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
                   onClick={() => setRating(star)}
                 >
                   {star <= (hoverRating || rating) ? (
-                    <Star sx={{ fontSize: 36, color: '#FFB400' }} />
+                    <Star sx={{ fontSize: 36, color: COLORS.amber }} />
                   ) : (
-                    <StarBorder sx={{ fontSize: 36, color: '#FFB400' }} />
+                    <StarBorder sx={{ fontSize: 36, color: COLORS.amber }} />
                   )}
                 </Box>
               ))}
             </StarsInput>
             {(hoverRating || rating) > 0 && (
-              <Typography variant="body2" color="primary" sx={{ mt: 0.5, fontWeight: 600 }}>
+              <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600, color: COLORS.teal }}>
                 {ratingLabels[hoverRating || rating]}
               </Typography>
             )}
           </Box>
 
-          {/* Comment */}
           <TextField
             fullWidth
             multiline
@@ -305,33 +330,39 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Que pensez-vous de ce voyage ? Guide, hébergement, activités..."
-            sx={{ mb: 2 }}
+            sx={{
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 10,
+                '&:hover fieldset': { borderColor: COLORS.teal },
+                '&.Mui-focused fieldset': { borderColor: COLORS.teal },
+              },
+            }}
           />
 
-          <Button
-            variant="contained"
-            endIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <Send />}
+          <GradientButton
+            endIcon={submitting ? <CircularProgress size={16} sx={{ color: COLORS.white }} /> : <Send />}
             onClick={handleSubmit}
             disabled={submitting || rating === 0}
-            sx={{ borderRadius: 3, px: 3 }}
+            sx={{ px: 3 }}
           >
             {submitting ? 'Publication...' : 'Publier mon avis'}
-          </Button>
+          </GradientButton>
         </Paper>
       </Collapse>
 
       {/* ── Reviews List ── */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress />
+          <CircularProgress size={40} sx={{ color: COLORS.teal }} />
         </Box>
       ) : reviews.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 6 }}>
-          <FormatQuote sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary">
+          <FormatQuote sx={{ fontSize: 64, color: alpha(COLORS.navy, 0.2), mb: 2 }} />
+          <Typography variant="h6" sx={{ color: COLORS.navy, fontWeight: 600 }}>
             Aucun avis pour le moment
           </Typography>
-          <Typography variant="body2" color="text.disabled">
+          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.5) }}>
             Soyez le premier à partager votre expérience !
           </Typography>
         </Box>
@@ -345,26 +376,27 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
             return (
               <Fade in key={review.id}>
                 <ReviewCard elevation={0}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={1}>
                     <Stack direction="row" spacing={2} alignItems="center">
                       <Avatar
                         sx={{
-                          bgcolor: isOwn ? 'primary.main' : 'grey.400',
+                          bgcolor: isOwn ? COLORS.teal : alpha(COLORS.navy, 0.7),
                           width: 44,
                           height: 44,
                           fontWeight: 700,
+                          color: COLORS.white,
                         }}
                       >
                         {review.user.first_name[0]}{review.user.last_name[0]}
                       </Avatar>
                       <Box>
-                        <Typography variant="subtitle2" fontWeight="bold">
+                        <Typography variant="subtitle2" fontWeight={700} sx={{ color: COLORS.navy }}>
                           {review.user.first_name} {review.user.last_name}
                           {isOwn && (
-                            <Chip label="Vous" size="small" color="primary" sx={{ ml: 1, height: 18, fontSize: '0.65rem' }} />
+                            <Chip label="Vous" size="small" sx={{ ml: 1, height: 18, fontSize: '0.65rem', bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, fontWeight: 600, borderRadius: 6 }} />
                           )}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.5) }}>
                           {new Date(review.created_at).toLocaleDateString('fr-FR', {
                             day: 'numeric', month: 'long', year: 'numeric',
                           })}
@@ -373,9 +405,9 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
                     </Stack>
 
                     <Stack direction="row" alignItems="center" spacing={1}>
-                      <Rating value={review.rating} readOnly size="small" />
+                      <Rating value={review.rating} readOnly size="small" sx={{ '& .MuiRating-iconFilled': { color: COLORS.amber } }} />
                       {isOwn && (
-                        <IconButton size="small" color="error" onClick={() => handleDelete(review.id)}>
+                        <IconButton size="small" onClick={() => handleDelete(review.id)} sx={{ color: COLORS.amber, '&:hover': { bgcolor: alpha(COLORS.amber, 0.1) } }}>
                           <Delete fontSize="small" />
                         </IconButton>
                       )}
@@ -386,9 +418,9 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
                     <Box sx={{ mt: 2 }}>
                       <Typography
                         variant="body2"
-                        color="text.secondary"
                         sx={{
                           lineHeight: 1.7,
+                          color: alpha(COLORS.navy, 0.75),
                           display: '-webkit-box',
                           WebkitLineClamp: isExpanded || !isLong ? 'unset' : 3,
                           WebkitBoxOrient: 'vertical',
@@ -402,7 +434,7 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
                           size="small"
                           endIcon={isExpanded ? <ExpandLess /> : <ExpandMore />}
                           onClick={() => setExpandedId(isExpanded ? null : review.id)}
-                          sx={{ mt: 0.5, px: 0, color: 'primary.main' }}
+                          sx={{ mt: 0.5, px: 0, color: COLORS.teal, '&:hover': { bgcolor: 'transparent' } }}
                         >
                           {isExpanded ? 'Voir moins' : 'Lire la suite'}
                         </Button>
@@ -410,20 +442,16 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
                     </Box>
                   )}
 
-                  {/* Rating badge */}
                   <Box sx={{ mt: 1.5 }}>
                     <Chip
                       size="small"
                       label={ratingLabels[review.rating]}
                       sx={{
-                        bgcolor: review.rating >= 4
-                          ? alpha('#00BFA5', 0.12)
-                          : review.rating === 3
-                          ? alpha('#FFA726', 0.12)
-                          : alpha('#EF5350', 0.12),
-                        color: review.rating >= 4 ? '#00BFA5' : review.rating === 3 ? '#FFA726' : '#EF5350',
+                        bgcolor: review.rating >= 4 ? alpha(COLORS.teal, 0.1) : review.rating === 3 ? alpha(COLORS.amber, 0.1) : alpha(COLORS.amber, 0.1),
+                        color: review.rating >= 4 ? COLORS.teal : review.rating === 3 ? COLORS.amber : COLORS.amber,
                         fontWeight: 600,
                         fontSize: '0.7rem',
+                        borderRadius: 6,
                       }}
                     />
                   </Box>
@@ -436,12 +464,12 @@ const TripReviews: React.FC<Props> = ({ tripId, tripTitle }) => {
 
       {/* Already reviewed notice */}
       {token && alreadyReviewed && (
-        <Alert severity="info" sx={{ mt: 3 }}>
+        <Alert severity="info" sx={{ mt: 3, borderRadius: 10, bgcolor: alpha(COLORS.teal, 0.05), color: COLORS.navy, borderLeft: `4px solid ${COLORS.teal}` }}>
           Vous avez déjà soumis un avis pour ce voyage.
         </Alert>
       )}
       {!token && (
-        <Alert severity="info" sx={{ mt: 3 }}>
+        <Alert severity="info" sx={{ mt: 3, borderRadius: 10, bgcolor: alpha(COLORS.teal, 0.05), color: COLORS.navy, borderLeft: `4px solid ${COLORS.teal}` }}>
           <strong>Connectez-vous</strong> pour laisser un avis sur ce voyage.
         </Alert>
       )}

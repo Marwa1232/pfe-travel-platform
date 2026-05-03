@@ -1,32 +1,66 @@
 import React from 'react';
 import PhoneInput from 'react-phone-number-input';
-import { styled } from '@mui/material/styles';
+import 'react-phone-number-input/style.css'; // Assure-toi d'importer le CSS de base
+import { styled, alpha } from '@mui/material/styles';
 import { Box, Typography } from '@mui/material';
 
-const StyledPhoneInput = styled(PhoneInput)(({ theme }) => ({
-  '& .PhoneInputInput': {
-    width: '100%',
-    padding: '12px 16px',
-    fontSize: '1rem',
-    borderRadius: theme.spacing(2),
-    border: '1px solid rgba(0, 0, 0, 0.23)',
-    outline: 'none',
-    '&:focus': {
-      borderColor: '#00BFA5',
-      borderWidth: 2,
-      boxShadow: '0 4px 20px rgba(0,191,165,0.2)',
-    },
+const LUNA = {
+  TEAL: '#0EA5A0',
+  NAVY: '#0F2D5C',
+  ERROR: '#d32f2f',
+};
+
+const StyledPhoneInputContainer = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'error' && prop !== 'isFocused',
+})<{ error?: boolean; isFocused?: boolean }>(({ theme, error, isFocused }) => ({
+  '& .PhoneInput': {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '4px 16px',
+    borderRadius: '12px',
+    backgroundColor: '#fff',
+    border: `1px solid ${error ? LUNA.ERROR : isFocused ? LUNA.TEAL : alpha(LUNA.NAVY, 0.2)}`,
+    boxShadow: isFocused ? `0 0 0 3px ${alpha(LUNA.TEAL, 0.1)}` : 'none',
+    transition: 'all 0.3s ease',
     '&:hover': {
-      boxShadow: '0 4px 12px rgba(0,191,165,0.1)',
+      borderColor: error ? LUNA.ERROR : LUNA.TEAL,
     },
+  },
+  '& .PhoneInputInput': {
+    flex: 1,
+    border: 'none',
+    outline: 'none',
+    height: '48px',
+    fontSize: '1rem',
+    fontWeight: 500,
+    color: LUNA.NAVY,
+    background: 'transparent',
+    '&::placeholder': {
+      color: alpha(LUNA.NAVY, 0.4),
+    },
+  },
+  '& .PhoneInputCountrySelectContainer': {
+    display: 'flex',
+    alignItems: 'center',
+    cursor: 'pointer',
   },
   '& .PhoneInputCountrySelect': {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: '100%',
+    width: '100%',
+    zIndex: 1,
     border: 'none',
-    background: 'transparent',
+    opacity: 0,
+    cursor: 'pointer',
   },
   '& .PhoneInputCountryIcon': {
-    width: 24,
-    height: 18,
+    width: '28px',
+    height: 'auto',
+    borderRadius: '4px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
 }));
 
@@ -57,37 +91,49 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
   required,
   defaultCountry = 'TN',
 }) => {
+  const [isFocused, setIsFocused] = React.useState(false);
+
   return (
-    <Box>
+    <Box sx={{ width: '100%' }}>
       {label && (
         <Typography 
           variant="body2" 
           sx={{ 
-            mb: 0.5, 
-            fontWeight: 600,
-            color: error ? 'error.main' : 'text.primary' 
+            mb: 1, 
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            color: error ? LUNA.ERROR : alpha(LUNA.NAVY, 0.8)
           }}
         >
-          {label} {required && <span style={{ color: 'red' }}>*</span>}
+          {label} {required && <span style={{ color: LUNA.ERROR }}>*</span>}
         </Typography>
       )}
-      <StyledPhoneInput
-        value={value || undefined}
-        onChange={onChange}
-        defaultCountry={countryMap[defaultCountry] as any || defaultCountry as any}
-        placeholder="+216 XX XXX XXX"
-        countryCallingCodeEditable
-        international
-        withCountryCallingCode
-        style={{
-          '--PhoneInput-input-height': '48px',
-        } as React.CSSProperties}
-      />
+
+      <StyledPhoneInputContainer error={error} isFocused={isFocused}>
+        <PhoneInput
+          value={value || undefined}
+          onChange={onChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          defaultCountry={countryMap[defaultCountry] as any || defaultCountry as any}
+          placeholder="+216 XX XXX XXX"
+          international
+          withCountryCallingCode
+        />
+      </StyledPhoneInputContainer>
+
       {helperText && (
         <Typography 
           variant="caption" 
-          color={error ? 'error' : 'text.secondary'}
-          sx={{ mt: 0.5, display: 'block' }}
+          sx={{ 
+            mt: 0.75, 
+            display: 'block',
+            fontWeight: 500,
+            color: error ? LUNA.ERROR : 'text.secondary',
+            ml: 1
+          }}
         >
           {helperText}
         </Typography>

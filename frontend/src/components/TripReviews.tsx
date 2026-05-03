@@ -12,8 +12,9 @@ import {
   IconButton,
   LinearProgress,
   Chip,
+  Fade,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
+import { styled, alpha } from '@mui/material/styles';
 import {
   Star,
   StarBorder,
@@ -21,14 +22,28 @@ import {
   Send,
   ExpandMore,
   ExpandLess,
+  Verified,
 } from '@mui/icons-material';
 import { reviewAPI } from '../services/api';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
+// ─── 4 COULEURS UNIQUEMENT ──────────────────────────────────────
+const COLORS = {
+  teal: '#0EA5A0',
+  navy: '#0F2D5C',
+  amber: '#D97706',
+  white: '#FFFFFF',
+};
+
+// ─── Styled Components ──────────────────────────────────────────
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
-  borderRadius: theme.spacing(2),
+  borderRadius: 4,
   marginTop: theme.spacing(2),
-  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+  border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+  backgroundColor: COLORS.white,
+  boxShadow: `0 2px 12px ${alpha(COLORS.navy, 0.08)}`,
 }));
 
 const RatingBox = styled(Box)(({ theme }) => ({
@@ -41,8 +56,38 @@ const RatingBox = styled(Box)(({ theme }) => ({
 const ReviewItem = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
   marginBottom: theme.spacing(2),
-  borderRadius: theme.spacing(1),
-  backgroundColor: '#f8f9fa',
+  borderRadius: 12,
+  border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+  backgroundColor: COLORS.white,
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    borderColor: alpha(COLORS.teal, 0.3),
+    boxShadow: `0 4px 12px ${alpha(COLORS.navy, 0.08)}`,
+  },
+}));
+
+const GradientButton = styled(Button)({
+  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+  borderRadius: 10,
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  color: COLORS.white,
+  padding: '8px 20px',
+  '&:hover': {
+    background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.teal})`,
+    transform: 'translateY(-1px)',
+  },
+  '&:disabled': {
+    background: alpha(COLORS.navy, 0.4),
+  },
+});
+
+const StatusChip = styled(Chip)(({ theme }) => ({
+  fontWeight: 600,
+  fontSize: '0.7rem',
+  height: 22,
+  borderRadius: 8,
 }));
 
 interface Review {
@@ -64,6 +109,8 @@ interface TripReviewsProps {
 }
 
 const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
+  const { token, user } = useSelector((state: RootState) => state.auth);
+  
   const [reviews, setReviews] = useState<Review[]>([]);
   const [avgRating, setAvgRating] = useState(0);
   const [total, setTotal] = useState(0);
@@ -72,13 +119,9 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
-  // Form state
   const [rating, setRating] = useState<number | null>(null);
   const [comment, setComment] = useState('');
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
-  
-  // Auth check
-  const token = localStorage.getItem('token');
 
   useEffect(() => {
     loadReviews();
@@ -160,17 +203,13 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
     });
   };
 
-  // Calculate rating distribution
   const ratingDistribution = [5, 4, 3, 2, 1].map(star => ({
     star,
     count: reviews.filter(r => r.rating === star).length,
     percentage: total > 0 ? (reviews.filter(r => r.rating === star).length / total) * 100 : 0,
   }));
 
-  const userReview = token ? reviews.find(r => {
-    const userId = JSON.parse(atob(token.split('.')[1])).id;
-    return r.user.id === userId;
-  }) : null;
+  const userReview = token ? reviews.find(r => r.user.id === user?.id) : null;
 
   const getInitials = (firstName?: string, lastName?: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
@@ -184,29 +223,45 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
     });
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return COLORS.teal;
+      case 'pending': return COLORS.amber;
+      default: return COLORS.navy;
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'approved': return 'Approuvé';
+      case 'pending': return 'En attente';
+      default: return status;
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress />
+        <CircularProgress size={40} sx={{ color: COLORS.teal }} />
       </Box>
     );
   }
 
   return (
     <StyledPaper>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, color: '#0D47A1' }}>
+      <Typography variant="h5" fontWeight={800} sx={{ color: COLORS.navy, mb: 3, letterSpacing: '-0.02em' }}>
         Avis et notes
       </Typography>
 
       {/* Rating Summary */}
       {total > 0 && (
         <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <Typography variant="h3" sx={{ fontWeight: 700, color: '#0D47A1' }}>
-              {avgRating}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+            <Typography variant="h2" fontWeight={800} sx={{ color: COLORS.teal }}>
+              {avgRating.toFixed(1)}
             </Typography>
-            <Rating value={avgRating} precision={0.5} readOnly size="large" />
-            <Typography variant="body2" color="text.secondary">
+            <Rating value={avgRating} precision={0.5} readOnly size="large" sx={{ '& .MuiRating-iconFilled': { color: COLORS.amber } }} />
+            <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
               ({total} avis)
             </Typography>
           </Box>
@@ -215,14 +270,20 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
           <Box sx={{ mt: 2 }}>
             {ratingDistribution.map(({ star, count, percentage }) => (
               <Box key={star} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                <Typography variant="body2" sx={{ width: 20 }}>{star}</Typography>
-                <Star sx={{ fontSize: 16, color: '#FFC107' }} />
+                <Typography variant="body2" sx={{ width: 20, color: COLORS.navy }}>{star}</Typography>
+                <Star sx={{ fontSize: 16, color: COLORS.amber }} />
                 <LinearProgress
                   variant="determinate"
                   value={percentage}
-                  sx={{ flex: 1, height: 8, borderRadius: 4 }}
+                  sx={{ 
+                    flex: 1, 
+                    height: 8, 
+                    borderRadius: 4,
+                    backgroundColor: alpha(COLORS.teal, 0.1),
+                    '& .MuiLinearProgress-bar': { backgroundColor: COLORS.teal, borderRadius: 4 }
+                  }}
                 />
-                <Typography variant="body2" color="text.secondary" sx={{ width: 30 }}>
+                <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.5), width: 30 }}>
                   {count}
                 </Typography>
               </Box>
@@ -233,44 +294,58 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
 
       {/* No Reviews Yet */}
       {total === 0 && (
-        <Box sx={{ textAlign: 'center', py: 4, mb: 3 }}>
-          <StarBorder sx={{ fontSize: 48, color: '#ccc', mb: 1 }} />
-          <Typography variant="body1" color="text.secondary">
-            Aucun avis pour ce voyage. Soyez le premier à laisser un avis!
-          </Typography>
-        </Box>
+        <Fade in>
+          <Box sx={{ textAlign: 'center', py: 4, mb: 3 }}>
+            <StarBorder sx={{ fontSize: 48, color: alpha(COLORS.navy, 0.2), mb: 1 }} />
+            <Typography variant="body1" sx={{ color: alpha(COLORS.navy, 0.6) }}>
+              Aucun avis pour ce voyage. Soyez le premier à laisser un avis!
+            </Typography>
+          </Box>
+        </Fade>
       )}
 
       {/* Review Form */}
       {token && !userReview && (
         <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>Laisser un avis</Typography>
+          <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, mb: 2 }}>
+            Laisser un avis
+          </Typography>
           
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-              {error}
-            </Alert>
+            <Fade in>
+              <Alert severity="error" sx={{ mb: 2, borderRadius: 1, bgcolor: alpha(COLORS.amber, 0.05), borderLeft: `4px solid ${COLORS.amber}` }} onClose={() => setError(null)}>
+                {error}
+              </Alert>
+            </Fade>
           )}
           
           {success && (
-            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
-              {success}
-            </Alert>
+            <Fade in>
+              <Alert severity="success" sx={{ mb: 2, borderRadius: 1, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }} onClose={() => setSuccess(null)}>
+                {success}
+              </Alert>
+            </Fade>
           )}
 
           <RatingBox>
-            <Typography variant="body2">Note:</Typography>
+            <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Note:</Typography>
             <Rating
               value={rating}
               onChange={(_, newValue) => setRating(newValue)}
               size="large"
+              sx={{ '& .MuiRating-iconFilled': { color: COLORS.amber } }}
             />
             {rating && (
               <Chip 
                 label={`${rating}/5`} 
-                color="primary" 
-                size="small" 
-                icon={<Star />}
+                size="small"
+                sx={{ 
+                  bgcolor: alpha(COLORS.amber, 0.1), 
+                  color: COLORS.amber, 
+                  fontWeight: 600, 
+                  borderRadius: 8 
+                }} 
+                icon={<Star sx={{ color: COLORS.amber }} />}
               />
             )}
           </RatingBox>
@@ -279,105 +354,132 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
             fullWidth
             multiline
             rows={3}
-            placeholder="Partagez votre expérience (optionnel)..."
+            placeholder="Partagez votre expérience ..."
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            sx={{ mb: 2 }}
+            sx={{ 
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                '&:hover fieldset': { borderColor: COLORS.teal },
+                '&.Mui-focused fieldset': { borderColor: COLORS.teal },
+              },
+            }}
           />
 
-          <Button
+          <GradientButton
             type="submit"
-            variant="contained"
             disabled={!rating || submitting}
-            startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <Send />}
-            sx={{
-              background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-              borderRadius: 2,
-              px: 3,
-            }}
+            startIcon={submitting ? <CircularProgress size={20} sx={{ color: COLORS.white }} /> : <Send />}
           >
             {submitting ? 'Envoi...' : 'Soumettre'}
-          </Button>
+          </GradientButton>
         </Box>
       )}
 
-        {token && userReview && (
-        <Alert severity={userReview.status === 'approved' ? 'success' : 'warning'} sx={{ mb: 3 }}>
-          {userReview.status === 'approved' 
-            ? 'Merci pour votre avis!' 
-            : 'Votre avis est en attente de validation par l\'organisateur.'}
-        </Alert>
+      {/* User review status alert */}
+      {token && userReview && (
+        <Fade in>
+          <Alert 
+            severity={userReview.status === 'approved' ? 'success' : 'warning'} 
+            sx={{ 
+              mb: 3, 
+              borderRadius: 10,
+              bgcolor: userReview.status === 'approved' ? alpha(COLORS.teal, 0.05) : alpha(COLORS.amber, 0.05),
+              borderLeft: `4px solid ${userReview.status === 'approved' ? COLORS.teal : COLORS.amber}`,
+            }}
+          >
+            {userReview.status === 'approved' 
+              ? 'Merci pour votre avis!' 
+              : 'Votre avis est en attente de validation par l\'organisateur.'}
+          </Alert>
+        </Fade>
       )}
 
       {!token && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          Connectez-vous pour laisser un avis.
-        </Alert>
+        <Fade in>
+          <Alert severity="warning" sx={{ mb: 3, borderRadius: 1, bgcolor: alpha(COLORS.amber, 0.05), borderLeft: `4px solid ${COLORS.amber}` }}>
+            Connectez-vous pour laisser un avis.
+          </Alert>
+        </Fade>
       )}
 
       {/* Reviews List */}
       {reviews.length > 0 && (
         <Box sx={{ mt: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
+          <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, mb: 2 }}>
             Tous les avis ({total})
           </Typography>
 
-          {reviews.map((review) => (
-            <ReviewItem key={review.id}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Avatar sx={{ bgcolor: '#0D47A1' }}>
-                    {getInitials(review.user.first_name, review.user.last_name)}
-                  </Avatar>
-                  <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        {review.user.first_name} {review.user.last_name}
-                      </Typography>
-                      <Rating value={review.rating} readOnly size="small" />
-                    </Box>
-                    
-                    {review.comment ? (
-                      <>
-                        <Typography variant="body2" color="text.secondary">
-                          {expandedReviews.has(review.id) 
-                            ? review.comment 
-                            : review.comment.length > 150 
-                              ? review.comment.substring(0, 150) + '...'
-                              : review.comment
-                          }
+          {reviews.map((review) => {
+            const isOwn = token && review.user.id === user?.id;
+            return (
+              <Fade in key={review.id} timeout={300}>
+                <ReviewItem>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Avatar sx={{ bgcolor: isOwn ? COLORS.teal : alpha(COLORS.navy, 0.7), color: COLORS.white }}>
+                        {getInitials(review.user.first_name, review.user.last_name)}
+                      </Avatar>
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+                          <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy }}>
+                            {review.user.first_name} {review.user.last_name}
+                          </Typography>
+                          <Rating value={review.rating} readOnly size="small" sx={{ '& .MuiRating-iconFilled': { color: COLORS.amber } }} />
+                          {isOwn && (
+                            <StatusChip 
+                              label={getStatusLabel(review.status)} 
+                              size="small"
+                              sx={{ bgcolor: alpha(getStatusColor(review.status), 0.1), color: getStatusColor(review.status) }}
+                            />
+                          )}
+                        </Box>
+                        
+                        {review.comment ? (
+                          <>
+                            <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.7), lineHeight: 1.6 }}>
+                              {expandedReviews.has(review.id) 
+                                ? review.comment 
+                                : review.comment.length > 150 
+                                  ? review.comment.substring(0, 150) + '...'
+                                  : review.comment
+                              }
+                            </Typography>
+                            {review.comment.length > 150 && (
+                              <Button
+                                size="small"
+                                onClick={() => toggleExpand(review.id)}
+                                startIcon={expandedReviews.has(review.id) ? <ExpandLess /> : <ExpandMore />}
+                                sx={{ color: COLORS.teal, textTransform: 'none', '&:hover': { bgcolor: 'transparent' } }}
+                              >
+                                {expandedReviews.has(review.id) ? 'Réduire' : 'Lire plus'}
+                              </Button>
+                            )}
+                          </>
+                        ) : null}
+                        
+                        <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.5), mt: 1, display: 'block' }}>
+                          {formatDate(review.created_at)}
                         </Typography>
-                        {review.comment.length > 150 && (
-                          <Button
-                            size="small"
-                            onClick={() => toggleExpand(review.id)}
-                            startIcon={expandedReviews.has(review.id) ? <ExpandLess /> : <ExpandMore />}
-                          >
-                            {expandedReviews.has(review.id) ? 'Réduire' : 'Lire plus'}
-                          </Button>
-                        )}
-                      </>
-                    ) : null}
-                    
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                      {formatDate(review.created_at)}
-                    </Typography>
-                  </Box>
-                </Box>
+                      </Box>
+                    </Box>
 
-                {/* Delete button - only for own review */}
-                {token && JSON.parse(atob(token.split('.')[1])).id === review.user.id && (
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDelete(review.id)}
-                    sx={{ color: '#FF6B6B' }}
-                  >
-                    <Delete fontSize="small" />
-                  </IconButton>
-                )}
-              </Box>
-            </ReviewItem>
-          ))}
+                    {/* Delete button - only for own review */}
+                    {token && review.user.id === user?.id && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDelete(review.id)}
+                        sx={{ color: COLORS.amber, '&:hover': { bgcolor: alpha(COLORS.amber, 0.1) } }}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                </ReviewItem>
+              </Fade>
+            );
+          })}
         </Box>
       )}
     </StyledPaper>

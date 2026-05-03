@@ -47,28 +47,127 @@ import {
   VpnKey,
   Notifications as NotificationsIcon,
   Twitter as TwitterIcon,
+  Email,
+  Phone,
+  Public,
 } from '@mui/icons-material';
 import { RootState } from '../store';
 import { userAPI, organizerAPI, fixImageUrl } from '../services/api';
 
+// ─── Couleurs uniquement ─────────────────────────────────────────
+const COLORS = {
+  teal: '#0EA5A0',
+  navy: '#0F2D5C',
+  amber: '#D97706',
+  white: '#FFFFFF',
+  grey50: '#F8FAFC',
+  grey100: '#F1F5F9',
+  grey200: '#E2E8F0',
+  grey400: '#94A3B8',
+  grey600: '#475569',
+  grey700: '#334155',
+  grey800: '#1E293B',
+  red: '#EF4444',
+  green: '#10B981',
+};
+
 type RoleType = 'ADMIN' | 'ORGANIZER' | 'USER';
+
+// ─── Styled Components ───────────────────────────────────────────
+const GradientButton = styled(Button)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+  borderRadius: 12,
+  padding: theme.spacing(1.2, 3),
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  color: COLORS.white,
+  '&:hover': {
+    background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.teal})`,
+    transform: 'translateY(-1px)',
+  },
+}));
+
+const OutlinedButton = styled(Button)(({ theme }) => ({
+  borderRadius: 12,
+  padding: theme.spacing(1.2, 3),
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  borderColor: COLORS.navy,
+  color: COLORS.navy,
+  '&:hover': {
+    borderColor: COLORS.teal,
+    backgroundColor: alpha(COLORS.teal, 0.05),
+  },
+}));
+
+const DangerButton = styled(Button)(({ theme }) => ({
+  borderRadius: 12,
+  padding: theme.spacing(1.2, 3),
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  backgroundColor: COLORS.red,
+  color: COLORS.white,
+  '&:hover': {
+    backgroundColor: alpha(COLORS.red, 0.8),
+  },
+}));
+
+const SidebarCard = styled(Card)(({ theme }) => ({
+  borderRadius: 16,
+  position: 'sticky',
+  top: 24,
+  overflow: 'hidden',
+  border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+  boxShadow: `0 4px 20px ${alpha(COLORS.navy, 0.06)}`,
+}));
+
+const SectionCard = styled(Card)(({ theme }) => ({
+  borderRadius: 16,
+  boxShadow: 'none',
+  border: `1px solid ${alpha(COLORS.grey200, 0.8)}`,
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    borderColor: alpha(COLORS.teal, 0.3),
+  },
+}));
+
+const StyledInput = styled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 12,
+    '&:hover fieldset': {
+      borderColor: COLORS.teal,
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: COLORS.teal,
+    },
+  },
+}));
+
+const StyledSelect = styled(Select)(({ theme }) => ({
+  borderRadius: 12,
+  '&:hover .MuiOutlinedInput-notchedOutline': {
+    borderColor: COLORS.teal,
+  },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+    borderColor: COLORS.teal,
+  },
+}));
 
 const InstagramGradient = () => (
   <InstagramIcon
     sx={{
       mr: 1,
       fontSize: 22,
-      background: 'linear-gradient(45deg, #E1306C 0%, #F56040 25%, #F77737 50%, #FCAF45 75%, #FCF3A4 100%)',
+      background: `linear-gradient(45deg, #E1306C 0%, #F56040 25%, #F77737 50%, #FCAF45 75%, #FCF3A4 100%)`,
       WebkitBackgroundClip: 'text',
       WebkitTextFillColor: 'transparent',
       color: 'transparent',
     }}
   />
 );
-
-const SocialInputProps = {
-  sx: { borderRadius: 2 },
-};
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -86,15 +185,10 @@ const SettingsPage: React.FC = () => {
     return 'USER';
   }, [user?.roles]);
 
-  const roleChipColor = currentRole === 'ADMIN' ? 'error' : currentRole === 'ORGANIZER' ? 'warning' : 'primary';
-
   const sectionRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
-  const setSectionRef = React.useCallback(
-    (id: string) => (el: HTMLDivElement | null) => {
-      sectionRefs.current[id] = el;
-    },
-    []
-  );
+  const setSectionRef = React.useCallback((id: string) => (el: HTMLDivElement | null) => {
+    sectionRefs.current[id] = el;
+  }, []);
 
   const scrollToSection = React.useCallback((id: string) => {
     sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -104,7 +198,6 @@ const SettingsPage: React.FC = () => {
   const [saving, setSaving] = React.useState(false);
   const [photoFile, setPhotoFile] = React.useState<File | null>(null);
   const showMessage = (message: string, severity: 'success' | 'error' = 'success') => setSnackbar({ open: true, message, severity });
-  const showComingSoon = (action: string) => showMessage(`${action} - coming soon (API not wired).`);
 
   // Personal Information
   const [firstName, setFirstName] = React.useState<string>(userAny?.first_name ?? '');
@@ -149,9 +242,9 @@ const SettingsPage: React.FC = () => {
       setProfilePhotoPreview(null);
       setPhotoFile(null);
       if (photoUrl) setProfilePhotoUrl(photoUrl);
-      showMessage('Profile saved successfully!');
+      showMessage('Profil mis à jour avec succès!');
     } catch (error: any) {
-      showMessage(error.response?.data?.error || 'Failed to save profile', 'error');
+      showMessage(error.response?.data?.error || 'Erreur lors de la mise à jour', 'error');
     } finally {
       setSaving(false);
     }
@@ -168,9 +261,9 @@ const SettingsPage: React.FC = () => {
         description: description,
         experience: experience,
       });
-      showMessage('Company info saved successfully!');
+      showMessage('Informations mises à jour avec succès!');
     } catch (error: any) {
-      showMessage(error.response?.data?.error || 'Failed to save company info', 'error');
+      showMessage(error.response?.data?.error || 'Erreur lors de la mise à jour', 'error');
     } finally {
       setSaving(false);
     }
@@ -186,9 +279,9 @@ const SettingsPage: React.FC = () => {
         linkedin,
         x_link: xLink,
       });
-      showMessage('Social links saved successfully!');
+      showMessage('Liens sociaux mis à jour avec succès!');
     } catch (error: any) {
-      showMessage(error.response?.data?.error || 'Failed to save social links', 'error');
+      showMessage(error.response?.data?.error || 'Erreur lors de la mise à jour', 'error');
     } finally {
       setSaving(false);
     }
@@ -200,9 +293,9 @@ const SettingsPage: React.FC = () => {
       await userAPI.updatePreferences({
         interests: travelInterests,
       });
-      showMessage('Preferences saved successfully!');
+      showMessage('Préférences mises à jour avec succès!');
     } catch (error: any) {
-      showMessage(error.response?.data?.error || 'Failed to save preferences', 'error');
+      showMessage(error.response?.data?.error || 'Erreur lors de la mise à jour', 'error');
     } finally {
       setSaving(false);
     }
@@ -210,11 +303,11 @@ const SettingsPage: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      showMessage('New passwords do not match', 'error');
+      showMessage('Les mots de passe ne correspondent pas', 'error');
       return;
     }
     if (newPassword.length < 6) {
-      showMessage('Password must be at least 6 characters', 'error');
+      showMessage('Le mot de passe doit contenir au moins 6 caractères', 'error');
       return;
     }
     try {
@@ -227,9 +320,9 @@ const SettingsPage: React.FC = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      showMessage('Password changed successfully!');
+      showMessage('Mot de passe changé avec succès!');
     } catch (error: any) {
-      showMessage(error.response?.data?.error || 'Failed to change password', 'error');
+      showMessage(error.response?.data?.error || 'Erreur lors du changement', 'error');
     } finally {
       setSaving(false);
     }
@@ -239,12 +332,12 @@ const SettingsPage: React.FC = () => {
     try {
       setSaving(true);
       await userAPI.deleteAccount(deletePassword);
-      showMessage('Account deactivated successfully!');
+      showMessage('Compte supprimé avec succès!');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       navigate('/login');
     } catch (error: any) {
-      showMessage(error.response?.data?.error || 'Failed to delete account', 'error');
+      showMessage(error.response?.data?.error || 'Erreur lors de la suppression', 'error');
     } finally {
       setSaving(false);
     }
@@ -254,15 +347,15 @@ const SettingsPage: React.FC = () => {
     try {
       setSaving(true);
       await userAPI.disableAccount(deletePassword);
-      showMessage('Agency account disabled successfully!');
+      showMessage('Agence désactivée avec succès!');
     } catch (error: any) {
-      showMessage(error.response?.data?.error || 'Failed to disable account', 'error');
+      showMessage(error.response?.data?.error || 'Erreur lors de la désactivation', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  // Company / Platform Info
+  // Company Info
   const [agencyName, setAgencyName] = React.useState<string>(organizerProfile?.agency_name ?? '');
   const [licenseNumber, setLicenseNumber] = React.useState<string>(organizerProfile?.license_number ?? '');
   const [address, setAddress] = React.useState<string>(organizerProfile?.address ?? '');
@@ -281,6 +374,7 @@ const SettingsPage: React.FC = () => {
     setLogoPreview(null);
   }, [organizerProfile]);
 
+  // Admin Platform Info
   const [platformName, setPlatformName] = React.useState<string>(userAny?.platform_name ?? '');
   const [supportEmail, setSupportEmail] = React.useState<string>(userAny?.support_email ?? '');
   const [commissionPercent, setCommissionPercent] = React.useState<string>(userAny?.commission_percent ?? '');
@@ -289,9 +383,9 @@ const SettingsPage: React.FC = () => {
   // Social Links
   const [facebook, setFacebook] = React.useState<string>(organizerProfile?.facebook ?? '');
   const [instagram, setInstagram] = React.useState<string>(organizerProfile?.instagram ?? '');
-  const [linkedin, setLinkedin] = React.useState<string>(''); // UI field (backend may not persist it yet)
+  const [linkedin, setLinkedin] = React.useState<string>('');
   const [website, setWebsite] = React.useState<string>(organizerProfile?.website ?? '');
-  const [xLink, setXLink] = React.useState<string>(''); // UI field
+  const [xLink, setXLink] = React.useState<string>('');
 
   React.useEffect(() => {
     setFacebook(organizerProfile?.facebook ?? '');
@@ -310,7 +404,7 @@ const SettingsPage: React.FC = () => {
   const [emailNotifications, setEmailNotifications] = React.useState<boolean>(true);
   const [promotions, setPromotions] = React.useState<boolean>(true);
   const interestOptions = React.useMemo(
-    () => ['Beach', 'Mountains', 'City Breaks', 'Culture', 'Adventure', 'Luxury', 'Budget'],
+    () => ['Plage', 'Montagne', 'Ville', 'Culture', 'Aventure', 'Luxe', 'Économique'],
     []
   );
   const [travelInterests, setTravelInterests] = React.useState<string[]>(userAny?.interests ?? []);
@@ -323,569 +417,371 @@ const SettingsPage: React.FC = () => {
   const [newOwnerEmail, setNewOwnerEmail] = React.useState('');
   const [transferConfirmation, setTransferConfirmation] = React.useState('');
 
-  // Account Deletion / Disable
+  // Account Deletion
   const [deletePassword, setDeletePassword] = React.useState('');
 
   const sidebarItems: Array<{ id: string; label: string; icon: React.ReactNode; show?: boolean }> = [
-    { id: 'personal-info', label: 'Personal Information', icon: <PersonIcon /> },
-    { id: 'company-info', label: currentRole !== 'USER' ? 'Company Info' : 'Company Info', icon: <BusinessCenter />, show: currentRole !== 'USER' },
-    { id: 'social', label: 'Social', icon: <NotificationsIcon />, show: true },
-    { id: 'preferences', label: 'Preferences', icon: <SecurityIcon />, show: currentRole === 'USER' || currentRole === 'ORGANIZER' },
-    { id: 'change-password', label: 'Security', icon: <LockIcon />, show: true },
-    { id: 'ownership', label: 'Ownership', icon: <SwapHorizIcon />, show: currentRole === 'ORGANIZER' || currentRole === 'ADMIN' },
-    { id: 'account-deletion', label: 'Danger Zone', icon: <Delete />, show: true },
+    { id: 'personal-info', label: 'Informations personnelles', icon: <PersonIcon /> },
+    { id: 'company-info', label: 'Informations société', icon: <BusinessCenter />, show: currentRole !== 'USER' },
+    { id: 'social', label: 'Réseaux sociaux', icon: <NotificationsIcon /> },
+    { id: 'preferences', label: 'Préférences', icon: <SecurityIcon />, show: currentRole === 'USER' || currentRole === 'ORGANIZER' },
+    { id: 'change-password', label: 'Sécurité', icon: <LockIcon /> },
+    { id: 'ownership', label: 'Transfert', icon: <SwapHorizIcon />, show: currentRole === 'ORGANIZER' || currentRole === 'ADMIN' },
+    { id: 'account-deletion', label: 'Zone dangereuse', icon: <Delete /> },
   ];
-
-  const SidebarCard = styled(Card)(({ theme }) => ({
-    borderRadius: 20,
-    position: 'sticky',
-    top: 24,
-    overflow: 'hidden',
-    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.warning.main, 0.05)} 100%)`,
-  }));
-
-  const SectionCard = styled(Card)(({ theme }) => ({
-    borderRadius: 20,
-    boxShadow: 'none',
-    border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
-  }));
 
   const headerAvatarSrc = profilePhotoPreview || profilePhotoUrl || null;
   const companyLogoAvatarSrc = logoPreview ?? organizerProfile?.logo ?? null;
 
+  const getRoleColor = () => {
+    if (currentRole === 'ADMIN') return COLORS.amber;
+    if (currentRole === 'ORGANIZER') return COLORS.teal;
+    return COLORS.navy;
+  };
+
+  const getRoleLabel = () => {
+    if (currentRole === 'ADMIN') return 'Administrateur';
+    if (currentRole === 'ORGANIZER') return 'Organisateur';
+    return 'Voyageur';
+  };
+
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        py: 5,
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #edf1f7 100%)',
-      }}
-    >
+    <Box sx={{ minHeight: '100vh', py: 5, bgcolor: COLORS.grey50 }}>
       <Container maxWidth="lg">
         <Stack spacing={3}>
-          <Card sx={{ borderRadius: 3, boxShadow: 'none' }}>
-            <CardContent>
-              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2}>
-                <Box>
-                  <Typography variant="h4" fontWeight={800}>
-                    /settings
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Parametres professionnels selon votre role.
-                  </Typography>
-                </Box>
-                <Chip icon={<SettingsIcon />} label={`Role: ${currentRole}`} color={roleChipColor as any} variant="filled" />
-              </Stack>
-            </CardContent>
-          </Card>
+          {/* Header */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.navy, letterSpacing: '-0.02em' }}>
+              Paramètres
+            </Typography>
+            <Typography variant="body2" sx={{ color: COLORS.grey600, mt: 0.5 }}>
+              Gérez vos informations personnelles, sécurité et préférences
+            </Typography>
+          </Box>
 
           <Grid container spacing={3}>
+            {/* Sidebar */}
             <Grid item xs={12} md={4} lg={3}>
               <SidebarCard>
-                <CardContent>
-                  <Stack direction="row" spacing={2} alignItems="center">
+                <CardContent sx={{ p: 2 }}>
+                  <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                     <Avatar
                       src={headerAvatarSrc ? headerAvatarSrc : undefined}
-                      sx={{ width: 54, height: 54, bgcolor: 'primary.light' }}
+                      sx={{ width: 50, height: 50, bgcolor: COLORS.teal }}
                     >
                       <AccountCircle fontSize="large" />
                     </Avatar>
                     <Box>
-                      <Typography fontWeight={800} lineHeight={1.1}>
-                        {currentRole === 'ADMIN'
-                          ? `${firstName || userAny?.first_name || 'Admin'} ${lastName || userAny?.last_name || ''}`.trim()
-                          : `${userAny?.first_name ?? ''} ${userAny?.last_name ?? ''}`.trim()}
+                      <Typography fontWeight={700} sx={{ color: COLORS.navy }}>
+                        {`${firstName || userAny?.first_name || ''} ${lastName || userAny?.last_name || ''}`.trim() || 'Utilisateur'}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {userAny?.email ?? ''}
-                      </Typography>
+                      <Chip
+                        label={getRoleLabel()}
+                        size="small"
+                        sx={{
+                          bgcolor: alpha(getRoleColor(), 0.1),
+                          color: getRoleColor(),
+                          fontWeight: 600,
+                          fontSize: '0.7rem',
+                          height: 22,
+                          borderRadius: 1,
+                        }}
+                      />
                     </Box>
                   </Stack>
 
-                  <Divider sx={{ my: 2 }} />
+                  <Divider sx={{ my: 1.5 }} />
 
                   <List disablePadding>
                     {sidebarItems
                       .filter((x) => x.show !== false)
                       .map((item) => (
-                        <ListItemButton key={item.id} onClick={() => scrollToSection(item.id)}>
-                          <ListItemIcon>{item.icon}</ListItemIcon>
-                          <ListItemText primary={item.label} />
-                          <ArrowRightAlt fontSize="small" />
+                        <ListItemButton
+                          key={item.id}
+                          onClick={() => scrollToSection(item.id)}
+                          sx={{ borderRadius: 1, mb: 0.5 }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 36, color: COLORS.grey600 }}>{item.icon}</ListItemIcon>
+                          <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '0.85rem' }} />
+                          <ArrowRightAlt sx={{ fontSize: 16, color: COLORS.grey400 }} />
                         </ListItemButton>
                       ))}
                   </List>
-
-                  <Divider sx={{ my: 2 }} />
-
-                  <Alert severity={currentRole === 'ADMIN' ? 'info' : 'warning'} variant="outlined" sx={{ borderRadius: 2 }}>
-                    <Typography variant="body2" fontWeight={700}>
-                      {currentRole === 'USER'
-                        ? 'Voyageur : gerez vos infos & preferences.'
-                        : currentRole === 'ORGANIZER'
-                          ? 'Organisateur : infos business + securite.'
-                          : 'Admin : options plateforme (actions sensibles).'}
-                    </Typography>
-                  </Alert>
                 </CardContent>
               </SidebarCard>
             </Grid>
 
+            {/* Main Content */}
             <Grid item xs={12} md={8} lg={9}>
               <Stack spacing={3}>
                 {/* Personal Information */}
                 <Box id="personal-info" ref={setSectionRef('personal-info')}>
                   <SectionCard>
-                    <CardContent>
-                      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2 }}>
-                        <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2.5 }}>
+                        <Avatar sx={{ bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, width: 36, height: 36 }}>
                           <PersonIcon />
                         </Avatar>
                         <Box>
-                          <Typography variant="h6" fontWeight={900}>
-                            Personal Information
+                          <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy }}>
+                            Informations personnelles
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {currentRole === 'ADMIN'
-                              ? 'Nom, email et options de securite.'
-                              : 'Votre profil voyageur / organisateur.'}
+                          <Typography variant="body2" sx={{ color: COLORS.grey600 }}>
+                            Gérez votre profil et vos coordonnées
                           </Typography>
                         </Box>
                       </Stack>
 
-                      {currentRole === 'ADMIN' ? (
-                        <Grid container spacing={2}>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label="Name"
-                              value={`${firstName} ${lastName}`.trim()}
-                              onChange={(e) => {
-                                const parts = e.target.value.trim().split(/\s+/);
-                                setFirstName(parts.slice(0, -1).join(' ') || '');
-                                setLastName(parts.slice(-1)[0] || '');
-                              }}
-                              placeholder="Admin Name"
-                              sx={SocialInputProps.sx}
-                            />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label="Email"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              placeholder="name@example.com"
-                              sx={SocialInputProps.sx}
-                            />
-                          </Grid>
-
-                          <Grid item xs={12}>
-                            <Alert severity="info" variant="outlined" sx={{ borderRadius: 2 }}>
-                              <Stack spacing={1}>
-                                <Typography variant="body2" fontWeight={800}>
-                                  Security options
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  UI seulement. En production, reliez a l'API admin security.
-                                </Typography>
-                                <Grid container spacing={1.5}>
-                                  <Grid item xs={12} md={4}>
-                                    <FormControlLabel control={<Switch defaultChecked />} label="2FA enabled" />
-                                  </Grid>
-                                  <Grid item xs={12} md={4}>
-                                    <FormControlLabel control={<Switch defaultChecked />} label="Login alerts" />
-                                  </Grid>
-                                  <Grid item xs={12} md={4}>
-                                    <FormControlLabel control={<Switch />} label="Session lock" />
-                                  </Grid>
-                                </Grid>
-                              </Stack>
-                            </Alert>
-                          </Grid>
-
-                          <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                              <Button variant="contained" onClick={handleSaveProfile} disabled={saving} sx={{ borderRadius: 2 }}>
-                                {saving ? 'Saving...' : 'Save changes'}
-                              </Button>
-                            </Box>
-                          </Grid>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={6}>
+                          <StyledInput
+                            fullWidth
+                            label="Prénom"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            size="small"
+                          />
                         </Grid>
-                      ) : (
-                        <Grid container spacing={2}>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label="First Name"
-                              value={firstName}
-                              onChange={(e) => setFirstName(e.target.value)}
-                              placeholder="John"
-                              sx={SocialInputProps.sx}
-                            />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label="Last Name"
-                              value={lastName}
-                              onChange={(e) => setLastName(e.target.value)}
-                              placeholder="Doe"
-                              sx={SocialInputProps.sx}
-                            />
-                          </Grid>
-
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label="Email"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              placeholder="name@example.com"
-                              sx={SocialInputProps.sx}
-                            />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label="Phone"
-                              value={phone}
-                              onChange={(e) => setPhone(e.target.value)}
-                              placeholder="+216..."
-                              sx={SocialInputProps.sx}
-                            />
-                          </Grid>
-
-                          <Grid item xs={12} md={6}>
-                            <FormControl fullWidth sx={SocialInputProps.sx}>
-                              <InputLabel>Country</InputLabel>
-                              <Select value={country} label="Country" onChange={(e) => setCountry(e.target.value as string)}>
-                                <MenuItem value="Tunisia">Tunisia</MenuItem>
-                                <MenuItem value="France">France</MenuItem>
-                                <MenuItem value="Germany">Germany</MenuItem>
-                                <MenuItem value="Canada">Canada</MenuItem>
-                                <MenuItem value="United States">United States</MenuItem>
-                              </Select>
-                            </FormControl>
-                          </Grid>
-
-                          <Grid item xs={12} md={6}>
-                            <FormControl fullWidth sx={SocialInputProps.sx}>
-                              <InputLabel>Preferred Language</InputLabel>
-                              <Select
-                                value={preferredLanguage}
-                                label="Preferred Language"
-                                onChange={(e) => setPreferredLanguage(e.target.value as string)}
-                              >
-                                <MenuItem value="fr">Francais</MenuItem>
-                                <MenuItem value="en">English</MenuItem>
-                                <MenuItem value="ar">Arabic</MenuItem>
-                              </Select>
-                            </FormControl>
-                          </Grid>
-
-                          <Grid item xs={12} md={6}>
-                            <FormControl fullWidth sx={SocialInputProps.sx}>
-                              <InputLabel>Preferred Currency</InputLabel>
-                              <Select
-                                value={preferredCurrency}
-                                label="Preferred Currency"
-                                onChange={(e) => setPreferredCurrency(e.target.value as string)}
-                              >
-                                <MenuItem value="TND">TND</MenuItem>
-                                <MenuItem value="EUR">EUR</MenuItem>
-                                <MenuItem value="USD">USD</MenuItem>
-                                <MenuItem value="GBP">GBP</MenuItem>
-                              </Select>
-                            </FormControl>
-                          </Grid>
-
-                          <Grid item xs={12} md={6}>
-                            <Stack spacing={1}>
-                              <Typography variant="body2" color="text.secondary" fontWeight={800}>
-                                Profile Photo
-                              </Typography>
-                              <Stack direction="row" spacing={2} alignItems="center">
-                                <Avatar
-                                  src={headerAvatarSrc ? headerAvatarSrc : undefined}
-                                  sx={{ width: 56, height: 56, bgcolor: 'grey.100', border: '1px solid', borderColor: 'divider' }}
-                                />
-                                <Box>
-                                  <Button
-                                    variant="outlined"
-                                    component="label"
-                                    sx={{ borderRadius: 2, textTransform: 'none' }}
-                                  >
-                                    Upload
-                                    <input
-                                      hidden
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        setPhotoFile(file);
-                                        const url = URL.createObjectURL(file);
-                                        setProfilePhotoPreview(url);
-                                      }}
-                                    />
-                                  </Button>
-                                </Box>
-                              </Stack>
-                            </Stack>
-                          </Grid>
-
-                          <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                              <Button variant="contained" onClick={handleSaveProfile} disabled={saving} sx={{ borderRadius: 2 }}>
-                                {saving ? 'Saving...' : 'Save changes'}
-                              </Button>
-                            </Box>
-                          </Grid>
+                        <Grid item xs={12} md={6}>
+                          <StyledInput
+                            fullWidth
+                            label="Nom"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            size="small"
+                          />
                         </Grid>
-                      )}
+                        <Grid item xs={12} md={6}>
+                          <StyledInput
+                            fullWidth
+                            label="Email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            size="small"
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <Email sx={{ fontSize: 18, color: COLORS.grey400 }} />
+                                </InputAdornment>
+                              ),
+                            }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <StyledInput
+                            fullWidth
+                            label="Téléphone"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            size="small"
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <Phone sx={{ fontSize: 18, color: COLORS.grey400 }} />
+                                </InputAdornment>
+                              ),
+                            }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>Pays</InputLabel>
+                            <StyledSelect
+                              value={country}
+                              label="Pays"
+                              onChange={(e) => setCountry(e.target.value as string)}
+                            >
+                              <MenuItem value="Tunisia">Tunisie</MenuItem>
+                              <MenuItem value="France">France</MenuItem>
+                              <MenuItem value="Germany">Allemagne</MenuItem>
+                              <MenuItem value="Canada">Canada</MenuItem>
+                              <MenuItem value="United States">États-Unis</MenuItem>
+                            </StyledSelect>
+                          </FormControl>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>Langue préférée</InputLabel>
+                            <StyledSelect
+                              value={preferredLanguage}
+                              label="Langue préférée"
+                              onChange={(e) => setPreferredLanguage(e.target.value as string)}
+                            >
+                              <MenuItem value="fr">Français</MenuItem>
+                              <MenuItem value="en">English</MenuItem>
+                              <MenuItem value="ar">العربية</MenuItem>
+                            </StyledSelect>
+                          </FormControl>
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Stack direction="row" spacing={2} alignItems="center">
+                            <Avatar
+                              src={headerAvatarSrc ? headerAvatarSrc : undefined}
+                              sx={{ width: 56, height: 56, bgcolor: alpha(COLORS.teal, 0.1) }}
+                            />
+                            <Button
+                              variant="outlined"
+                              component="label"
+                              sx={{ borderRadius: 1, textTransform: 'none', borderColor: COLORS.grey200 }}
+                            >
+                              Changer la photo
+                              <input
+                                hidden
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  setPhotoFile(file);
+                                  const url = URL.createObjectURL(file);
+                                  setProfilePhotoPreview(url);
+                                }}
+                              />
+                            </Button>
+                          </Stack>
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <GradientButton onClick={handleSaveProfile} disabled={saving}>
+                              {saving ? 'Enregistrement...' : 'Enregistrer'}
+                            </GradientButton>
+                          </Box>
+                        </Grid>
+                      </Grid>
                     </CardContent>
                   </SectionCard>
                 </Box>
 
-                {/* Company / Platform Info */}
+                {/* Company Info */}
                 {currentRole !== 'USER' && (
                   <Box id="company-info" ref={setSectionRef('company-info')}>
                     <SectionCard>
-                      <CardContent>
-                        <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2 }}>
-                          <Avatar sx={{ bgcolor: currentRole === 'ADMIN' ? 'error.main' : 'warning.main', width: 40, height: 40 }}>
-                            {currentRole === 'ADMIN' ? <AdminPanelSettings /> : <BusinessCenter />}
+                      <CardContent sx={{ p: 3 }}>
+                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2.5 }}>
+                          <Avatar sx={{ bgcolor: alpha(COLORS.amber, 0.1), color: COLORS.amber, width: 36, height: 36 }}>
+                            <BusinessCenter />
                           </Avatar>
                           <Box>
-                            <Typography variant="h6" fontWeight={900}>
-                              {currentRole === 'ADMIN' ? 'Company / Platform Info' : 'Company Info'}
+                            <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy }}>
+                              Informations société
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {currentRole === 'ADMIN'
-                                ? 'Configuration plateforme (UI only).'
-                                : 'Informations publiques business de votre agence.'}
+                            <Typography variant="body2" sx={{ color: COLORS.grey600 }}>
+                              {currentRole === 'ADMIN' ? 'Configuration de la plateforme' : 'Informations de votre agence'}
                             </Typography>
                           </Box>
                         </Stack>
 
-                        {currentRole === 'ADMIN' ? (
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                fullWidth
-                                label="Platform Name"
-                                value={platformName}
-                                onChange={(e) => setPlatformName(e.target.value)}
-                                placeholder="AppFe Platform"
-                                sx={SocialInputProps.sx}
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                fullWidth
-                                label="Support Email"
-                                type="email"
-                                value={supportEmail}
-                                onChange={(e) => setSupportEmail(e.target.value)}
-                                placeholder="support@platform.com"
-                                sx={SocialInputProps.sx}
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                fullWidth
-                                label="Commission %"
-                                value={commissionPercent}
-                                onChange={(e) => setCommissionPercent(e.target.value)}
-                                placeholder="10"
-                                sx={SocialInputProps.sx}
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                              <FormControl fullWidth sx={SocialInputProps.sx}>
-                                <InputLabel>Default Currency</InputLabel>
-                                <Select
-                                  value={adminDefaultCurrency}
-                                  label="Default Currency"
-                                  onChange={(e) => setAdminDefaultCurrency(e.target.value as string)}
-                                >
-                                  <MenuItem value="TND">TND</MenuItem>
-                                  <MenuItem value="EUR">EUR</MenuItem>
-                                  <MenuItem value="USD">USD</MenuItem>
-                                  <MenuItem value="GBP">GBP</MenuItem>
-                                </Select>
-                              </FormControl>
-                            </Grid>
-
-<Grid item xs={12}>
+                        <Grid container spacing={2}>
+                          {currentRole === 'ADMIN' ? (
+                            <>
+                              <Grid item xs={12} md={6}>
+                                <StyledInput fullWidth label="Nom de la plateforme" value={platformName} onChange={(e) => setPlatformName(e.target.value)} size="small" />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <StyledInput fullWidth label="Email support" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} size="small" />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <StyledInput fullWidth label="Commission (%)" value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} size="small" />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <FormControl fullWidth size="small">
+                                  <InputLabel>Devise par défaut</InputLabel>
+                                  <StyledSelect value={adminDefaultCurrency} label="Devise par défaut" onChange={(e) => setAdminDefaultCurrency(e.target.value as string)}>
+                                    <MenuItem value="TND">TND</MenuItem>
+                                    <MenuItem value="EUR">EUR</MenuItem>
+                                    <MenuItem value="USD">USD</MenuItem>
+                                    <MenuItem value="GBP">GBP</MenuItem>
+                                  </StyledSelect>
+                                </FormControl>
+                              </Grid>
+                            </>
+                          ) : (
+                            <>
+                              <Grid item xs={12} md={6}>
+                                <StyledInput fullWidth label="Nom de l'agence" value={agencyName} onChange={(e) => setAgencyName(e.target.value)} size="small" />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <StyledInput fullWidth label="Numéro de licence" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} size="small" />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <StyledInput fullWidth label="Adresse" value={address} onChange={(e) => setAddress(e.target.value)} size="small" />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <FormControl fullWidth size="small">
+                                  <InputLabel>Pays</InputLabel>
+                                  <StyledSelect value={companyCountry} label="Pays" onChange={(e) => setCompanyCountry(e.target.value as string)}>
+                                    <MenuItem value="Tunisia">Tunisie</MenuItem>
+                                    <MenuItem value="France">France</MenuItem>
+                                    <MenuItem value="Germany">Allemagne</MenuItem>
+                                    <MenuItem value="Canada">Canada</MenuItem>
+                                  </StyledSelect>
+                                </FormControl>
+                              </Grid>
+                              <Grid item xs={12}>
+                                <StyledInput fullWidth label="Description" value={description} onChange={(e) => setDescription(e.target.value)} multiline rows={2} size="small" />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <StyledInput fullWidth label="Années d'expérience" value={experience} onChange={(e) => setExperience(e.target.value)} size="small" />
+                              </Grid>
+                            </>
+                          )}
+                          <Grid item xs={12}>
                             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                              <Button variant="contained" onClick={handleSaveProfile} disabled={saving} sx={{ borderRadius: 2 }}>
-                                {saving ? 'Saving...' : 'Save changes'}
-                              </Button>
+                              <GradientButton onClick={currentRole === 'ADMIN' ? handleSaveProfile : handleSaveCompanyInfo} disabled={saving}>
+                                {saving ? 'Enregistrement...' : 'Enregistrer'}
+                              </GradientButton>
                             </Box>
                           </Grid>
-                          </Grid>
-                        ) : (
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                fullWidth
-                                label="Agency Name"
-                                value={agencyName}
-                                onChange={(e) => setAgencyName(e.target.value)}
-                                placeholder="My Travel Agency"
-                                sx={SocialInputProps.sx}
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                fullWidth
-                                label="License Number"
-                                value={licenseNumber}
-                                onChange={(e) => setLicenseNumber(e.target.value)}
-                                placeholder="LIC-12345"
-                                sx={SocialInputProps.sx}
-                              />
-                            </Grid>
-
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                fullWidth
-                                label="Address"
-                                value={address}
-                                onChange={(e) => setAddress(e.target.value)}
-                                placeholder="Street, City"
-                                sx={SocialInputProps.sx}
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                              <FormControl fullWidth sx={SocialInputProps.sx}>
-                                <InputLabel>Country</InputLabel>
-                                <Select
-                                  value={companyCountry}
-                                  label="Country"
-                                  onChange={(e) => setCompanyCountry(e.target.value as string)}
-                                >
-                                  <MenuItem value="Tunisia">Tunisia</MenuItem>
-                                  <MenuItem value="France">France</MenuItem>
-                                  <MenuItem value="Germany">Germany</MenuItem>
-                                  <MenuItem value="Canada">Canada</MenuItem>
-                                </Select>
-                              </FormControl>
-                            </Grid>
-
-                            <Grid item xs={12}>
-                              <TextField
-                                fullWidth
-                                label="Description"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Tell travelers about your agency..."
-                                multiline
-                                rows={3}
-                                sx={SocialInputProps.sx}
-                              />
-                            </Grid>
-
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                fullWidth
-                                label="Years of Experience"
-                                value={experience}
-                                onChange={(e) => setExperience(e.target.value)}
-                                placeholder="5"
-                                sx={SocialInputProps.sx}
-                              />
-                            </Grid>
-
-                            <Grid item xs={12} md={6}>
-                              <Stack spacing={1}>
-                                <Typography variant="body2" color="text.secondary" fontWeight={800}>
-                                  Logo Upload
-                                </Typography>
-                                <Stack direction="row" spacing={2} alignItems="center">
-                                  <Avatar
-                                    src={companyLogoAvatarSrc ? companyLogoAvatarSrc : undefined}
-                                    sx={{ width: 56, height: 56, bgcolor: 'grey.100', border: '1px solid', borderColor: 'divider' }}
-                                  />
-                                  <Button variant="outlined" component="label" sx={{ borderRadius: 2, textTransform: 'none' }}>
-                                    Upload
-                                    <input
-                                      hidden
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        const url = URL.createObjectURL(file);
-                                        setLogoPreview(url);
-                                      }}
-                                    />
-                                  </Button>
-                                </Stack>
-                              </Stack>
-                            </Grid>
-
-                            <Grid item xs={12}>
-                              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <Button variant="contained" onClick={handleSaveCompanyInfo} disabled={saving} sx={{ borderRadius: 2 }}>
-                                  {saving ? 'Saving...' : 'Save changes'}
-                                </Button>
-                              </Box>
-                            </Grid>
-                          </Grid>
-                        )}
+                        </Grid>
                       </CardContent>
                     </SectionCard>
                   </Box>
                 )}
 
-                {/* Social */}
+                {/* Social Links */}
                 <Box id="social" ref={setSectionRef('social')}>
                   <SectionCard>
-                    <CardContent>
-                      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2 }}>
-                        <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
-                          <NotificationsIcon />
+                    <CardContent sx={{ p: 3 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2.5 }}>
+                        <Avatar sx={{ bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, width: 36, height: 36 }}>
+                          <Public />
                         </Avatar>
                         <Box>
-                          <Typography variant="h6" fontWeight={900}>
-                            Social
+                          <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy }}>
+                            Réseaux sociaux
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Liens sociaux professionnels (optionnels)
+                          <Typography variant="body2" sx={{ color: COLORS.grey600 }}>
+                            Liez vos comptes professionnels
                           </Typography>
                         </Box>
                       </Stack>
 
                       <Grid container spacing={2}>
                         <Grid item xs={12}>
-                          <TextField
+                          <StyledInput
                             fullWidth
                             label="Facebook"
                             value={facebook}
                             onChange={(e) => setFacebook(e.target.value)}
                             placeholder="https://facebook.com/yourpage"
-                            sx={SocialInputProps.sx}
+                            size="small"
                             InputProps={{
                               startAdornment: (
                                 <InputAdornment position="start">
-                                  <FacebookIcon sx={{ color: '#1877F2', fontSize: 22, mr: 0.5 }} />
+                                  <FacebookIcon sx={{ color: '#1877F2', fontSize: 20 }} />
                                 </InputAdornment>
                               ),
                             }}
                           />
                         </Grid>
-
                         <Grid item xs={12}>
-                          <TextField
+                          <StyledInput
                             fullWidth
                             label="Instagram"
                             value={instagram}
                             onChange={(e) => setInstagram(e.target.value)}
                             placeholder="@youraccount"
-                            sx={SocialInputProps.sx}
+                            size="small"
                             InputProps={{
                               startAdornment: (
                                 <InputAdornment position="start">
@@ -895,70 +791,28 @@ const SettingsPage: React.FC = () => {
                             }}
                           />
                         </Grid>
-
                         <Grid item xs={12}>
-                          <TextField
+                          <StyledInput
                             fullWidth
-                            label="LinkedIn"
-                            value={linkedin}
-                            onChange={(e) => setLinkedin(e.target.value)}
-                            placeholder="https://linkedin.com/in/yourprofile"
-                            sx={SocialInputProps.sx}
+                            label="Site web"
+                            value={website}
+                            onChange={(e) => setWebsite(e.target.value)}
+                            placeholder="https://youragency.com"
+                            size="small"
                             InputProps={{
                               startAdornment: (
                                 <InputAdornment position="start">
-                                  <LinkedInIcon sx={{ color: '#0A66C2', fontSize: 22, mr: 0.5 }} />
+                                  <LanguageIcon sx={{ color: COLORS.grey400, fontSize: 20 }} />
                                 </InputAdornment>
                               ),
                             }}
                           />
                         </Grid>
-
-                        {currentRole !== 'USER' && (
-                          <>
-                            <Grid item xs={12}>
-                              <TextField
-                                fullWidth
-                                label="Website"
-                                value={website}
-                                onChange={(e) => setWebsite(e.target.value)}
-                                placeholder="https://youragency.com"
-                                sx={SocialInputProps.sx}
-                                InputProps={{
-                                  startAdornment: (
-                                    <InputAdornment position="start">
-                                      <LanguageIcon sx={{ color: '#9e9e9e', fontSize: 22, mr: 0.5 }} />
-                                    </InputAdornment>
-                                  ),
-                                }}
-                              />
-                            </Grid>
-
-                            <Grid item xs={12}>
-                              <TextField
-                                fullWidth
-                                label="X"
-                                value={xLink}
-                                onChange={(e) => setXLink(e.target.value)}
-                                placeholder="https://x.com/yourhandle"
-                                sx={SocialInputProps.sx}
-                                InputProps={{
-                                  startAdornment: (
-                                    <InputAdornment position="start">
-                                      <TwitterIcon sx={{ color: '#000000', fontSize: 22, mr: 0.5 }} />
-                                    </InputAdornment>
-                                  ),
-                                }}
-                              />
-                            </Grid>
-                          </>
-                        )}
-
                         <Grid item xs={12}>
                           <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <Button variant="contained" onClick={handleSaveSocialLinks} disabled={saving} sx={{ borderRadius: 2 }}>
-                              {saving ? 'Saving...' : 'Save changes'}
-                            </Button>
+                            <GradientButton onClick={handleSaveSocialLinks} disabled={saving}>
+                              {saving ? 'Enregistrement...' : 'Enregistrer'}
+                            </GradientButton>
                           </Box>
                         </Grid>
                       </Grid>
@@ -970,17 +824,17 @@ const SettingsPage: React.FC = () => {
                 {(currentRole === 'USER' || currentRole === 'ORGANIZER') && (
                   <Box id="preferences" ref={setSectionRef('preferences')}>
                     <SectionCard>
-                      <CardContent>
-                        <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2 }}>
-                          <Avatar sx={{ bgcolor: 'warning.main', width: 40, height: 40 }}>
+                      <CardContent sx={{ p: 3 }}>
+                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2.5 }}>
+                          <Avatar sx={{ bgcolor: alpha(COLORS.amber, 0.1), color: COLORS.amber, width: 36, height: 36 }}>
                             <SettingsIcon />
                           </Avatar>
                           <Box>
-                            <Typography variant="h6" fontWeight={900}>
-                              Preferences
+                            <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy }}>
+                              Préférences
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Notifications et centres d'interet
+                            <Typography variant="body2" sx={{ color: COLORS.grey600 }}>
+                              Centres d'intérêt et notifications
                             </Typography>
                           </Box>
                         </Stack>
@@ -988,25 +842,24 @@ const SettingsPage: React.FC = () => {
                         <Grid container spacing={2}>
                           <Grid item xs={12} md={6}>
                             <FormControlLabel
-                              control={<Switch checked={emailNotifications} onChange={(e) => setEmailNotifications(e.target.checked)} />}
-                              label="Email notifications"
+                              control={<Switch checked={emailNotifications} onChange={(e) => setEmailNotifications(e.target.checked)} sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: COLORS.teal } }} />}
+                              label="Notifications email"
                             />
                           </Grid>
                           <Grid item xs={12} md={6}>
                             <FormControlLabel
-                              control={<Switch checked={promotions} onChange={(e) => setPromotions(e.target.checked)} />}
-                              label="Promotions"
+                              control={<Switch checked={promotions} onChange={(e) => setPromotions(e.target.checked)} sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: COLORS.teal } }} />}
+                              label="Offres promotionnelles"
                             />
                           </Grid>
-
                           <Grid item xs={12}>
-                            <FormControl fullWidth sx={SocialInputProps.sx}>
-                              <InputLabel>Travel interests</InputLabel>
-                              <Select
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Centres d'intérêt</InputLabel>
+                              <StyledSelect
                                 multiple
                                 value={travelInterests}
                                 onChange={(e) => setTravelInterests(e.target.value as string[])}
-                                label="Travel interests"
+                                label="Centres d'intérêt"
                                 renderValue={(selected) => (selected as string[]).join(', ')}
                               >
                                 {interestOptions.map((option) => (
@@ -1014,18 +867,14 @@ const SettingsPage: React.FC = () => {
                                     {option}
                                   </MenuItem>
                                 ))}
-                              </Select>
+                              </StyledSelect>
                             </FormControl>
-                            <Typography variant="caption" color="text.secondary">
-                              UI only - map to `interests` when API is ready.
-                            </Typography>
                           </Grid>
-
                           <Grid item xs={12}>
                             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                              <Button variant="contained" onClick={handleSavePreferences} disabled={saving} sx={{ borderRadius: 2 }}>
-                                {saving ? 'Saving...' : 'Save changes'}
-                              </Button>
+                              <GradientButton onClick={handleSavePreferences} disabled={saving}>
+                                {saving ? 'Enregistrement...' : 'Enregistrer'}
+                              </GradientButton>
                             </Box>
                           </Grid>
                         </Grid>
@@ -1034,61 +883,39 @@ const SettingsPage: React.FC = () => {
                   </Box>
                 )}
 
-                {/* Change Password */}
+                {/* Security - Change Password */}
                 <Box id="change-password" ref={setSectionRef('change-password')}>
                   <SectionCard>
-                    <CardContent>
-                      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2 }}>
-                        <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2.5 }}>
+                        <Avatar sx={{ bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, width: 36, height: 36 }}>
                           <VpnKey />
                         </Avatar>
                         <Box>
-                          <Typography variant="h6" fontWeight={900}>
-                            Change Password
+                          <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy }}>
+                            Sécurité
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Renforcer votre compte
+                          <Typography variant="body2" sx={{ color: COLORS.grey600 }}>
+                            Changez votre mot de passe
                           </Typography>
                         </Box>
                       </Stack>
 
                       <Grid container spacing={2}>
-                        <Grid item xs={12} md={4}>
-                          <TextField
-                            fullWidth
-                            type="password"
-                            label="Current Password"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            sx={SocialInputProps.sx}
-                          />
+                        <Grid item xs={12} md={6}>
+                          <StyledInput fullWidth type="password" label="Mot de passe actuel" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} size="small" />
                         </Grid>
-                        <Grid item xs={12} md={4}>
-                          <TextField
-                            fullWidth
-                            type="password"
-                            label="New Password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            sx={SocialInputProps.sx}
-                          />
+                        <Grid item xs={12} md={6}>
+                          <StyledInput fullWidth type="password" label="Nouveau mot de passe" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} size="small" />
                         </Grid>
-                        <Grid item xs={12} md={4}>
-                          <TextField
-                            fullWidth
-                            type="password"
-                            label="Confirm Password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            sx={SocialInputProps.sx}
-                          />
+                        <Grid item xs={12} md={6}>
+                          <StyledInput fullWidth type="password" label="Confirmation" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} size="small" />
                         </Grid>
-
                         <Grid item xs={12}>
                           <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <Button variant="contained" onClick={handleChangePassword} disabled={saving} sx={{ borderRadius: 2 }}>
-                              {saving ? 'Updating...' : 'Update password'}
-                            </Button>
+                            <GradientButton onClick={handleChangePassword} disabled={saving}>
+                              {saving ? 'Mise à jour...' : 'Changer le mot de passe'}
+                            </GradientButton>
                           </Box>
                         </Grid>
                       </Grid>
@@ -1096,146 +923,54 @@ const SettingsPage: React.FC = () => {
                   </SectionCard>
                 </Box>
 
-                {/* Transfer Ownership */}
-                {(currentRole === 'ORGANIZER' || currentRole === 'ADMIN') && (
-                  <Box id="ownership" ref={setSectionRef('ownership')}>
-                    <SectionCard>
-                      <CardContent>
-                        <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2 }}>
-                          <Avatar sx={{ bgcolor: 'warning.main', width: 40, height: 40 }}>
-                            <SwapHorizIcon />
-                          </Avatar>
-                          <Box>
-                            <Typography variant="h6" fontWeight={900}>
-                              Transfer Ownership
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {currentRole === 'ORGANIZER'
-                                ? 'Si votre agence contient un autre admin, transfert la propriete a un user.'
-                                : 'Option sensible : transfert des droits Super Admin.'}
-                            </Typography>
-                          </Box>
-                        </Stack>
-
-                        <Alert severity={currentRole === 'ADMIN' ? 'warning' : 'info'} variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
-                          <Typography variant="body2" fontWeight={800}>
-                            Important
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            UI only - branch cette action avec le backend quand l'endpoint sera disponible.
-                          </Typography>
-                        </Alert>
-
-                        <Grid container spacing={2}>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label={currentRole === 'ADMIN' ? 'New admin email' : 'New Owner Email'}
-                              value={newOwnerEmail}
-                              onChange={(e) => setNewOwnerEmail(e.target.value)}
-                              placeholder="owner@example.com"
-                              sx={SocialInputProps.sx}
-                            />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label="confirmation"
-                              value={transferConfirmation}
-                              onChange={(e) => setTransferConfirmation(e.target.value)}
-                              placeholder={currentRole === 'ADMIN' ? 'Type CONFIRM' : 'Type CONFIRM'}
-                              sx={SocialInputProps.sx}
-                            />
-                          </Grid>
-
-                          <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                              <Button variant="contained" onClick={() => showComingSoon('Transfer ownership')} sx={{ borderRadius: 2 }}>
-                                Confirm transfer
-                              </Button>
-                            </Box>
-                          </Grid>
-                        </Grid>
-                      </CardContent>
-                    </SectionCard>
-                  </Box>
-                )}
-
-                {/* Account Deletion / Danger Zone */}
+                {/* Danger Zone */}
                 <Box id="account-deletion" ref={setSectionRef('account-deletion')}>
                   <SectionCard>
-                    <CardContent>
-                      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2 }}>
-                        <Avatar sx={{ bgcolor: 'error.main', width: 40, height: 40 }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2.5 }}>
+                        <Avatar sx={{ bgcolor: alpha(COLORS.red, 0.1), color: COLORS.red, width: 36, height: 36 }}>
                           <Delete />
                         </Avatar>
                         <Box>
-                          <Typography variant="h6" fontWeight={900}>
-                            Account Deletion
+                          <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.red }}>
+                            Zone dangereuse
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Actions irreversibles (ou desactivation)
+                          <Typography variant="body2" sx={{ color: COLORS.grey600 }}>
+                            Actions irréversibles
                           </Typography>
                         </Box>
                       </Stack>
 
-                      {currentRole === 'ADMIN' ? (
-                        <Alert severity="error" variant="outlined" sx={{ borderRadius: 2 }}>
-                          <Typography variant="body2" fontWeight={900}>
-                            Super Admin account cannot be deleted directly.
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Pour effectuer une action de suppression, passe par le backoffice/admin policies.
-                          </Typography>
-                        </Alert>
-                      ) : (
+                      {currentRole !== 'ADMIN' ? (
                         <>
-                          {currentRole === 'ORGANIZER' ? (
-                            <Alert severity="warning" variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
-                              <Typography variant="body2" fontWeight={900}>
-                                Disable agency account
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                Warning: trips/bookings impacted.
-                              </Typography>
-                            </Alert>
-                          ) : (
-                            <Alert severity="error" variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
-                              <Typography variant="body2" fontWeight={900}>
-                                Delete account permanently
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                Confirmation by password is required.
-                              </Typography>
-                            </Alert>
-                          )}
+                          <Alert severity="error" sx={{ borderRadius: 1, mb: 2, bgcolor: alpha(COLORS.red, 0.05) }}>
+                            <Typography variant="body2" fontWeight={600}>
+                              {currentRole === 'ORGANIZER' ? 'Désactiver votre agence' : 'Supprimer votre compte'}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: COLORS.grey600, fontSize: '0.75rem' }}>
+                              {currentRole === 'ORGANIZER'
+                                ? 'Cette action désactivera votre agence et tous vos voyages.'
+                                : 'Cette action supprimera définitivement votre compte et toutes vos données.'}
+                            </Typography>
+                          </Alert>
 
                           <Grid container spacing={2}>
-                            <Grid item xs={12}>
-                              <TextField
-                                fullWidth
-                                type="password"
-                                label="confirmation password"
-                                value={deletePassword}
-                                onChange={(e) => setDeletePassword(e.target.value)}
-                                sx={SocialInputProps.sx}
-                                placeholder="********"
-                              />
+                            <Grid item xs={12} md={8}>
+                              <StyledInput fullWidth type="password" label="Confirmation par mot de passe" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} size="small" />
                             </Grid>
-                            <Grid item xs={12}>
-                              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <Button
-                                  variant="contained"
-                                  color="error"
-                                  onClick={currentRole === 'ORGANIZER' ? handleDisableAccount : handleDeleteAccount}
-                                  sx={{ borderRadius: 2 }}
-                                >
-                                  {currentRole === 'ORGANIZER' ? 'Disable account' : 'Delete account permanently'}
-                                </Button>
-                              </Box>
+                            <Grid item xs={12} md={4}>
+                              <DangerButton fullWidth onClick={currentRole === 'ORGANIZER' ? handleDisableAccount : handleDeleteAccount}>
+                                {currentRole === 'ORGANIZER' ? 'Désactiver l\'agence' : 'Supprimer le compte'}
+                              </DangerButton>
                             </Grid>
                           </Grid>
                         </>
+                      ) : (
+                        <Alert severity="warning" sx={{ borderRadius: 1, bgcolor: alpha(COLORS.amber, 0.05) }}>
+                          <Typography variant="body2">
+                            Les comptes administrateur ne peuvent pas être supprimés via cette interface.
+                          </Typography>
+                        </Alert>
                       )}
                     </CardContent>
                   </SectionCard>
@@ -1248,11 +983,11 @@ const SettingsPage: React.FC = () => {
 
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4200}
+        autoHideDuration={4000}
         onClose={() => setSnackbar({ open: false, message: '' })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={snackbar.severity || 'info'} variant="filled" sx={{ width: '100%', borderRadius: 2 }}>
+        <Alert severity={snackbar.severity || 'info'} sx={{ borderRadius: 1, bgcolor: snackbar.severity === 'success' ? COLORS.green : COLORS.red, color: COLORS.white }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

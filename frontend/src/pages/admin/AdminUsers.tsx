@@ -1,135 +1,100 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
-  Typography,
-  Box,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  TextField,
-  CircularProgress,
-  Switch,
-  Button,
-  Alert,
-  Avatar,
-  IconButton,
-  Tooltip,
-  InputAdornment,
-  Card,
-  CardContent,
-  Grid,
-  Fade,
-  Zoom,
+  Container, Typography, Box, Paper, Table, TableBody,
+  TableCell, TableContainer, TableHead, TableRow, Chip,
+  TextField, CircularProgress, Switch, Button, Alert,
+  Avatar, IconButton, Tooltip, InputAdornment, Card,
+  CardContent, Grid, Fade, Zoom, Stack
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import {
-  Refresh,
-  Search,
-  Person,
-  Email,
-  Public,
-  AdminPanelSettings,
-  Business,
-  VerifiedUser,
-  Block,
-  CheckCircle,
-  Warning,
-  ArrowBack,
+  Refresh, Search, Person, Email, Public,
+  AdminPanelSettings, Business, Block,
+  CheckCircle, ArrowBack, People
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 
-// Styled components (même thème)
+// ─── 4 COULEURS UNIQUEMENT ──────────────────────────────────────
+const COLORS = {
+  teal: '#0EA5A0',
+  navy: '#0F2D5C',
+  amber: '#D97706',
+  white: '#FFFFFF',
+};
+
+// ─── STYLED COMPONENTS ──────────────────────────────────────────
 const GlassPaper = styled(Paper)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.95)',
+  background: COLORS.white,
   backdropFilter: 'blur(10px)',
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-  boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
-  borderRadius: theme.spacing(2),
-  padding: theme.spacing(3),
-}));
-
-const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
-  borderRadius: theme.spacing(2),
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-  '& .MuiTableHead-root': {
-    backgroundColor: alpha(theme.palette.primary.main, 0.05),
-  },
-}));
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 600,
-  '&.MuiTableCell-head': {
-    backgroundColor: alpha(theme.palette.primary.main, 0.05),
-    fontWeight: 700,
-    fontSize: '0.9rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
-}));
-
-const StatusChip = styled(Chip)(({ theme }) => ({
-  borderRadius: theme.spacing(1.5),
-  fontWeight: 600,
-  fontSize: '0.8rem',
-  '&.active': {
-    backgroundColor: alpha(theme.palette.success.main, 0.1),
-    color: theme.palette.success.main,
-    border: `1px solid ${alpha(theme.palette.success.main, 0.3)}`,
-  },
-  '&.inactive': {
-    backgroundColor: alpha(theme.palette.error.main, 0.1),
-    color: theme.palette.error.main,
-    border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
-  },
-}));
-
-const RoleChip = styled(Chip)(({ theme }) => ({
-  borderRadius: theme.spacing(1),
-  fontWeight: 500,
-  fontSize: '0.75rem',
-  height: 24,
-  '&.admin': {
-    backgroundColor: alpha(theme.palette.error.main, 0.1),
-    color: theme.palette.error.main,
-  },
-  '&.organizer': {
-    backgroundColor: alpha(theme.palette.warning.main, 0.1),
-    color: theme.palette.warning.main,
-  },
-  '&.user': {
-    backgroundColor: alpha(theme.palette.primary.main, 0.1),
-    color: theme.palette.primary.main,
-  },
+  border: `1px solid ${alpha(COLORS.teal, 0.15)}`,
+  boxShadow: `0 8px 24px ${alpha(COLORS.navy, 0.06)}`,
+  borderRadius: 12,
+  padding: theme.spacing(2),
 }));
 
 const StatsCard = styled(Card)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.95)',
-  backdropFilter: 'blur(10px)',
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-  boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
-  borderRadius: theme.spacing(2),
+  borderRadius: 12,
+  border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+  background: COLORS.white,
   transition: 'all 0.3s ease',
   '&:hover': {
     transform: 'translateY(-4px)',
-    boxShadow: '0 12px 32px rgba(0,191,165,0.15)',
+    boxShadow: `0 12px 24px ${alpha(COLORS.navy, 0.1)}`,
+    borderColor: alpha(COLORS.teal, 0.3),
   },
 }));
 
+const TableWrapper = styled(Paper)(({ theme }) => ({
+  borderRadius: 12,
+  overflow: 'hidden',
+  border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+  boxShadow: `0 4px 16px ${alpha(COLORS.navy, 0.05)}`,
+}));
+
+const HeaderCell = styled(TableCell)({
+  backgroundColor: alpha(COLORS.navy, 0.03),
+  color: COLORS.navy,
+  fontWeight: 700,
+  fontSize: '0.75rem',
+  letterSpacing: '0.5px',
+  textTransform: 'uppercase',
+  borderBottom: `2px solid ${alpha(COLORS.teal, 0.2)}`,
+});
+
 const StyledSwitch = styled(Switch)(({ theme }) => ({
   '& .MuiSwitch-switchBase.Mui-checked': {
-    color: theme.palette.success.main,
-    '&:hover': {
-      backgroundColor: alpha(theme.palette.success.main, 0.1),
-    },
+    color: COLORS.teal,
+    '&:hover': { backgroundColor: alpha(COLORS.teal, 0.1) },
   },
   '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-    backgroundColor: theme.palette.success.main,
+    backgroundColor: COLORS.teal,
+  },
+}));
+
+const GradientButton = styled(Button)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+  borderRadius: 12,
+  padding: theme.spacing(1, 3),
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  color: COLORS.white,
+  '&:hover': {
+    background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.teal})`,
+    transform: 'translateY(-1px)',
+  },
+}));
+
+const SearchField = styled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 12,
+    '&:hover fieldset': {
+      borderColor: COLORS.teal,
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: COLORS.teal,
+    },
   },
 }));
 
@@ -140,306 +105,217 @@ const AdminUsers: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  useEffect(() => { loadUsers(); }, []);
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      setError(null);
       const response = await adminAPI.getUsers();
-      console.log('Users response:', response.data);
       setUsers(response.data);
     } catch (err: any) {
-      console.error('Error loading users:', err);
-      if (err.response?.data?.error) {
-        setError(err.response.data.error);
-      } else {
-        setError('Erreur lors du chargement des utilisateurs');
-      }
-    } finally {
-      setLoading(false);
-    }
+      setError('Erreur lors du chargement des données.');
+    } finally { setLoading(false); }
   };
 
   const handleToggleActive = async (userId: number, isActive: boolean) => {
     try {
       await adminAPI.updateUserStatus(userId, !isActive);
       loadUsers();
-    } catch (error) {
-      console.error('Error updating user status:', error);
-    }
+    } catch (error) { console.error(error); }
   };
 
-  const getRoleIcon = (roles: string[]) => {
-    if (roles?.includes('ROLE_ADMIN')) return <AdminPanelSettings fontSize="small" />;
-    if (roles?.includes('ROLE_ORGANIZER')) return <Business fontSize="small" />;
-    return <Person fontSize="small" />;
-  };
-
-  const getRoleClass = (roles: string[]) => {
-    if (roles?.includes('ROLE_ADMIN')) return 'admin';
-    if (roles?.includes('ROLE_ORGANIZER')) return 'organizer';
-    return 'user';
-  };
-
-  const filteredUsers = users.filter((user) =>
-    `${user.first_name} ${user.last_name} ${user.email}`
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
+  const filteredUsers = users.filter((u) =>
+    `${u.first_name} ${u.last_name} ${u.email}`.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const stats = {
     total: users.length,
     active: users.filter(u => u.is_active).length,
-    inactive: users.filter(u => !u.is_active).length,
     admins: users.filter(u => u.roles?.includes('ROLE_ADMIN')).length,
     organizers: users.filter(u => u.roles?.includes('ROLE_ORGANIZER')).length,
   };
 
+  const getRoleColor = (role: string) => {
+    if (role === 'ROLE_ADMIN') return COLORS.amber;
+    if (role === 'ROLE_ORGANIZER') return COLORS.teal;
+    return COLORS.navy;
+  };
+
+  const getRoleLabel = (role: string) => {
+    return role.replace('ROLE_', '');
+  };
+
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
-      py: 4,
-    }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: alpha(COLORS.navy, 0.02), py: 4 }}>
       <Container maxWidth="xl">
-        {/* Header avec bouton retour */}
-        <Fade in timeout={500}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        
+        {/* HEADER */}
+        <Fade in>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+            <Stack direction="row" spacing={2} alignItems="center">
               <IconButton 
                 onClick={() => navigate('/admin')}
                 sx={{ 
-                  bgcolor: 'white',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                  '&:hover': { bgcolor: 'white', transform: 'translateX(-2px)' },
-                  transition: 'all 0.3s ease',
+                  bgcolor: COLORS.white, 
+                  color: COLORS.navy, 
+                  borderRadius: 12,
+                  border: `1px solid ${alpha(COLORS.teal, 0.2)}`,
+                  '&:hover': { bgcolor: alpha(COLORS.teal, 0.05), borderColor: COLORS.teal }
                 }}
               >
                 <ArrowBack />
               </IconButton>
               <Box>
-                <Typography variant="h4" fontWeight="700">Gestion des utilisateurs</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Gérez les comptes utilisateurs de la plateforme
+                <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.navy, letterSpacing: '-0.02em' }}>
+                  Utilisateurs
+                </Typography>
+                <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
+                  Gestion de la base de données plateforme
                 </Typography>
               </Box>
-            </Box>
-            <Button
-              startIcon={<Refresh />}
-              onClick={loadUsers}
-              variant="contained"
-              sx={{ 
-                borderRadius: 2,
-                background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-              }}
-            >
+            </Stack>
+            <GradientButton startIcon={<Refresh />} onClick={loadUsers}>
               Actualiser
-            </Button>
+            </GradientButton>
           </Box>
         </Fade>
 
-        {/* Stats Cards */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Zoom in timeout={500}>
-              <StatsCard>
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar sx={{ bgcolor: alpha('#00BFA5', 0.1), color: '#00BFA5', width: 48, height: 48 }}>
-                    <Person />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">Total</Typography>
-                    <Typography variant="h5" fontWeight="700">{stats.total}</Typography>
-                  </Box>
-                </CardContent>
-              </StatsCard>
-            </Zoom>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Zoom in timeout={600}>
-              <StatsCard>
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar sx={{ bgcolor: alpha('#4CAF50', 0.1), color: '#4CAF50', width: 48, height: 48 }}>
-                    <CheckCircle />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">Actifs</Typography>
-                    <Typography variant="h5" fontWeight="700" color="success.main">{stats.active}</Typography>
-                  </Box>
-                </CardContent>
-              </StatsCard>
-            </Zoom>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Zoom in timeout={700}>
-              <StatsCard>
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar sx={{ bgcolor: alpha('#F44336', 0.1), color: '#F44336', width: 48, height: 48 }}>
-                    <Block />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">Inactifs</Typography>
-                    <Typography variant="h5" fontWeight="700" color="error.main">{stats.inactive}</Typography>
-                  </Box>
-                </CardContent>
-              </StatsCard>
-            </Zoom>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Zoom in timeout={900}>
-              <StatsCard>
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar sx={{ bgcolor: alpha('#FF9800', 0.1), color: '#FF9800', width: 48, height: 48 }}>
-                    <Business />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">Organisateurs</Typography>
-                    <Typography variant="h5" fontWeight="700" color="warning.main">{stats.organizers}</Typography>
-                  </Box>
-                </CardContent>
-              </StatsCard>
-            </Zoom>
-          </Grid>
+        {/* STATS CARDS */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {[
+            { label: 'Total Membres', val: stats.total, icon: <People />, color: COLORS.navy },
+            { label: 'Comptes Actifs', val: stats.active, icon: <CheckCircle />, color: COLORS.amber },
+            { label: 'Organisateurs', val: stats.organizers, icon: <Business />, color: COLORS.teal },
+          ].map((s, i) => (
+            <Grid item xs={12} sm={6} md={3} key={i}>
+              <Zoom in timeout={300 + i * 100}>
+                <StatsCard>
+                  <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
+                    <Avatar sx={{ bgcolor: alpha(s.color, 0.1), color: s.color, width: 48, height: 48, borderRadius: 12 }}>
+                      {s.icon}
+                    </Avatar>
+                    <Box>
+                      <Typography variant="body2" fontWeight={600} sx={{ color: alpha(COLORS.navy, 0.6) }}>
+                        {s.label}
+                      </Typography>
+                      <Typography variant="h4" fontWeight={800} sx={{ color: s.color, lineHeight: 1.2 }}>
+                        {s.val}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </StatsCard>
+              </Zoom>
+            </Grid>
+          ))}
         </Grid>
 
-        {/* Barre de recherche */}
-        <GlassPaper sx={{ mb: 3, p: 2 }}>
-          <TextField
+        {/* RECHERCHE */}
+        <GlassPaper sx={{ mb: 4 }}>
+          <SearchField
             fullWidth
-            size="small"
-            placeholder="Rechercher par nom, prénom ou email..."
+            placeholder="Rechercher un utilisateur par nom ou email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            size="small"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Search fontSize="small" sx={{ color: '#00BFA5' }} />
+                  <Search sx={{ color: COLORS.teal, fontSize: 20 }} />
                 </InputAdornment>
               ),
-              sx: { borderRadius: 2 }
             }}
           />
         </GlassPaper>
 
-        {error && (
-          <Fade in>
-            <Alert 
-              severity="error" 
-              sx={{ mb: 3, borderRadius: 2 }}
-              action={
-                <Button color="inherit" size="small" onClick={loadUsers}>
-                  Réessayer
-                </Button>
-              }
-            >
-              {error}
-            </Alert>
-          </Fade>
-        )}
-
+        {/* TABLEAU */}
         {loading ? (
-          <Box textAlign="center" sx={{ py: 8 }}>
-            <CircularProgress size={50} thickness={4} sx={{ color: '#00BFA5' }} />
-            <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
-              Chargement des utilisateurs...
-            </Typography>
+          <Box sx={{ textAlign: 'center', py: 10 }}>
+            <CircularProgress sx={{ color: COLORS.teal }} />
           </Box>
-        ) : filteredUsers.length === 0 ? (
-          <GlassPaper sx={{ textAlign: 'center', py: 6 }}>
-            <Person sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              {searchQuery ? 'Aucun utilisateur trouvé' : 'Aucun utilisateur'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {searchQuery ? 'Essayez d\'autres termes de recherche' : 'Aucun utilisateur pour le moment'}
-            </Typography>
-            {searchQuery && (
-              <Button variant="outlined" onClick={() => setSearchQuery('')}>
-                Effacer la recherche
-              </Button>
-            )}
-          </GlassPaper>
+        ) : error ? (
+          <Alert 
+            severity="error" 
+            sx={{ borderRadius: 12, bgcolor: alpha(COLORS.amber, 0.05), color: COLORS.amber }}
+          >
+            {error}
+          </Alert>
         ) : (
-          <Fade in timeout={500}>
-            <StyledTableContainer >
+          <TableWrapper elevation={0}>
+            <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow>
-                    <StyledTableCell>Utilisateur</StyledTableCell>
-                    <StyledTableCell>Email</StyledTableCell>
-                    <StyledTableCell>Pays</StyledTableCell>
-                    <StyledTableCell>Rôles</StyledTableCell>
-                    <StyledTableCell>Statut</StyledTableCell>
-                    <StyledTableCell align="center">Actions</StyledTableCell>
+                    <HeaderCell>Profil</HeaderCell>
+                    <HeaderCell>Contact</HeaderCell>
+                    <HeaderCell>Rôles</HeaderCell>
+                    <HeaderCell>Statut</HeaderCell>
+                    <HeaderCell align="center">Action</HeaderCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id} sx={{ '&:hover': { bgcolor: alpha('#00BFA5', 0.02) } }}>
+                  {filteredUsers.map((user, idx) => (
+                    <TableRow 
+                      key={user.id} 
+                      sx={{ 
+                        '&:hover': { bgcolor: alpha(COLORS.teal, 0.02) },
+                        animation: `fadeIn 0.3s ease ${idx * 0.03}s both`,
+                      }}
+                    >
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                          <Avatar 
-                            sx={{ 
-                              width: 40, 
-                              height: 40,
-                              bgcolor: user.roles?.includes('ROLE_ADMIN') 
-                                ? 'error.main'
-                                : user.roles?.includes('ROLE_ORGANIZER')
-                                  ? 'warning.main'
-                                  : 'primary.main'
-                            }}
-                          >
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Avatar sx={{ 
+                            background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+                            fontWeight: 'bold',
+                            width: 40,
+                            height: 40,
+                            fontSize: '0.9rem'
+                          }}>
                             {user.first_name?.[0]}{user.last_name?.[0]}
                           </Avatar>
-                          <Box>
-                            <Typography variant="body1" fontWeight="600">
-                              {user.first_name} {user.last_name}
-                            </Typography>
-                            {user.phone && (
-                              <Typography variant="caption" color="text.secondary">
-                                {user.phone}
-                              </Typography>
-                            )}
-                          </Box>
-                        </Box>
+                          <Typography fontWeight={700} sx={{ color: COLORS.navy }}>
+                            {user.first_name} {user.last_name}
+                          </Typography>
+                        </Stack>
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Email sx={{ fontSize: 16, color: 'text.secondary' }} />
-                          <Typography variant="body2">{user.email}</Typography>
-                        </Box>
+                        <Typography variant="body2" fontWeight={500} sx={{ color: COLORS.navy }}>
+                          {user.email}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.5) }}>
+                          {user.country || 'International'}
+                        </Typography>
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Public sx={{ fontSize: 16, color: 'text.secondary' }} />
-                          <Typography variant="body2">{user.country || 'Non spécifié'}</Typography>
-                        </Box>
+                        {user.roles?.map((role: string) => (
+                          <Chip 
+                            key={role} 
+                            label={getRoleLabel(role)} 
+                            size="small" 
+                            sx={{ 
+                              mr: 0.5, 
+                              mb: 0.5,
+                              bgcolor: alpha(getRoleColor(role), 0.1), 
+                              color: getRoleColor(role), 
+                              fontWeight: 600, 
+                              borderRadius: 8,
+                              fontSize: '0.7rem',
+                              height: 24,
+                            }} 
+                          />
+                        ))}
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                          {user.roles?.map((role: string) => {
-                            const roleName = role.replace('ROLE_', '');
-                            return (
-                              <RoleChip
-                                key={role}
-                                label={roleName}
-                                className={getRoleClass([role])}
-                                size="small"
-                                icon={getRoleIcon([role])}
-                              />
-                            );
-                          })}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <StatusChip
-                          label={user.is_active ? 'Actif' : 'Inactif'}
-                          className={user.is_active ? 'active' : 'inactive'}
+                        <Chip 
+                          label={user.is_active ? 'Actif' : 'Inactif'} 
                           size="small"
+                          sx={{ 
+                            bgcolor: user.is_active ? alpha(COLORS.teal, 0.1) : alpha(COLORS.amber, 0.1),
+                            color: user.is_active ? COLORS.teal : COLORS.amber,
+                            fontWeight: 600,
+                            borderRadius: 8,
+                            fontSize: '0.7rem',
+                            height: 24,
+                          }}
                         />
                       </TableCell>
                       <TableCell align="center">
@@ -454,10 +330,41 @@ const AdminUsers: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
-            </StyledTableContainer>
-          </Fade>
+            </TableContainer>
+          </TableWrapper>
+        )}
+
+        {/* Empty state */}
+        {!loading && filteredUsers.length === 0 && !error && (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Avatar sx={{ 
+              width: 80, 
+              height: 80, 
+              mx: 'auto', 
+              mb: 2,
+              bgcolor: alpha(COLORS.teal, 0.1),
+              color: COLORS.teal
+            }}>
+              <Person sx={{ fontSize: 40 }} />
+            </Avatar>
+            <Typography variant="h6" fontWeight={600} sx={{ color: COLORS.navy, mb: 1 }}>
+              Aucun utilisateur trouvé
+            </Typography>
+            <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
+              Essayez de modifier votre recherche
+            </Typography>
+          </Box>
         )}
       </Container>
+
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}
+      </style>
     </Box>
   );
 };

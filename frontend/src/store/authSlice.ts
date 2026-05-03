@@ -66,6 +66,17 @@ const authSlice = createSlice({
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     },
+    updateInterests: (state, action: PayloadAction<string[]>) => {
+      if (state.user) {
+        state.user.interests = action.payload;
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.interests = action.payload;
+          localStorage.setItem('user', JSON.stringify(parsed));
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -85,5 +96,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, updateInterests } = authSlice.actions;
 export default authSlice.reducer;

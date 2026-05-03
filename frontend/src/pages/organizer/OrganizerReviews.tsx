@@ -32,8 +32,11 @@ import {
   Tooltip,
   InputAdornment,
   Pagination,
+  Fade,
+  Zoom,
 } from '@mui/material';
-import { styled, alpha } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
+import { styled, alpha, keyframes } from '@mui/material/styles';
 import {
   StarBorder,
   CheckCircle,
@@ -43,31 +46,89 @@ import {
   MoreHoriz,
   HourglassEmpty,
   Star,
+  ArrowBack,
+  TrendingUp,
+  TrendingDown,
 } from '@mui/icons-material';
 import { organizerReviewAPI } from '../../services/api';
 import { RootState } from '../../store';
 
-const PRIMARY = '#00BFA5';
-const SECONDARY = '#0D47A1';
+// ─── 4 COULEURS UNIQUEMENT ──────────────────────────────────────
+const COLORS = {
+  teal: '#0EA5A0',
+  navy: '#0F2D5C',
+  amber: '#D97706',
+  white: '#FFFFFF',
+};
 
+const fadeUp = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
+
+// ─── Styled Components ───────────────────────────────────────────
 const StyledTableContainer = styled(TableContainer)({
-  borderRadius: 16,
-  boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-  border: `1px solid ${alpha(PRIMARY, 0.12)}`,
+  borderRadius: 12,
+  boxShadow: `0 4px 20px ${alpha(COLORS.navy, 0.06)}`,
+  border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
   overflow: 'hidden',
   '& .MuiTableHead-root .MuiTableCell-root': {
-    backgroundColor: '#f8fafc',
+    backgroundColor: alpha(COLORS.teal, 0.03),
     fontWeight: 700,
-    color: SECONDARY,
+    color: COLORS.navy,
     fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    borderBottom: `2px solid ${alpha(PRIMARY, 0.15)}`,
+    borderBottom: `2px solid ${alpha(COLORS.teal, 0.2)}`,
+    padding: '14px 16px',
   },
   '& .MuiTableBody-root .MuiTableRow-root': {
-    transition: 'background 0.15s',
-    '&:hover': { backgroundColor: alpha(PRIMARY, 0.025) },
+    transition: 'background 0.2s ease',
+    '&:hover': { backgroundColor: alpha(COLORS.teal, 0.02) },
     '&:last-child td': { borderBottom: 0 },
+  },
+  '& .MuiTableCell-root': {
+    padding: '12px 16px',
+    borderBottom: `1px solid ${alpha(COLORS.teal, 0.08)}`,
+  },
+});
+
+const StatsCard = styled(Card)({
+  borderRadius: 12,
+  border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+  boxShadow: `0 2px 8px ${alpha(COLORS.navy, 0.04)}`,
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: `0 8px 20px ${alpha(COLORS.teal, 0.12)}`,
+  },
+});
+
+const GradientButton = styled(Button)({
+  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+  borderRadius: 10,
+  padding: '8px 20px',
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  color: COLORS.white,
+  '&:hover': {
+    background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.teal})`,
+    transform: 'translateY(-1px)',
+  },
+});
+
+const OutlineButton = styled(Button)({
+  borderRadius: 10,
+  padding: '8px 20px',
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '0.85rem',
+  borderColor: COLORS.teal,
+  color: COLORS.teal,
+  '&:hover': {
+    borderColor: COLORS.navy,
+    backgroundColor: alpha(COLORS.teal, 0.05),
   },
 });
 
@@ -85,11 +146,11 @@ interface Review {
 
 const getStatusMeta = (status: string) => {
   const map: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-    pending:  { label: 'En attente', color: '#FF9800', bg: alpha('#FF9800', 0.1), icon: <HourglassEmpty sx={{ fontSize: 11 }} /> },
-    approved: { label: 'Approuvé',   color: PRIMARY,   bg: alpha(PRIMARY, 0.1),   icon: <CheckCircle sx={{ fontSize: 11 }} /> },
-    rejected: { label: 'Rejeté',     color: '#F44336', bg: alpha('#F44336', 0.1), icon: <Cancel sx={{ fontSize: 11 }} /> },
+    pending:  { label: 'En attente', color: COLORS.amber, bg: alpha(COLORS.amber, 0.1), icon: <HourglassEmpty sx={{ fontSize: 11 }} /> },
+    approved: { label: 'Approuvé',   color: COLORS.teal,   bg: alpha(COLORS.teal, 0.1),   icon: <CheckCircle sx={{ fontSize: 11 }} /> },
+    rejected: { label: 'Rejeté',     color: COLORS.amber,  bg: alpha(COLORS.amber, 0.1), icon: <Cancel sx={{ fontSize: 11 }} /> },
   };
-  return map[status] || { label: status, color: '#999', bg: '#f5f5f5', icon: null };
+  return map[status] || { label: status, color: COLORS.navy, bg: alpha(COLORS.navy, 0.08), icon: null };
 };
 
 const StatusChip = ({ status }: { status: string }) => {
@@ -100,7 +161,12 @@ const StatusChip = ({ status }: { status: string }) => {
       icon={meta.icon as any}
       label={meta.label}
       sx={{
-        bgcolor: meta.bg, color: meta.color, fontWeight: 700, fontSize: 11, height: 24,
+        bgcolor: meta.bg,
+        color: meta.color,
+        fontWeight: 700,
+        fontSize: 11,
+        height: 24,
+        borderRadius: 6,
         '& .MuiChip-icon': { color: meta.color },
       }}
     />
@@ -113,8 +179,8 @@ const StarRating = ({ value }: { value: number }) => (
     readOnly
     size="small"
     sx={{
-      '& .MuiRating-iconFilled': { color: '#FBBF24' },
-      '& .MuiRating-iconEmpty': { color: '#E5E7EB' },
+      '& .MuiRating-iconFilled': { color: COLORS.amber },
+      '& .MuiRating-iconEmpty': { color: alpha(COLORS.navy, 0.2) },
       fontSize: 16,
     }}
   />
@@ -216,7 +282,6 @@ const OrganizerReviews: React.FC = () => {
   const getInitials = (f?: string, l?: string) =>
     `${f?.[0] || ''}${l?.[0] || ''}`.toUpperCase();
 
-  // Stats summary
   const counts = {
     all: reviews.length,
     pending: reviews.filter(r => r.status === 'pending').length,
@@ -229,335 +294,521 @@ const OrganizerReviews: React.FC = () => {
     : '—';
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: alpha(COLORS.navy, 0.02), py: 4 }}>
+      <Container maxWidth="xl">
 
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700} sx={{ color: SECONDARY }}>
-            Avis clients
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Modérez les avis et répondez à vos clients
-          </Typography>
-        </Box>
-        <Box sx={{
-          display: 'flex', alignItems: 'center', gap: 1.5,
-          px: 2.5, py: 1.2, borderRadius: 3,
-          bgcolor: alpha('#FBBF24', 0.1), border: `1px solid ${alpha('#FBBF24', 0.25)}`,
-        }}>
-          <Star sx={{ color: '#FBBF24', fontSize: 20 }} />
-          <Box>
-            <Typography variant="h6" fontWeight={700} sx={{ color: SECONDARY, lineHeight: 1 }}>{avgRating}</Typography>
-            <Typography variant="caption" color="text.secondary">Note moy.</Typography>
+        {/* Header avec bouton retour */}
+        <Fade in timeout={500}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+            <IconButton 
+              onClick={() => navigate('/organizer/dashboard')}
+              sx={{ 
+                bgcolor: COLORS.white, 
+                borderRadius: 10,
+                border: `1px solid ${alpha(COLORS.teal, 0.2)}`,
+                '&:hover': { bgcolor: alpha(COLORS.teal, 0.05), borderColor: COLORS.teal }
+              }}
+            >
+              <ArrowBack sx={{ color: COLORS.navy }} />
+            </IconButton>
+            <Box>
+              <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.navy, letterSpacing: '-0.02em' }}>
+                Avis clients
+              </Typography>
+              <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
+                Modérez les avis et répondez à vos clients
+              </Typography>
+            </Box>
+            <Box sx={{
+              display: 'flex', alignItems: 'center', gap: 1.5,
+              px: 2.5, py: 1.2, borderRadius: 12,
+              bgcolor: alpha(COLORS.amber, 0.1),
+              border: `1px solid ${alpha(COLORS.amber, 0.25)}`,
+              ml: 'auto',
+            }}>
+              <Star sx={{ color: COLORS.amber, fontSize: 20 }} />
+              <Box>
+                <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, lineHeight: 1 }}>{avgRating}</Typography>
+                <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.6) }}>Note moyenne</Typography>
+              </Box>
+            </Box>
           </Box>
-        </Box>
-      </Box>
+        </Fade>
 
-      {pendingCount > 0 && (
-        <Alert
-          severity="warning"
-          icon={<HourglassEmpty />}
-          sx={{ mb: 3, borderRadius: 2, fontWeight: 500 }}
-        >
-          {pendingCount} avis en attente de modération
-        </Alert>
-      )}
+        {/* Alert pour avis en attente */}
+        {pendingCount > 0 && (
+          <Fade in>
+            <Alert
+              severity="warning"
+              icon={<HourglassEmpty />}
+              sx={{ 
+                mb: 3, 
+                borderRadius: 10,
+                bgcolor: alpha(COLORS.amber, 0.08),
+                color: COLORS.amber,
+                '& .MuiAlert-icon': { color: COLORS.amber },
+              }}
+            >
+              {pendingCount} avis en attente de modération
+            </Alert>
+          </Fade>
+        )}
 
-      {/* Summary chips */}
-      <Box sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
-        {[
-          { label: 'Tous', count: counts.all, color: SECONDARY, bg: alpha(SECONDARY, 0.08) },
-          { label: 'En attente', count: counts.pending, color: '#FF9800', bg: alpha('#FF9800', 0.1) },
-          { label: 'Approuvés', count: counts.approved, color: PRIMARY, bg: alpha(PRIMARY, 0.1) },
-          { label: 'Rejetés', count: counts.rejected, color: '#F44336', bg: alpha('#F44336', 0.1) },
-        ].map(item => (
-          <Box key={item.label} sx={{
-            px: 2, py: 0.8, borderRadius: 3, bgcolor: item.bg,
-            display: 'flex', alignItems: 'center', gap: 1,
-          }}>
-            <Typography variant="body2" fontWeight={700} sx={{ color: item.color }}>{item.count}</Typography>
-            <Typography variant="body2" sx={{ color: item.color }}>{item.label}</Typography>
-          </Box>
-        ))}
-      </Box>
-
-      {/* Tabs + Search */}
-      <Paper sx={{ borderRadius: 3, mb: 2.5, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 2, borderBottom: `1px solid #f0f0f0` }}>
-          <Tabs
-            value={tabValue}
-            onChange={(_, v) => { setTabValue(v); setPage(1); }}
-            sx={{
-              '& .MuiTabs-indicator': { bgcolor: PRIMARY, height: 3 },
-              '& .Mui-selected': { color: `${PRIMARY} !important`, fontWeight: 700 },
-              '& .MuiTab-root': { textTransform: 'none', fontWeight: 500, fontSize: 13 },
-            }}
-          >
-            <Tab label="Tous" value="all" />
-            <Tab
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-                  En attente
-                  {counts.pending > 0 && (
-                    <Box sx={{ width: 18, height: 18, borderRadius: '50%', bgcolor: '#FF9800', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Cartes statistiques - Utilisation de Grid from @mui/material/Unstable_Grid2 */}
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid xs={12} sm={6} md={3}>
+            <Zoom in timeout={300}>
+              <StatsCard>
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
+                  <Box sx={{
+                    width: 48, height: 48, borderRadius: 10,
+                    bgcolor: alpha(COLORS.navy, 0.1), color: COLORS.navy,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <StarBorder />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.navy, lineHeight: 1 }}>
+                      {counts.all}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Tous</Typography>
+                  </Box>
+                </CardContent>
+              </StatsCard>
+            </Zoom>
+          </Grid>
+          <Grid xs={12} sm={6} md={3}>
+            <Zoom in timeout={400}>
+              <StatsCard>
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
+                  <Box sx={{
+                    width: 48, height: 48, borderRadius: 10,
+                    bgcolor: alpha(COLORS.amber, 0.1), color: COLORS.amber,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <HourglassEmpty />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.amber, lineHeight: 1 }}>
                       {counts.pending}
-                    </Box>
-                  )}
-                </Box>
-              }
-              value="pending"
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>En attente</Typography>
+                  </Box>
+                </CardContent>
+              </StatsCard>
+            </Zoom>
+          </Grid>
+          <Grid xs={12} sm={6} md={3}>
+            <Zoom in timeout={500}>
+              <StatsCard>
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
+                  <Box sx={{
+                    width: 48, height: 48, borderRadius: 10,
+                    bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <CheckCircle />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.teal, lineHeight: 1 }}>
+                      {counts.approved}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Approuvés</Typography>
+                  </Box>
+                </CardContent>
+              </StatsCard>
+            </Zoom>
+          </Grid>
+          <Grid xs={12} sm={6} md={3}>
+            <Zoom in timeout={600}>
+              <StatsCard>
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
+                  <Box sx={{
+                    width: 48, height: 48, borderRadius: 10,
+                    bgcolor: alpha(COLORS.amber, 0.1), color: COLORS.amber,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Cancel />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.amber, lineHeight: 1 }}>
+                      {counts.rejected}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Rejetés</Typography>
+                  </Box>
+                </CardContent>
+              </StatsCard>
+            </Zoom>
+          </Grid>
+        </Grid>
+
+        {/* Tabs + Search */}
+        <Paper sx={{ 
+          borderRadius: 12, 
+          mb: 2.5, 
+          overflow: 'hidden', 
+          boxShadow: `0 2px 8px ${alpha(COLORS.navy, 0.04)}`,
+          border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            px: 2, 
+            borderBottom: `1px solid ${alpha(COLORS.teal, 0.1)}` 
+          }}>
+            <Tabs
+              value={tabValue}
+              onChange={(_, v) => { setTabValue(v); setPage(1); }}
+              sx={{
+                '& .MuiTabs-indicator': { bgcolor: COLORS.teal, height: 3 },
+                '& .Mui-selected': { color: `${COLORS.teal} !important`, fontWeight: 700 },
+                '& .MuiTab-root': { textTransform: 'none', fontWeight: 500, fontSize: 13, color: alpha(COLORS.navy, 0.6) },
+              }}
+            >
+              <Tab label="Tous" value="all" />
+              <Tab
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                    En attente
+                    {counts.pending > 0 && (
+                      <Box sx={{ 
+                        width: 18, height: 18, 
+                        borderRadius: '50%', 
+                        bgcolor: COLORS.amber, 
+                        color: COLORS.white, 
+                        fontSize: 10, 
+                        fontWeight: 700, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center' 
+                      }}>
+                        {counts.pending}
+                      </Box>
+                    )}
+                  </Box>
+                }
+                value="pending"
+              />
+              <Tab label="Approuvés" value="approved" />
+              <Tab label="Rejetés" value="rejected" />
+            </Tabs>
+
+            <TextField
+              placeholder="Rechercher..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              size="small"
+              sx={{ 
+                width: 250, 
+                '& .MuiOutlinedInput-root': { 
+                  borderRadius: 2, 
+                  fontSize: 13,
+                  '&:hover fieldset': { borderColor: COLORS.teal },
+                  '&.Mui-focused fieldset': { borderColor: COLORS.teal },
+                } 
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search sx={{ color: alpha(COLORS.navy, 0.4), fontSize: 16 }} />
+                  </InputAdornment>
+                ),
+              }}
             />
-            <Tab label="Approuvés" value="approved" />
-            <Tab label="Rejetés" value="rejected" />
-          </Tabs>
-
-          <TextField
-            placeholder="Rechercher..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-            size="small"
-            sx={{ width: 220, '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: 13 } }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search sx={{ color: '#bbb', fontSize: 16 }} />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Box>
-      </Paper>
-
-      {/* Table */}
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress sx={{ color: PRIMARY }} />
-        </Box>
-      ) : filtered.length === 0 ? (
-        <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
-          <StarBorder sx={{ fontSize: 48, color: '#ccc', mb: 1 }} />
-          <Typography variant="body1" color="text.secondary">Aucun avis trouvé</Typography>
+          </Box>
         </Paper>
-      ) : (
-        <>
-          <StyledTableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Client</TableCell>
-                  <TableCell>Voyage</TableCell>
-                  <TableCell>Note</TableCell>
-                  <TableCell>Commentaire</TableCell>
-                  <TableCell>Statut</TableCell>
-                  <TableCell>Date</TableCell>
-                  <TableCell align="center">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginated.map((review) => (
-                  <TableRow key={review.id}>
-                    {/* Client */}
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-                        <Avatar sx={{ width: 32, height: 32, bgcolor: SECONDARY, fontSize: 11 }}>
-                          {getInitials(review.user.first_name, review.user.last_name)}
-                        </Avatar>
-                        <Typography variant="body2" fontWeight={600}>
-                          {review.user.first_name} {review.user.last_name}
-                        </Typography>
-                      </Box>
-                    </TableCell>
 
-                    {/* Voyage */}
-                    <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{ color: PRIMARY, fontWeight: 600, maxWidth: 140,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+        {/* Tableau des avis */}
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+            <CircularProgress size={40} sx={{ color: COLORS.teal }} />
+          </Box>
+        ) : filtered.length === 0 ? (
+          <Fade in>
+            <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 12 }}>
+              <StarBorder sx={{ fontSize: 48, color: alpha(COLORS.navy, 0.2), mb: 1 }} />
+              <Typography variant="body1" sx={{ color: alpha(COLORS.navy, 0.6) }}>Aucun avis trouvé</Typography>
+            </Paper>
+          </Fade>
+        ) : (
+          <Fade in timeout={500}>
+            <Box>
+              <StyledTableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Client</TableCell>
+                      <TableCell>Voyage</TableCell>
+                      <TableCell>Note</TableCell>
+                      <TableCell>Commentaire</TableCell>
+                      <TableCell>Statut</TableCell>
+                      <TableCell>Date</TableCell>
+                      <TableCell align="center">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {paginated.map((review, idx) => (
+                      <TableRow 
+                        key={review.id}
+                        sx={{
+                          animation: `${fadeUp} 0.3s ease ${idx * 0.03}s both`,
+                        }}
                       >
-                        {review.trip.title}
-                      </Typography>
-                    </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                            <Avatar 
+                              sx={{ 
+                                width: 32, height: 32, 
+                                bgcolor: COLORS.navy, 
+                                fontSize: 11, 
+                                color: COLORS.white,
+                              }}
+                            >
+                              {getInitials(review.user.first_name, review.user.last_name)}
+                            </Avatar>
+                            <Typography variant="body2" fontWeight={600} sx={{ color: COLORS.navy }}>
+                              {review.user.first_name} {review.user.last_name}
+                            </Typography>
+                          </Box>
+                        </TableCell>
 
-                    {/* Note */}
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <StarRating value={review.rating} />
-                        <Typography variant="caption" fontWeight={700} sx={{ color: '#FBBF24' }}>
-                          {review.rating}
-                        </Typography>
-                      </Box>
-                    </TableCell>
+                        <TableCell>
+                          <Typography
+                            variant="body2"
+                            sx={{ 
+                              color: COLORS.teal, 
+                              fontWeight: 600, 
+                              maxWidth: 180,
+                              overflow: 'hidden', 
+                              textOverflow: 'ellipsis', 
+                              whiteSpace: 'nowrap' 
+                            }}
+                          >
+                            {review.trip.title}
+                          </Typography>
+                        </TableCell>
 
-                    {/* Commentaire */}
-                    <TableCell sx={{ maxWidth: 220 }}>
-                      {review.comment ? (
-                        <Typography variant="body2" color="text.secondary" sx={{
-                          display: '-webkit-box', WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                        }}>
-                          {review.comment}
-                          {review.comment.length > 80 && (
-                            <Typography component="span" variant="caption" sx={{ color: PRIMARY, fontWeight: 600 }}>
-                              {' '}...Voir plus
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <StarRating value={review.rating} />
+                            <Typography variant="caption" fontWeight={700} sx={{ color: COLORS.amber }}>
+                              {review.rating}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+
+                        <TableCell sx={{ maxWidth: 280 }}>
+                          {review.comment ? (
+                            <>
+                              <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.7), lineHeight: 1.5 }}>
+                                {review.comment.length > 80 ? `${review.comment.substring(0, 80)}...` : review.comment}
+                              </Typography>
+                            </>
+                          ) : (
+                            <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.4), fontStyle: 'italic' }}>
+                              Aucun commentaire
                             </Typography>
                           )}
-                        </Typography>
-                      ) : (
-                        <Typography variant="caption" color="text.disabled" fontStyle="italic">
-                          Aucun commentaire
-                        </Typography>
-                      )}
-                      {review.organizer_response && (
-                        <Box sx={{ mt: 0.8, p: 1, borderRadius: 1.5, bgcolor: alpha(PRIMARY, 0.05), borderLeft: `3px solid ${PRIMARY}` }}>
-                          <Typography variant="caption" color="text.secondary">
-                            <strong style={{ color: PRIMARY }}>Votre réponse: </strong>
-                            {review.organizer_response.substring(0, 60)}
-                            {review.organizer_response.length > 60 ? '…' : ''}
+                          {review.organizer_response && (
+                            <Box sx={{ 
+                              mt: 1, 
+                              p: 1, 
+                              borderRadius: 8, 
+                              bgcolor: alpha(COLORS.teal, 0.05), 
+                              borderLeft: `3px solid ${COLORS.teal}` 
+                            }}>
+                              <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.6) }}>
+                                <strong style={{ color: COLORS.teal }}>Votre réponse: </strong>
+                                {review.organizer_response.length > 60 
+                                  ? `${review.organizer_response.substring(0, 60)}...` 
+                                  : review.organizer_response}
+                              </Typography>
+                            </Box>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          <StatusChip status={review.status} />
+                        </TableCell>
+
+                        <TableCell>
+                          <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.5) }}>
+                            {formatDate(review.created_at)}
                           </Typography>
-                        </Box>
-                      )}
-                    </TableCell>
+                        </TableCell>
 
-                    {/* Statut */}
-                    <TableCell>
-                      <StatusChip status={review.status} />
-                    </TableCell>
-
-                    {/* Date */}
-                    <TableCell>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatDate(review.created_at)}
-                      </Typography>
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell align="center">
-                      <Stack direction="row" spacing={0.5} justifyContent="center">
-                        {review.status === 'pending' && (
-                          <>
-                            <Tooltip title="Approuver">
+                        <TableCell align="center">
+                          <Stack direction="row" spacing={0.5} justifyContent="center">
+                            {review.status === 'pending' && (
+                              <>
+                                <Tooltip title="Approuver">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleApprove(review.id)}
+                                    disabled={actionLoading}
+                                    sx={{ 
+                                      color: COLORS.teal, 
+                                      borderRadius: 8,
+                                      '&:hover': { bgcolor: alpha(COLORS.teal, 0.1) } 
+                                    }}
+                                  >
+                                    <CheckCircle fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Rejeter">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleReject(review.id)}
+                                    disabled={actionLoading}
+                                    sx={{ 
+                                      color: COLORS.amber, 
+                                      borderRadius: 8,
+                                      '&:hover': { bgcolor: alpha(COLORS.amber, 0.1) } 
+                                    }}
+                                  >
+                                    <Cancel fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </>
+                            )}
+                            <Tooltip title={review.organizer_response ? 'Modifier la réponse' : 'Répondre'}>
                               <IconButton
                                 size="small"
-                                onClick={() => handleApprove(review.id)}
-                                disabled={actionLoading}
-                                sx={{ color: PRIMARY, '&:hover': { bgcolor: alpha(PRIMARY, 0.1) } }}
+                                onClick={() => handleOpenResponse(review)}
+                                sx={{ 
+                                  color: COLORS.navy, 
+                                  borderRadius: 8,
+                                  '&:hover': { bgcolor: alpha(COLORS.navy, 0.08) } 
+                                }}
                               >
-                                <CheckCircle fontSize="small" />
+                                <Reply fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Rejeter">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleReject(review.id)}
-                                disabled={actionLoading}
-                                sx={{ color: '#F44336', '&:hover': { bgcolor: alpha('#F44336', 0.08) } }}
-                              >
-                                <Cancel fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </>
-                        )}
-                        <Tooltip title={review.organizer_response ? 'Modifier la réponse' : 'Répondre'}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpenResponse(review)}
-                            sx={{ color: SECONDARY, '&:hover': { bgcolor: alpha(SECONDARY, 0.08) } }}
-                          >
-                            <Reply fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </StyledTableContainer>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </StyledTableContainer>
 
-          {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Pagination
-                count={totalPages}
-                page={page}
-                onChange={(_, v) => setPage(v)}
-                size="small"
-                sx={{
-                  '& .MuiPaginationItem-root.Mui-selected': {
-                    bgcolor: PRIMARY, color: '#fff', '&:hover': { bgcolor: PRIMARY },
-                  },
-                }}
-              />
-            </Box>
-          )}
-        </>
-      )}
-
-      {/* Response Dialog */}
-      <Dialog open={responseDialogOpen} onClose={() => setResponseDialogOpen(false)} maxWidth="sm" fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
-      >
-        <DialogTitle sx={{ fontWeight: 700, color: SECONDARY }}>
-          {selectedReview?.organizer_response ? 'Modifier la réponse' : 'Répondre à l\'avis'}
-        </DialogTitle>
-        <DialogContent>
-          {selectedReview && (
-            <Box sx={{ mb: 2.5 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-                <Avatar sx={{ width: 36, height: 36, bgcolor: SECONDARY, fontSize: 13 }}>
-                  {getInitials(selectedReview.user.first_name, selectedReview.user.last_name)}
-                </Avatar>
-                <Box>
-                  <Typography variant="body2" fontWeight={600}>
-                    {selectedReview.user.first_name} {selectedReview.user.last_name}
-                  </Typography>
-                  <StarRating value={selectedReview.rating} />
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+                  <Pagination
+                    count={totalPages}
+                    page={page}
+                    onChange={(_, v) => setPage(v)}
+                    size="medium"
+                    sx={{
+                      '& .MuiPaginationItem-root': {
+                        borderRadius: 8,
+                        '&.Mui-selected': {
+                          bgcolor: COLORS.teal,
+                          color: COLORS.white,
+                          '&:hover': { bgcolor: alpha(COLORS.teal, 0.85) },
+                        },
+                        '&:hover': {
+                          bgcolor: alpha(COLORS.teal, 0.1),
+                        },
+                      },
+                    }}
+                  />
                 </Box>
-              </Box>
-              {selectedReview.comment && (
-                <Paper sx={{ p: 2, bgcolor: '#f8f9fa', borderRadius: 2 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    "{selectedReview.comment}"
-                  </Typography>
-                </Paper>
               )}
             </Box>
-          )}
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Votre réponse"
-            value={responseText}
-            onChange={(e) => setResponseText(e.target.value)}
-            placeholder="Merci pour votre retour! Nous sommes ravis que..."
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2.5, gap: 1 }}>
-          <Button
-            onClick={() => setResponseDialogOpen(false)}
-            variant="outlined"
-            sx={{ borderRadius: 2, textTransform: 'none', borderColor: alpha(PRIMARY, 0.4), color: PRIMARY }}
-          >
-            Annuler
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSubmitResponse}
-            disabled={!responseText.trim() || actionLoading}
-            sx={{
-              borderRadius: 2, textTransform: 'none',
-              background: `linear-gradient(135deg, ${PRIMARY}, ${SECONDARY})`,
-              '&:hover': { background: `linear-gradient(135deg, ${SECONDARY}, ${PRIMARY})` },
-            }}
-          >
-            {actionLoading ? 'Envoi...' : 'Envoyer'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+          </Fade>
+        )}
+
+        {/* Response Dialog */}
+        <Dialog 
+          open={responseDialogOpen} 
+          onClose={() => setResponseDialogOpen(false)} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{ 
+            sx: { 
+              borderRadius: 16, 
+              boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}`,
+              border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+            } 
+          }}
+        >
+          <DialogTitle sx={{ 
+            fontWeight: 700, 
+            color: COLORS.navy,
+            borderBottom: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+            pb: 2,
+          }}>
+            {selectedReview?.organizer_response ? 'Modifier la réponse' : 'Répondre à l\'avis'}
+          </DialogTitle>
+          <DialogContent sx={{ pt: 3 }}>
+            {selectedReview && (
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                  <Avatar 
+                    sx={{ 
+                      width: 40, height: 40, 
+                      bgcolor: COLORS.navy, 
+                      fontSize: 14, 
+                      color: COLORS.white,
+                    }}
+                  >
+                    {getInitials(selectedReview.user.first_name, selectedReview.user.last_name)}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="body2" fontWeight={600} sx={{ color: COLORS.navy }}>
+                      {selectedReview.user.first_name} {selectedReview.user.last_name}
+                    </Typography>
+                    <StarRating value={selectedReview.rating} />
+                  </Box>
+                </Box>
+                {selectedReview.comment && (
+                  <Paper sx={{ 
+                    p: 2, 
+                    bgcolor: alpha(COLORS.teal, 0.03), 
+                    borderRadius: 10,
+                    border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+                  }}>
+                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.7), fontStyle: 'italic' }}>
+                      "{selectedReview.comment}"
+                    </Typography>
+                  </Paper>
+                )}
+              </Box>
+            )}
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              label="Votre réponse"
+              value={responseText}
+              onChange={(e) => setResponseText(e.target.value)}
+              placeholder="Merci pour votre retour! Nous sommes ravis que..."
+              sx={{ 
+                '& .MuiOutlinedInput-root': { 
+                  borderRadius: 2,
+                  '&:hover fieldset': { borderColor: COLORS.teal },
+                  '&.Mui-focused fieldset': { borderColor: COLORS.teal },
+                } 
+              }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ p: 3, gap: 2 }}>
+            <OutlineButton onClick={() => setResponseDialogOpen(false)}>
+              Annuler
+            </OutlineButton>
+            <GradientButton
+              onClick={handleSubmitResponse}
+              disabled={!responseText.trim() || actionLoading}
+            >
+              {actionLoading ? 'Envoi...' : 'Envoyer'}
+            </GradientButton>
+          </DialogActions>
+        </Dialog>
+      </Container>
+    </Box>
   );
 };
 

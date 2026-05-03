@@ -4,11 +4,14 @@ namespace App\Controller\Api;
 
 use App\Entity\Booking;
 use App\Entity\OrganizerProfile;
+use App\Entity\Payment;
 use App\Entity\Trip;
 use App\Entity\User;
 use App\Repository\BookingRepository;
 use App\Repository\TripRepository;
 use App\Service\JwtService;
+use App\Service\LoyaltyService;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -25,6 +28,8 @@ class OrganizerApiController extends AbstractController
         private BookingRepository $bookingRepo,
         private TripRepository $tripRepo,
         private JwtService $jwtService,
+        private LoyaltyService $loyaltyService,
+        private NotificationService $notificationService,
         private RequestStack $requestStack
     ) {}
 
@@ -83,7 +88,6 @@ class OrganizerApiController extends AbstractController
         
         error_log('STATS: User ID: ' . $user->getId() . ', Email: ' . $user->getEmail());
         
-        // Get organizer profile
         $organizerProfile = $this->em->getRepository(OrganizerProfile::class)->findOneBy(['user' => $user]);
         
         if (!$organizerProfile) {
@@ -96,13 +100,11 @@ class OrganizerApiController extends AbstractController
             return $this->json(['error' => 'Organizer profile not found'], Response::HTTP_NOT_FOUND);
         }
         
-        // Get trips for this organizer
         $trips = $this->tripRepo->findBy(['organizer' => $organizerProfile]);
         error_log('STATS: Found ' . count($trips) . ' trips for organizer');
         $tripIds = array_map(fn($t) => $t->getId(), $trips);
         error_log('STATS: Trip IDs: ' . implode(', ', $tripIds));
         
-        // Get bookings for these trips
         $bookings = empty($tripIds) ? [] : $this->bookingRepo->findBy(['trip' => $tripIds]);
         error_log('STATS: Found ' . count($bookings) . ' bookings for these trips');
         
@@ -119,7 +121,6 @@ class OrganizerApiController extends AbstractController
             }
         }
         
-        // Get monthly revenue for last 6 months
         $monthlyRevenue = [];
         $monthlyBookings = [];
         for ($i = 5; $i >= 0; $i--) {
@@ -143,14 +144,12 @@ class OrganizerApiController extends AbstractController
             $monthlyBookings[] = ['month' => $monthLabel, 'bookings' => $mBook];
         }
         
-        // Get booking status breakdown
         $statusBreakdown = [
             ['name' => 'Confirmées', 'value' => $confirmedBookings, 'color' => '#0EA5A0'],
             ['name' => 'En attente', 'value' => $pendingBookings, 'color' => '#D97706'],
             ['name' => 'Annulées', 'value' => 0, 'color' => '#DC2626'],
         ];
         
-        // Get weekly booking data for the last 7 days
         $weeklyData = [];
         $days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
         for ($i = 6; $i >= 0; $i--) {
@@ -190,18 +189,15 @@ class OrganizerApiController extends AbstractController
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
         
-        // Get organizer profile
         $organizerProfile = $this->em->getRepository(OrganizerProfile::class)->findOneBy(['user' => $user]);
         
         if (!$organizerProfile) {
             return $this->json(['error' => 'Organizer profile not found'], Response::HTTP_NOT_FOUND);
         }
         
-        // Get trips for this organizer
         $trips = $this->tripRepo->findBy(['organizer' => $organizerProfile]);
         $tripIds = array_map(fn($t) => $t->getId(), $trips);
         
-        // Get query parameters
         $tripId = $request->query->get('trip_id');
         $status = $request->query->get('status');
         
@@ -226,8 +222,8 @@ class OrganizerApiController extends AbstractController
                 'trip_title' => $booking->getTrip()->getTitle(),
                 'user' => [
                     'id' => $booking->getUser()->getId(),
-                    'first_name' => $booking->getUser()->getFirstName(),
-                    'last_name' => $booking->getUser()->getLastName(),
+                    'first_name' => $booking->getUser()->getFirstName() ?? '',
+                    'last_name' => $booking->getUser()->getLastName() ?? '',
                     'email' => $booking->getUser()->getEmail(),
                 ],
                 'num_travelers' => $booking->getNumTravelers(),
@@ -241,6 +237,69 @@ class OrganizerApiController extends AbstractController
         return $this->json($result);
     }
 
+    #[Route('/bookings/{id}/confirm-cash', methods: ['POST'])]
+    public function confirmCashPayment(int $id, Request $request): JsonResponse
+    {
+        $user = $this->getCurrentUser($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $organizerProfile = $this->em->getRepository(OrganizerProfile::class)
+            ->findOneBy(['user' => $user]);
+        if (!$organizerProfile) {
+            return $this->json(['error' => 'Forbidden'], 403);
+        }
+
+        $booking = $this->bookingRepo->find($id);
+        if (!$booking) {
+            return $this->json(['error' => 'Not found'], 404);
+        }
+
+        if ($booking->getTrip()->getOrganizer()->getId() !== $organizerProfile->getId()) {
+            return $this->json(['error' => 'Access denied'], 403);
+        }
+
+        if ($booking->getStatus() !== 'PENDING') {
+            return $this->json(['error' => 'Booking not in PENDING state'], 400);
+        }
+
+        $booking->setStatus('CONFIRMED');
+        $booking->setUpdatedAt(new \DateTimeImmutable());
+
+        $payment = $booking->getPayment();
+        if (!$payment) {
+            $payment = new Payment();
+            $payment->setBooking($booking);
+            $this->em->persist($payment);
+        }
+        $payment->setAmount($booking->getTotalPrice());
+        $payment->setCurrency($booking->getCurrency());
+        $payment->setMethod('CASH');
+        $payment->setStatus('SUCCEEDED');
+        $payment->setPaidAt(new \DateTime());
+
+        $points = $this->loyaltyService->earnPoints($booking->getUser(), $booking);
+
+        $this->em->flush();
+
+        $this->notificationService->notifyBookingConfirmed($booking);
+        if ($points > 0) {
+            $this->notificationService->create(
+                $booking->getUser(),
+                'Points fidélité gagnés',
+                sprintf('Vous avez gagné %d points pour "%s".', $points, $booking->getTrip()->getTitle()),
+                'loyalty'
+            );
+        }
+
+        return $this->json([
+            'message' => 'Booking confirmed',
+            'booking_id' => $booking->getId(),
+            'loyalty_points_earned' => $points,
+        ]);
+    }
+
     #[Route('/trips', name: 'api_organizer_trips', methods: ['GET'])]
     public function getTrips(Request $request): JsonResponse
     {
@@ -250,7 +309,6 @@ class OrganizerApiController extends AbstractController
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
         
-        // Get organizer profile
         $organizerProfile = $this->em->getRepository(OrganizerProfile::class)->findOneBy(['user' => $user]);
         
         if (!$organizerProfile) {

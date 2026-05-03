@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, CSSProperties } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
@@ -31,6 +31,8 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  Fade,
+  Zoom,
 } from '@mui/material';
 import {
   Add,
@@ -60,9 +62,24 @@ import {
   Celebration,
   AcUnit,
   SportsSoccer,
+  ArrowBack,
+  ArrowForward,
 } from '@mui/icons-material';
 import { tripAPI } from '../../services/api';
-import { styled, alpha } from '@mui/material/styles';
+import { styled, alpha, keyframes } from '@mui/material/styles';
+
+// ─── 4 COULEURS UNIQUEMENT ──────────────────────────────────────
+const COLORS = {
+  teal: '#0EA5A0',
+  navy: '#0F2D5C',
+  amber: '#D97706',
+  white: '#FFFFFF',
+};
+
+const fadeUp = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
 
 // Available tags with professional icons
 const availableTags = [
@@ -99,20 +116,98 @@ const exclusionOptions = [
   { value: 'pourboires', label: 'Pourboires' },
 ];
 
-const categories = [
-  { value: 'randonnee', label: 'Randonnée' },
-  { value: 'camping', label: 'Camping' },
-  { value: 'culturel', label: 'Culturel' },
-  { value: 'detente', label: 'Détente' },
-  { value: 'aventure', label: 'Aventure' },
-  { value: 'roadtrip', label: 'Road Trip' },
-];
+// ─── Styled Components ───────────────────────────────────────────
+const GradientHeader = styled(Paper)({
+  marginBottom: '3rem' as unknown  | number as string,
+  borderRadius: 16,
+  background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.teal} 100%)`,
+  boxShadow: `0 14px 34px ${alpha(COLORS.navy, 0.28)}`,
+  padding: { xs: '2.5rem' as unknown as string | number, md: '3.5rem' as unknown as string | number } as unknown  | number as CSSProperties,
+} as unknown as TemplateStringsArray);
+
+const StyledPaper = styled(Paper)({
+  border: `1px solid ${alpha(COLORS.teal, 0.15)}`,
+  borderRadius: 16,
+  boxShadow: `0 12px 30px ${alpha(COLORS.navy, 0.08)}`,
+  backgroundColor: COLORS.white,
+  overflowX: 'hidden',
+  width: '100%',
+});
+
+const GradientButton = styled(Button)({
+  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+  borderRadius: 12,
+  fontWeight: 600,
+  textTransform: 'none',
+  padding: '10px 24px',
+  color: COLORS.white,
+  '&:hover': {
+    background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.teal})`,
+    transform: 'translateY(-1px)',
+  },
+});
+
+const OutlineButton = styled(Button)({
+  borderRadius: 12,
+  fontWeight: 600,
+  textTransform: 'none',
+  padding: '10px 24px',
+  borderColor: COLORS.teal,
+  color: COLORS.teal,
+  '&:hover': {
+    borderColor: COLORS.navy,
+    backgroundColor: alpha(COLORS.teal, 0.05),
+  },
+});
+
+const DangerButton = styled(Button)({
+  borderRadius: 12,
+  fontWeight: 600,
+  textTransform: 'none',
+  padding: '10px 24px',
+  backgroundColor: COLORS.amber,
+  color: COLORS.white,
+  '&:hover': {
+    backgroundColor: alpha(COLORS.amber, 0.85),
+  },
+});
+
+const StyledTextField = styled(TextField)({
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 12,
+    '&:hover fieldset': {
+      borderColor: COLORS.teal,
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: COLORS.teal,
+    },
+  },
+  '& .MuiInputLabel-root.Mui-focused': {
+    color: COLORS.teal,
+  },
+});
+
+const StepIconBox = styled(Box)<{ active?: boolean; completed?: boolean }>(({ active, completed }) => ({
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: active || completed ? COLORS.teal : alpha(COLORS.navy, 0.15),
+  color: active || completed ? COLORS.white : alpha(COLORS.navy, 0.5),
+  fontWeight: 700,
+  fontSize: 14,
+  transition: 'all 0.3s ease',
+  boxShadow: active ? `0 0 0 3px ${alpha(COLORS.teal, 0.2)}` : 'none',
+}));
 
 const TripForm: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -133,14 +228,14 @@ const TripForm: React.FC = () => {
 
   const validateAlphabetic = (value: string): string => {
     if (value && !/^[a-zA-Z\s'-]+$/.test(value)) {
-      return 'Fields must be alphabetic';
+      return 'Seules les lettres sont autorisées';
     }
     return '';
   };
 
   const validateFirstUppercase = (value: string): string => {
     if (value && value.length > 0 && value[0] !== value[0].toUpperCase()) {
-      return 'First letter must be uppercase';
+      return 'La première lettre doit être en majuscule';
     }
     return '';
   };
@@ -154,7 +249,6 @@ const TripForm: React.FC = () => {
   };
 
   const [formData, setFormData] = useState({
-    // Step 1: General Info
     title: '',
     slug: '',
     category: '',
@@ -163,30 +257,20 @@ const TripForm: React.FC = () => {
     short_description: '',
     long_description: '',
     tags: [] as string[],
-    
-    // Step 2: Planning
     start_date: '',
     end_date: '',
     meeting_point: '',
     meeting_address: '',
     max_places: '',
     program: [] as { day: number; title: string; description: string }[],
-    
-    // Step 3: Pricing
     base_price: '',
     currency: 'TND',
     inclusions: [] as string[],
     exclusions: [] as string[],
-    
-    // Step 4: Media
     cover_image: null as File | null,
     cover_image_preview: '',
     gallery: [] as { file: File | null; preview: string; url?: string }[],
-    
-    // Status
     status: 'draft',
-    
-    // Cancellation Policy
     policyType: 'moderate',
     allowVoucher: true,
     allowRebooking: true,
@@ -209,12 +293,10 @@ const TripForm: React.FC = () => {
 
   const loadOptions = async () => {
     try {
-      // Load destinations
       const destRes = await fetch('http://localhost:8000/api/destinations');
       const destData = await destRes.json();
       setDestinations(destData['hydra:member'] || destData);
       
-      // Load categories
       const catRes = await fetch('http://localhost:8000/api/categories');
       const catData = await catRes.json();
       setCategoriesState(catData['hydra:member'] || catData);
@@ -278,19 +360,19 @@ const TripForm: React.FC = () => {
     }
     if (name === 'start_date') {
       if (value && value < today) {
-        setFieldErrors(prev => ({ ...prev, start_date: 'Insufficient date' }));
+        setFieldErrors(prev => ({ ...prev, start_date: 'Date invalide' }));
       } else {
         setFieldErrors(prev => ({ ...prev, start_date: '' }));
       }
       if (formData.end_date && value && formData.end_date < value) {
-        setFieldErrors(prev => ({ ...prev, end_date: 'Insufficient date' }));
+        setFieldErrors(prev => ({ ...prev, end_date: 'Date invalide' }));
       } else if (formData.end_date && value && formData.end_date >= value) {
         setFieldErrors(prev => ({ ...prev, end_date: '' }));
       }
     }
     if (name === 'end_date') {
       if (value && formData.start_date && value < formData.start_date) {
-        setFieldErrors(prev => ({ ...prev, end_date: 'Insufficient date' }));
+        setFieldErrors(prev => ({ ...prev, end_date: 'Date invalide' }));
       } else {
         setFieldErrors(prev => ({ ...prev, end_date: '' }));
       }
@@ -426,7 +508,7 @@ const TripForm: React.FC = () => {
         if (!formData.long_description.toLowerCase().includes('froid') && 
             !formData.long_description.toLowerCase().includes('hiver') &&
             !formData.tags.includes('froid')) {
-          checks.push('⚠️ Conseil : En hiver, prévoyez des vêtements chauds pour vos participants.');
+          checks.push('🌡️ Conseil : En hiver, prévoyez des vêtements chauds pour vos participants.');
         }
       }
     }
@@ -434,7 +516,7 @@ const TripForm: React.FC = () => {
     if (formData.category === 'detente' && formData.destination) {
       if (formData.destination.toLowerCase().includes('djerba') || 
           formData.destination.toLowerCase().includes('hammamet')) {
-        checks.push('💡 Information : N\'oubliez pas de mentionner les activités plage dans votre description.');
+        checks.push('Information : N\'oubliez pas de mentionner les activités plage dans votre description.');
       }
     }
 
@@ -466,12 +548,12 @@ const TripForm: React.FC = () => {
       validationErrors.push(titleErr);
     }
     if (formData.start_date && formData.start_date < today) {
-      setFieldErrors(prev => ({ ...prev, start_date: 'Insufficient date' }));
-      validationErrors.push('Insufficient date');
+      setFieldErrors(prev => ({ ...prev, start_date: 'Date invalide' }));
+      validationErrors.push('La date de début ne peut pas être dans le passé');
     }
     if (formData.end_date && formData.start_date && formData.end_date < formData.start_date) {
-      setFieldErrors(prev => ({ ...prev, end_date: 'Insufficient date' }));
-      validationErrors.push('Insufficient date');
+      setFieldErrors(prev => ({ ...prev, end_date: 'Date invalide' }));
+      validationErrors.push('La date de fin doit être après la date de début');
     }
     
     if (validationErrors.length > 0) {
@@ -551,588 +633,611 @@ const TripForm: React.FC = () => {
     }
   };
 
-  // Styles pour le thème
-  const primaryGradient = 'linear-gradient(90deg, #00BFA5, #0D47A1)';
-  const primaryColor = '#00BFA5';
-  const secondaryColor = '#0D47A1';
-
-  const CustomStepIcon = ({ active, completed, icon }: { active?: boolean; completed?: boolean; icon?: number }) => (
-    <Box
-      sx={{
-        width: 32,
-        height: 32,
-        borderRadius: '50%',
-        bgcolor: active || completed ? primaryColor : 'grey.300',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: active || completed ? 'white' : 'grey.600',
-        boxShadow: active ? `0 0 0 3px ${alpha(primaryColor, 0.2)}` : 'none',
-      }}
-    >
-      {completed ? <CheckCircle sx={{ fontSize: 18 }} /> : icon}
-    </Box>
-  );
-
   const renderStepContent = () => {
     switch (activeStep) {
       case 0:
         return (
-          <Box>
-            <Typography variant="h6" gutterBottom>Informations générales</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Définissez l'identité et l'ambiance de votre voyage
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid xs={12}>
-                <TextField
-                  fullWidth
-                  label="Titre du voyage"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  required
-                  error={!!fieldErrors.title}
-                  helperText={fieldErrors.title || `${formData.title.length}/80 caractères`}
-                  inputProps={{ maxLength: 80 }}
-                />
-              </Grid>
-              <Grid xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Slug (URL)"
-                  name="slug"
-                  value={formData.slug}
-                  onChange={handleChange}
-                  helperText="URL automatique basée sur le titre"
-                />
-              </Grid>
-              <Grid xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Catégorie</InputLabel>
-                  <Select
-                    name="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    label="Catégorie"
-                  >
-                    {categoriesState.map((cat) => (
-                      <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+          <Fade in timeout={500}>
+            <Box>
+              <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                Informations générales
+              </Typography>
+              <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 3 }}>
+                Définissez l'identité et l'ambiance de votre voyage
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid xs={12}>
+                  <StyledTextField
+                    fullWidth
+                    label="Titre du voyage"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    required
+                    error={!!fieldErrors.title}
+                    helperText={fieldErrors.title || `${formData.title.length}/80 caractères`}
+                    inputProps={{ maxLength: 80 }}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <StyledTextField
+                    fullWidth
+                    label="Slug (URL)"
+                    name="slug"
+                    value={formData.slug}
+                    onChange={handleChange}
+                    helperText="URL automatique basée sur le titre"
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ '&.Mui-focused': { color: COLORS.teal } }}>Catégorie</InputLabel>
+                    <Select
+                      name="category"
+                      value={formData.category}
+                      onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                      label="Catégorie"
+                      sx={{ borderRadius: 2 }}
+                    >
+                      {categoriesState.map((cat) => (
+                        <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ '&.Mui-focused': { color: COLORS.teal } }}>Destination</InputLabel>
+                    <Select
+                      name="destination"
+                      value={formData.destination}
+                      onChange={(e) => setFormData(prev => ({ ...prev, destination: e.target.value }))}
+                      label="Destination"
+                      sx={{ borderRadius: 2 }}
+                    >
+                      {destinations.map((dest) => (
+                        <MenuItem key={dest.id} value={dest.id}>{dest.name} ({dest.country})</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ '&.Mui-focused': { color: COLORS.teal } }}>Niveau de difficulté</InputLabel>
+                    <Select
+                      name="difficulty_level"
+                      value={formData.difficulty_level}
+                      onChange={(e) => setFormData(prev => ({ ...prev, difficulty_level: e.target.value }))}
+                      label="Niveau de difficulté"
+                      sx={{ borderRadius: 2 }}
+                    >
+                      <MenuItem value="easy">Facile</MenuItem>
+                      <MenuItem value="medium">Moyen</MenuItem>
+                      <MenuItem value="difficult">Difficile</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12}>
+                  <StyledTextField
+                    fullWidth
+                    label="Description courte"
+                    name="short_description"
+                    value={formData.short_description}
+                    onChange={handleChange}
+                    multiline
+                    rows={2}
+                    required
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <StyledTextField
+                    fullWidth
+                    label="Description détaillée"
+                    name="long_description"
+                    value={formData.long_description}
+                    onChange={handleChange}
+                    multiline
+                    rows={6}
+                    helperText="Décrivez l'ambiance, les activités, le public cible (minimum 150 caractères)"
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <Typography variant="body1" fontWeight={600} sx={{ color: COLORS.navy, mb: 1 }}>
+                    Tags (mots-clés)
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {availableTags.map((tag) => (
+                      <Chip
+                        key={tag.value}
+                        label={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {tag.icon}
+                            <span>{tag.label}</span>
+                          </Box>
+                        }
+                        onClick={() => handleTagToggle(tag.value)}
+                        color={formData.tags.includes(tag.value) ? 'primary' : 'default'}
+                        variant={formData.tags.includes(tag.value) ? 'filled' : 'outlined'}
+                        sx={{
+                          borderRadius: 8,
+                          '&.MuiChip-filled': {
+                            backgroundColor: COLORS.teal,
+                            color: COLORS.white,
+                          },
+                        }}
+                      />
                     ))}
-                  </Select>
-                </FormControl>
+                  </Box>
+                </Grid>
               </Grid>
-              <Grid xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Destination</InputLabel>
-                  <Select
-                    name="destination"
-                    value={formData.destination}
-                    onChange={(e) => setFormData(prev => ({ ...prev, destination: e.target.value }))}
-                    label="Destination"
-                  >
-                    {destinations.map((dest) => (
-                      <MenuItem key={dest.id} value={dest.id}>{dest.name} ({dest.country})</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Niveau de difficulté</InputLabel>
-                  <Select
-                    name="difficulty_level"
-                    value={formData.difficulty_level}
-                    onChange={(e) => setFormData(prev => ({ ...prev, difficulty_level: e.target.value }))}
-                    label="Niveau de difficulté"
-                  >
-                    <MenuItem value="easy">Facile</MenuItem>
-                    <MenuItem value="medium">Moyen</MenuItem>
-                    <MenuItem value="difficult">Difficile</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description courte"
-                  name="short_description"
-                  value={formData.short_description}
-                  onChange={handleChange}
-                  multiline
-                  rows={2}
-                  required
-                />
-              </Grid>
-              <Grid xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description détaillée"
-                  name="long_description"
-                  value={formData.long_description}
-                  onChange={handleChange}
-                  multiline
-                  rows={6}
-                  helperText="Décrivez l'ambiance, les activités, le public cible (minimum 150 caractères)"
-                />
-              </Grid>
-              <Grid xs={12}>
-                <Typography variant="body1" gutterBottom>Tags (mots-clés)</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {availableTags.map((tag) => (
-                    <Chip
-                      key={tag.value}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          {tag.icon}
-                          <span>{tag.label}</span>
-                        </Box>
-                      }
-                      onClick={() => handleTagToggle(tag.value)}
-                      color={formData.tags.includes(tag.value) ? 'primary' : 'default'}
-                      variant={formData.tags.includes(tag.value) ? 'filled' : 'outlined'}
-                      sx={{
-                        '& .MuiChip-label': { display: 'flex', alignItems: 'center', gap: 0.5 },
-                        '&.MuiChip-filled': {
-                          backgroundColor: primaryColor,
-                          color: 'white',
-                        },
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
+            </Box>
+          </Fade>
         );
 
       case 1:
         return (
-          <Box>
-            <Typography variant="h6" gutterBottom>Planning & Logistique</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Définissez le cadre organisationnel du voyage
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Date de début"
-                  name="start_date"
-                  type="date"
-                  value={formData.start_date}
-                  onChange={handleChange}
-                  InputLabelProps={{ shrink: true }}
-                  error={!!fieldErrors.start_date}
-                  helperText={fieldErrors.start_date}
-                  inputProps={{ min: today }}
-                />
+          <Fade in timeout={500}>
+            <Box>
+              <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                Planning & Logistique
+              </Typography>
+              <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 3 }}>
+                Définissez le cadre organisationnel du voyage
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid xs={12} sm={6}>
+                  <StyledTextField
+                    fullWidth
+                    label="Date de début"
+                    name="start_date"
+                    type="date"
+                    value={formData.start_date}
+                    onChange={handleChange}
+                    InputLabelProps={{ shrink: true }}
+                    error={!!fieldErrors.start_date}
+                    helperText={fieldErrors.start_date}
+                    inputProps={{ min: today }}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <StyledTextField
+                    fullWidth
+                    label="Date de fin"
+                    name="end_date"
+                    type="date"
+                    value={formData.end_date}
+                    onChange={handleChange}
+                    InputLabelProps={{ shrink: true }}
+                    error={!!fieldErrors.end_date}
+                    helperText={fieldErrors.end_date}
+                    inputProps={{ min: formData.start_date || today }}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <StyledTextField
+                    fullWidth
+                    label="Point de rendez-vous"
+                    name="meeting_point"
+                    value={formData.meeting_point}
+                    onChange={handleChange}
+                    placeholder="Ex: Agence de voyage, Gare..."
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <StyledTextField
+                    fullWidth
+                    label="Adresse"
+                    name="meeting_address"
+                    value={formData.meeting_address}
+                    onChange={handleChange}
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <StyledTextField
+                    fullWidth
+                    label="Nombre maximum de places"
+                    name="max_places"
+                    type="number"
+                    value={formData.max_places}
+                    onChange={handleChange}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <Divider sx={{ my: 2, borderColor: alpha(COLORS.teal, 0.15) }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy }}>
+                      Programme détaillé
+                    </Typography>
+                    <OutlineButton startIcon={<Add />} onClick={addProgramDay}>
+                      Ajouter un jour
+                    </OutlineButton>
+                  </Box>
+                  {formData.program.map((day, index) => (
+                    <Card key={index} sx={{ mb: 2, p: 2, borderRadius: 12, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.teal }}>
+                          Jour {day.day}
+                        </Typography>
+                        <IconButton onClick={() => removeProgramDay(index)} sx={{ color: COLORS.amber }}>
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                      <StyledTextField
+                        fullWidth
+                        label="Titre"
+                        value={day.title}
+                        onChange={(e) => updateProgramDay(index, 'title', e.target.value)}
+                        sx={{ mb: 2 }}
+                      />
+                      <StyledTextField
+                        fullWidth
+                        label="Description"
+                        value={day.description}
+                        onChange={(e) => updateProgramDay(index, 'description', e.target.value)}
+                        multiline
+                        rows={2}
+                      />
+                    </Card>
+                  ))}
+                  {formData.program.length === 0 && (
+                    <Typography sx={{ color: alpha(COLORS.navy, 0.5), textAlign: 'center', py: 4 }}>
+                      Cliquez sur "Ajouter un jour" pour créer votre programme
+                    </Typography>
+                  )}
+                </Grid>
               </Grid>
-              <Grid xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Date de fin"
-                  name="end_date"
-                  type="date"
-                  value={formData.end_date}
-                  onChange={handleChange}
-                  InputLabelProps={{ shrink: true }}
-                  error={!!fieldErrors.end_date}
-                  helperText={fieldErrors.end_date}
-                  inputProps={{ min: formData.start_date || today }}
-                />
-              </Grid>
-              <Grid xs={12}>
-                <TextField
-                  fullWidth
-                  label="Point de rendez-vous"
-                  name="meeting_point"
-                  value={formData.meeting_point}
-                  onChange={handleChange}
-                  placeholder="Ex: Agence de voyage, Gare..."
-                />
-              </Grid>
-              <Grid xs={12}>
-                <TextField
-                  fullWidth
-                  label="Adresse"
-                  name="meeting_address"
-                  value={formData.meeting_address}
-                  onChange={handleChange}
-                  multiline
-                  rows={2}
-                />
-              </Grid>
-              <Grid xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Nombre maximum de places"
-                  name="max_places"
-                  type="number"
-                  value={formData.max_places}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid xs={12}>
-                <Divider sx={{ my: 2 }} />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">Programme détaillé</Typography>
-                  <Button 
-                    startIcon={<Add />} 
-                    onClick={addProgramDay} 
-                    variant="outlined"
-                    sx={{
-                      borderColor: alpha(primaryColor, 0.5),
-                      color: primaryColor,
-                      '&:hover': {
-                        borderColor: primaryColor,
-                        backgroundColor: alpha(primaryColor, 0.04),
-                      },
-                    }}
-                  >
-                    Ajouter un jour
-                  </Button>
-                </Box>
-                {formData.program.map((day, index) => (
-                  <Card key={index} sx={{ mb: 2, p: 2, border: `1px solid ${alpha(primaryColor, 0.1)}` }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="subtitle1" fontWeight={600}>Jour {day.day}</Typography>
-                      <IconButton onClick={() => removeProgramDay(index)} color="error">
-                        <Delete />
-                      </IconButton>
-                    </Box>
-                    <TextField
-                      fullWidth
-                      label="Titre"
-                      value={day.title}
-                      onChange={(e) => updateProgramDay(index, 'title', e.target.value)}
-                      sx={{ mb: 2 }}
-                    />
-                    <TextField
-                      fullWidth
-                      label="Description"
-                      value={day.description}
-                      onChange={(e) => updateProgramDay(index, 'description', e.target.value)}
-                      multiline
-                      rows={2}
-                    />
-                  </Card>
-                ))}
-                {formData.program.length === 0 && (
-                  <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
-                    Cliquez sur "Ajouter un jour" pour créer votre programme
-                  </Typography>
-                )}
-              </Grid>
-            </Grid>
-          </Box>
+            </Box>
+          </Fade>
         );
 
       case 2:
         return (
-          <Box>
-            <Typography variant="h6" gutterBottom>Prix & Inclusions</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Définissez clairement votre offre financière
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Prix par personne (TND)"
-                  name="base_price"
-                  type="number"
-                  value={formData.base_price}
-                  onChange={handleChange}
-                  required
-                />
-              </Grid>
-              <Grid xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Devise</InputLabel>
-                  <Select
-                    name="currency"
-                    value={formData.currency}
-                    onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
-                    label="Devise"
-                  >
-                    <MenuItem value="TND">TND (Dinars tunisiens)</MenuItem>
-                    <MenuItem value="EUR">EUR (Euros)</MenuItem>
-                    <MenuItem value="USD">USD (Dollars)</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              {formData.base_price && (
+          <Fade in timeout={500}>
+            <Box>
+              <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                Prix & Inclusions
+              </Typography>
+              <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 3 }}>
+                Définissez clairement votre offre financière
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid xs={12} sm={6}>
+                  <StyledTextField
+                    fullWidth
+                    label="Prix par personne (TND)"
+                    name="base_price"
+                    type="number"
+                    value={formData.base_price}
+                    onChange={handleChange}
+                    required
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ '&.Mui-focused': { color: COLORS.teal } }}>Devise</InputLabel>
+                    <Select
+                      name="currency"
+                      value={formData.currency}
+                      onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                      label="Devise"
+                      sx={{ borderRadius: 2 }}
+                    >
+                      <MenuItem value="TND">TND (Dinars tunisiens)</MenuItem>
+                      <MenuItem value="EUR">EUR (Euros)</MenuItem>
+                      <MenuItem value="USD">USD (Dollars)</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                {formData.base_price && (
+                  <Grid xs={12}>
+                    <Paper sx={{ p: 2, borderRadius: 12, bgcolor: alpha(COLORS.teal, 0.03), border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+                      <Typography variant="subtitle2" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                        Estimation des revenus
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid xs={4}>
+                          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Revenu brut</Typography>
+                          <Typography variant="h6" sx={{ color: COLORS.teal }}>
+                            {parseFloat(formData.base_price) * (parseInt(formData.max_places) || 10)} TND
+                          </Typography>
+                        </Grid>
+                        <Grid xs={4}>
+                          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Commission (10%)</Typography>
+                          <Typography variant="h6" sx={{ color: COLORS.amber }}>
+                            {parseFloat(formData.base_price) * (parseInt(formData.max_places) || 10) * 0.1} TND
+                          </Typography>
+                        </Grid>
+                        <Grid xs={4}>
+                          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Revenu net</Typography>
+                          <Typography variant="h6" sx={{ color: COLORS.teal }}>
+                            {parseFloat(formData.base_price) * (parseInt(formData.max_places) || 10) * 0.9} TND
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </Paper>
+                  </Grid>
+                )}
                 <Grid xs={12}>
-                  <Paper sx={{ p: 2, bgcolor: alpha(primaryColor, 0.02), border: `1px solid ${alpha(primaryColor, 0.1)}` }}>
-                    <Typography variant="subtitle2" gutterBottom>Estimation des revenus</Typography>
-                    <Grid container spacing={2}>
-                      <Grid xs={4}>
-                        <Typography variant="body2" color="text.secondary">Revenu brut</Typography>
-                        <Typography variant="h6" color="primary">
-                          {parseFloat(formData.base_price) * (parseInt(formData.max_places) || 10)} TND
-                        </Typography>
-                      </Grid>
-                      <Grid xs={4}>
-                        <Typography variant="body2" color="text.secondary">Commission (10%)</Typography>
-                        <Typography variant="h6" color="warning.main">
-                          {parseFloat(formData.base_price) * (parseInt(formData.max_places) || 10) * 0.1} TND
-                        </Typography>
-                      </Grid>
-                      <Grid xs={4}>
-                        <Typography variant="body2" color="text.secondary">Revenu net</Typography>
-                        <Typography variant="h6" color="success.main">
-                          {parseFloat(formData.base_price) * (parseInt(formData.max_places) || 10) * 0.9} TND
-                        </Typography>
-                      </Grid>
+                  <Divider sx={{ my: 2, borderColor: alpha(COLORS.teal, 0.15) }} />
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                    Ce qui est inclus
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {inclusionOptions.map((item) => (
+                      <Chip
+                        key={item.value}
+                        label={item.label}
+                        onClick={() => handleInclusionToggle(item.value)}
+                        color={formData.inclusions.includes(item.value) ? 'primary' : 'default'}
+                        variant={formData.inclusions.includes(item.value) ? 'filled' : 'outlined'}
+                        icon={formData.inclusions.includes(item.value) ? <CheckCircle /> : undefined}
+                        sx={{
+                          borderRadius: 8,
+                          '&.MuiChip-filled': formData.inclusions.includes(item.value) ? {
+                            backgroundColor: COLORS.teal,
+                            color: COLORS.white,
+                          } : {},
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Grid>
+                <Grid xs={12}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                    Ce qui n'est pas inclus
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {exclusionOptions.map((item) => (
+                      <Chip
+                        key={item.value}
+                        label={item.label}
+                        onClick={() => handleExclusionToggle(item.value)}
+                        color={formData.exclusions.includes(item.value) ? 'error' : 'default'}
+                        variant={formData.exclusions.includes(item.value) ? 'filled' : 'outlined'}
+                        icon={formData.exclusions.includes(item.value) ? <Warning /> : undefined}
+                        sx={{
+                          borderRadius: 8,
+                          '&.MuiChip-filled': formData.exclusions.includes(item.value) ? {
+                            backgroundColor: COLORS.amber,
+                            color: COLORS.white,
+                          } : {},
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Grid>
+                <Grid xs={12}>
+                  <Divider sx={{ my: 2, borderColor: alpha(COLORS.teal, 0.15) }} />
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                    Politique d'annulation
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid xs={12} sm={6}>
+                      <FormControl fullWidth>
+                        <InputLabel sx={{ '&.Mui-focused': { color: COLORS.teal } }}>Politique</InputLabel>
+                        <Select
+                          name="policyType"
+                          value={formData.policyType}
+                          onChange={(e) => setFormData(prev => ({ ...prev, policyType: e.target.value }))}
+                          label="Politique"
+                          sx={{ borderRadius: 2 }}
+                        >
+                          <MenuItem value="flexible">Flexible - Remboursement total jusqu'à 24h avant</MenuItem>
+                          <MenuItem value="moderate">Modérée - Remboursement variable selon le délai</MenuItem>
+                          <MenuItem value="strict">Stricte - Remboursement limité</MenuItem>
+                        </Select>
+                      </FormControl>
                     </Grid>
-                  </Paper>
-                </Grid>
-              )}
-              <Grid xs={12}>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="subtitle1" gutterBottom>Ce qui est inclus</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {inclusionOptions.map((item) => (
-                    <Chip
-                      key={item.value}
-                      label={item.label}
-                      onClick={() => handleInclusionToggle(item.value)}
-                      color={formData.inclusions.includes(item.value) ? 'primary' : 'default'}
-                      variant={formData.inclusions.includes(item.value) ? 'filled' : 'outlined'}
-                      icon={formData.inclusions.includes(item.value) ? <CheckCircle /> : undefined}
-                      sx={{
-                        '&.MuiChip-filled': formData.inclusions.includes(item.value) ? {
-                          backgroundColor: primaryColor,
-                          color: 'white',
-                        } : {},
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Grid>
-              <Grid xs={12}>
-                <Typography variant="subtitle1" gutterBottom>Ce qui n'est pas inclus</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {exclusionOptions.map((item) => (
-                    <Chip
-                      key={item.value}
-                      label={item.label}
-                      onClick={() => handleExclusionToggle(item.value)}
-                      color={formData.exclusions.includes(item.value) ? 'error' : 'default'}
-                      variant={formData.exclusions.includes(item.value) ? 'filled' : 'outlined'}
-                      icon={formData.exclusions.includes(item.value) ? <Warning /> : undefined}
-                    />
-                  ))}
-                </Box>
-              </Grid>
-              <Grid xs={12}>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="subtitle1" gutterBottom>Politique d'annulation</Typography>
-                <Grid container spacing={2}>
-                  <Grid xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>Politique</InputLabel>
-                      <Select
-                        name="policyType"
-                        value={formData.policyType}
-                        onChange={(e) => setFormData(prev => ({ ...prev, policyType: e.target.value }))}
-                        label="Politique"
-                      >
-                        <MenuItem value="flexible">Flexible - Remboursement total jusqu'à 24h avant</MenuItem>
-                        <MenuItem value="moderate">Modérée - Remboursement variable selon le délai</MenuItem>
-                        <MenuItem value="strict">Stricte - Remboursement limité</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid xs={12} sm={6}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={formData.allowVoucher}
-                          onChange={(e) => setFormData(prev => ({ ...prev, allowVoucher: e.target.checked }))}
-                          color="primary"
-                        />
-                      }
-                      label="Permettre voucher"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={formData.allowRebooking}
-                          onChange={(e) => setFormData(prev => ({ ...prev, allowRebooking: e.target.checked }))}
-                          color="primary"
-                        />
-                      }
-                      label="Permettre rebooking"
-                    />
+                    <Grid xs={12} sm={6}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={formData.allowVoucher}
+                            onChange={(e) => setFormData(prev => ({ ...prev, allowVoucher: e.target.checked }))}
+                            sx={{ color: COLORS.teal, '&.Mui-checked': { color: COLORS.teal } }}
+                          />
+                        }
+                        label="Permettre voucher"
+                      />
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={formData.allowRebooking}
+                            onChange={(e) => setFormData(prev => ({ ...prev, allowRebooking: e.target.checked }))}
+                            sx={{ color: COLORS.teal, '&.Mui-checked': { color: COLORS.teal } }}
+                          />
+                        }
+                        label="Permettre rebooking"
+                      />
+                    </Grid>
                   </Grid>
                 </Grid>
               </Grid>
-            </Grid>
-          </Box>
+            </Box>
+          </Fade>
         );
 
       case 3:
         return (
-          <Box>
-            <Typography variant="h6" gutterBottom>Galerie Photos</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Valorisez visuellement votre voyage
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid xs={12}>
-                <Typography variant="subtitle1" gutterBottom>Image de couverture (obligatoire)</Typography>
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  ref={fileInputRef}
-                  onChange={handleCoverImageChange}
-                />
-                <Box
-                  sx={{
-                    border: `2px dashed ${alpha(primaryColor, 0.3)}`,
-                    borderRadius: 2,
-                    p: 4,
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    bgcolor: formData.cover_image_preview ? 'transparent' : alpha(primaryColor, 0.02),
-                    backgroundImage: formData.cover_image_preview ? `url(${formData.cover_image_preview})` : undefined,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    minHeight: 200,
-                  }}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {formData.cover_image_preview ? (
-                    <Box>
-                      <Button 
-                        variant="contained" 
-                        startIcon={<CloudUpload />}
-                        sx={{
-                          background: primaryGradient,
-                          '&:hover': { background: `linear-gradient(90deg, ${alpha(primaryColor, 0.9)}, ${alpha(secondaryColor, 0.9)})` },
-                        }}
-                      >
-                        Changer l'image
-                      </Button>
-                    </Box>
-                  ) : (
-                    <Box>
-                      <CloudUpload sx={{ fontSize: 48, color: primaryColor, mb: 1 }} />
-                      <Typography>Cliquez pour télécharger une image de couverture</Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Grid>
-              <Grid xs={12}>
-                <Typography variant="subtitle1" gutterBottom>Galerie d'images (minimum 3 recommandées)</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                  {formData.gallery.map((img, index) => (
-                    <Card key={index} sx={{ width: 150, position: 'relative', border: `1px solid ${alpha(primaryColor, 0.1)}` }}>
-                      <CardMedia
-                        component="img"
-                        height={100}
-                        image={img.preview || img.url || '/placeholder.jpg'}
-                      />
-                      <IconButton
-                        size="small"
-                        sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', color: 'white' }}
-                        onClick={() => removeGalleryImage(index)}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </Card>
-                  ))}
+          <Fade in timeout={500}>
+            <Box>
+              <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                Galerie Photos
+              </Typography>
+              <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 3 }}>
+                Valorisez visuellement votre voyage
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid xs={12}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                    Image de couverture (obligatoire)
+                  </Typography>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    ref={fileInputRef}
+                    onChange={handleCoverImageChange}
+                  />
                   <Box
                     sx={{
-                      width: 150,
-                      height: 100,
-                      border: `2px dashed ${alpha(primaryColor, 0.3)}`,
-                      borderRadius: 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      border: `2px dashed ${alpha(COLORS.teal, 0.3)}`,
+                      borderRadius: 12,
+                      p: 4,
+                      textAlign: 'center',
                       cursor: 'pointer',
+                      bgcolor: formData.cover_image_preview ? 'transparent' : alpha(COLORS.teal, 0.02),
+                      backgroundImage: formData.cover_image_preview ? `url(${formData.cover_image_preview})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      minHeight: 200,
+                      transition: 'all 0.3s ease',
+                      '&:hover': { borderColor: COLORS.teal },
                     }}
-                    onClick={() => document.getElementById('gallery-input')?.click()}
+                    onClick={() => fileInputRef.current?.click()}
                   >
-                    <input
-                      id="gallery-input"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      hidden
-                      onChange={handleGalleryImageChange}
-                    />
-                    <Add sx={{ color: primaryColor }} />
+                    {formData.cover_image_preview ? (
+                      <GradientButton startIcon={<CloudUpload />}>
+                        Changer l'image
+                      </GradientButton>
+                    ) : (
+                      <Box>
+                        <CloudUpload sx={{ fontSize: 48, color: COLORS.teal, mb: 1 }} />
+                        <Typography sx={{ color: alpha(COLORS.navy, 0.6) }}>
+                          Cliquez pour télécharger une image de couverture
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
-                </Box>
+                </Grid>
+                <Grid xs={12}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                    Galerie d'images (minimum 3 recommandées)
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                    {formData.gallery.map((img, index) => (
+                      <Card key={index} sx={{ width: 150, position: 'relative', borderRadius: 12, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+                        <CardMedia
+                          component="img"
+                          height={100}
+                          image={img.preview || img.url || '/placeholder.jpg'}
+                          sx={{ borderRadius: '12px 12px 0 0' }}
+                        />
+                        <IconButton
+                          size="small"
+                          sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', color: COLORS.white, '&:hover': { bgcolor: COLORS.amber } }}
+                          onClick={() => removeGalleryImage(index)}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Card>
+                    ))}
+                    <Box
+                      sx={{
+                        width: 150,
+                        height: 100,
+                        border: `2px dashed ${alpha(COLORS.teal, 0.3)}`,
+                        borderRadius: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        '&:hover': { borderColor: COLORS.teal, bgcolor: alpha(COLORS.teal, 0.02) },
+                      }}
+                      onClick={() => galleryInputRef.current?.click()}
+                    >
+                      <input
+                        ref={galleryInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        hidden
+                        onChange={handleGalleryImageChange}
+                      />
+                      <Add sx={{ color: COLORS.teal, fontSize: 32 }} />
+                    </Box>
+                  </Box>
+                </Grid>
               </Grid>
-            </Grid>
-          </Box>
+            </Box>
+          </Fade>
         );
 
       case 4:
         const consistencyChecks = getAIConsistencyCheck();
         return (
-          <Box>
-            <Typography variant="h6" gutterBottom>Vérification intelligente</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Notre IA analyse votre voyage pour vous donner des recommandations
-            </Typography>
-            <Paper sx={{ p: 3, mb: 3, bgcolor: alpha(primaryColor, 0.02), border: `1px solid ${alpha(primaryColor, 0.1)}` }}>
-              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                 Vérification de cohérence
+          <Fade in timeout={500}>
+            <Box>
+              <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                Vérification intelligente
               </Typography>
-              {consistencyChecks.length > 0 ? (
-                <List dense>
-                  {consistencyChecks.map((check, i) => (
-                    <ListItem key={i}>
-                      <ListItemIcon><Warning color="warning" /></ListItemIcon>
-                      <ListItemText primary={check} />
-                    </ListItem>
-                  ))}
-                </List>
-              ) : (
-                <Alert severity="success" sx={{ borderRadius: 2, borderLeft: `4px solid ${primaryColor}` }}>
-                  Votre voyage semble cohérent !
-                </Alert>
-              )}
-            </Paper>
-            <Paper sx={{ p: 3, mb: 3, border: `1px solid ${alpha(primaryColor, 0.1)}` }}>
-              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                 Score de visibilité
+              <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 3 }}>
+                Notre IA analyse votre voyage pour vous donner des recommandations
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Box sx={{ flexGrow: 1 }}>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={visibilityScore} 
-                    sx={{ height: 10, borderRadius: 5, backgroundColor: alpha(primaryColor, 0.2) }}
-                    color={visibilityScore >= 80 ? 'success' : visibilityScore >= 50 ? 'warning' : 'error'}
-                  />
-                </Box>
-                <Typography variant="h6" fontWeight={700}>
-                  {visibilityScore}%
+              <Paper sx={{ p: 3, mb: 3, borderRadius: 12, bgcolor: alpha(COLORS.teal, 0.02), border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy, mb: 2 }}>
+                   Vérification de cohérence
                 </Typography>
-              </Box>
-              {aiSuggestions.length > 0 && (
-                <Alert severity="info" icon={<TipsAndUpdates />} sx={{ borderRadius: 2, borderLeft: `4px solid ${primaryColor}` }}>
-                  <Typography variant="subtitle2" gutterBottom>Conseils pour améliorer :</Typography>
+                {consistencyChecks.length > 0 ? (
                   <List dense>
-                    {aiSuggestions.map((suggestion, i) => (
-                      <ListItem key={i} sx={{ py: 0 }}>
-                        <ListItemIcon><Info fontSize="small" /></ListItemIcon>
-                        <ListItemText primary={suggestion} />
+                    {consistencyChecks.map((check, i) => (
+                      <ListItem key={i}>
+                        <ListItemIcon><Warning sx={{ color: COLORS.amber }} /></ListItemIcon>
+                        <ListItemText primary={check} sx={{ color: alpha(COLORS.navy, 0.7) }} />
                       </ListItem>
                     ))}
                   </List>
-                </Alert>
-              )}
-            </Paper>
-          </Box>
+                ) : (
+                  <Alert severity="success" sx={{ borderRadius: 10, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }}>
+                    Votre voyage semble cohérent !
+                  </Alert>
+                )}
+              </Paper>
+              <Paper sx={{ p: 3, mb: 3, borderRadius: 12, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy, mb: 2 }}>
+                  Score de visibilité
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={visibilityScore} 
+                      sx={{ 
+                        height: 10, 
+                        borderRadius: 5, 
+                        backgroundColor: alpha(COLORS.teal, 0.15),
+                        '& .MuiLinearProgress-bar': { 
+                          backgroundColor: visibilityScore >= 80 ? COLORS.teal : visibilityScore >= 50 ? COLORS.amber : COLORS.amber,
+                          borderRadius: 5,
+                        }
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="h6" fontWeight={800} sx={{ color: visibilityScore >= 80 ? COLORS.teal : COLORS.amber }}>
+                    {visibilityScore}%
+                  </Typography>
+                </Box>
+                {aiSuggestions.length > 0 && (
+                  <Alert severity="info" icon={<TipsAndUpdates />} sx={{ borderRadius: 10, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
+                      Conseils pour améliorer :
+                    </Typography>
+                    <List dense disablePadding>
+                      {aiSuggestions.map((suggestion, i) => (
+                        <ListItem key={i} sx={{ py: 0.5, px: 0 }}>
+                          <ListItemIcon><Info sx={{ color: COLORS.teal, fontSize: 16 }} /></ListItemIcon>
+                          <ListItemText primary={suggestion} sx={{ color: alpha(COLORS.navy, 0.7) }} />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Alert>
+                )}
+              </Paper>
+            </Box>
+          </Fade>
         );
 
       default:
@@ -1142,152 +1247,134 @@ const TripForm: React.FC = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4, textAlign: 'center' }}>
-        <CircularProgress sx={{ color: primaryColor }} />
-      </Container>
+      <Box sx={{ minHeight: '100vh', bgcolor: alpha(COLORS.navy, 0.02), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <CircularProgress size={40} sx={{ color: COLORS.teal }} />
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Paper
-        elevation={0}
-        sx={{
-          p: { xs: 2.5, md: 3.5 },
-          mb: 3,
-          borderRadius: 3,
-          color: 'white',
-          background: 'linear-gradient(100deg, #0D47A1 0%, #00BFA5 100%)',
-          boxShadow: '0 14px 34px rgba(13, 71, 161, 0.28)',
-        }}
-      >
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 800 }}>
-          {isEdit ? 'Modifier le voyage' : 'Créer un nouveau voyage'}
-        </Typography>
-        <Typography variant="body1" sx={{ opacity: 0.92 }}>
-          Remplissez les informations étape par étape pour publier une fiche claire et attractive.
-        </Typography>
-      </Paper>
+    <Box sx={{ minHeight: '100vh', bgcolor: alpha(COLORS.navy, 0.02), py: 4, width: '100%', overflowX: 'hidden' }}>
+      <Container maxWidth={false} disableGutters sx={{ px: { xs: 2, sm: 3, md: 4, lg: 6 }, width: '100%', maxWidth: '100% !important' }}>
+        
+        {/* Header */}
+        <GradientHeader elevation={0} sx={{ width: '100%', borderRadius: 16 }}>
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 800, color: COLORS.white }}>
+            {isEdit ? 'Modifier le voyage' : 'Créer un nouveau voyage'}
+          </Typography>
+          <Typography variant="body1" sx={{ opacity: 0.92, color: COLORS.white }}>
+            Remplissez les informations étape par étape pour publier une fiche claire et attractive.
+          </Typography>
+        </GradientHeader>
 
-      {error && (
-        <Alert 
-          severity="error" 
-          sx={{ mb: 2, borderRadius: 2, borderLeft: `4px solid ${primaryColor}` }}
-        >
-          {error}
-        </Alert>
-      )}
-
-      <Paper
-        elevation={0}
-        sx={{
-          p: { xs: 1.5, md: 2 },
-          mb: 3,
-          borderRadius: 3,
-          border: `1px solid ${alpha(primaryColor, 0.14)}`,
-          backgroundColor: '#fff',
-        }}
-      >
-      <Stepper activeStep={activeStep} sx={{ mb: 0 }}>
-        {steps.map((step, index) => (
-          <Step
-            key={step.label}
-            onClick={() => setActiveStep(index)}
-            sx={{ cursor: 'pointer' }}
-          >
-            <StepLabel StepIconComponent={(props) => <CustomStepIcon {...props} icon={index + 1} />}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {step.icon}
-                {step.label}
-              </Box>
-            </StepLabel>
-          </Step>
-        ))}
-      </Stepper>
-      </Paper>
-
-      <Paper
-        elevation={0}
-        sx={{
-          p: { xs: 2.5, md: 4 },
-          border: `1px solid ${alpha(primaryColor, 0.14)}`,
-          borderRadius: 3,
-          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.08)',
-          backgroundColor: '#fff',
-        }}
-      >
-        {renderStepContent()}
-
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4, pt: 3, borderTop: `1px solid ${alpha(primaryColor, 0.1)}` }}>
-          <Button
-            disabled={activeStep === 0}
-            onClick={() => setActiveStep(prev => prev - 1)}
-            variant="outlined"
-            sx={{
-              borderColor: alpha(primaryColor, 0.5),
-              color: primaryColor,
-              '&:hover': {
-                borderColor: primaryColor,
-                backgroundColor: alpha(primaryColor, 0.04),
-              },
-            }}
-          >
-            Retour
-          </Button>
-
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<Save />}
-              onClick={handleSaveDraft}
-              disabled={saving}
-              sx={{
-                borderColor: alpha(primaryColor, 0.5),
-                color: primaryColor,
-                '&:hover': {
-                  borderColor: primaryColor,
-                  backgroundColor: alpha(primaryColor, 0.04),
-                },
-              }}
+        {/* Error Alert */}
+        {error && (
+          <Fade in>
+            <Alert 
+              severity="error" 
+              sx={{ mb: 3, borderRadius: 12, borderLeft: `4px solid ${COLORS.amber}` }}
             >
-              Sauvegarder brouillon
-            </Button>
+              {error}
+            </Alert>
+          </Fade>
+        )}
 
-            {activeStep < steps.length - 1 ? (
-              <Button
-                variant="contained"
-                onClick={() => setActiveStep(prev => prev + 1)}
-                sx={{
-                  background: primaryGradient,
-                  color: 'white',
-                  '&:hover': {
-                    background: `linear-gradient(90deg, ${alpha(primaryColor, 0.9)}, ${alpha(secondaryColor, 0.9)})`,
-                  },
-                }}
+        {/* Stepper */}
+        <Paper sx={{ 
+          p: 2, 
+          mb: 3, 
+          borderRadius: 12, 
+          border: `1px solid ${alpha(COLORS.teal, 0.15)}`,
+          backgroundColor: COLORS.white,
+          overflowX: 'auto',
+          width: '100%',
+        }}>
+          <Stepper activeStep={activeStep} sx={{ 
+            '& .MuiStepConnector-line': { borderColor: alpha(COLORS.teal, 0.2) },
+            flexWrap: 'wrap',
+            minWidth: 'fit-content',
+          }}>
+            {steps.map((step, index) => (
+              <Step
+                key={step.label}
+                onClick={() => setActiveStep(index)}
+                sx={{ cursor: 'pointer' }}
               >
-                Suivant
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<Send />}
-                onClick={handlePublish}
+                <StepLabel StepIconComponent={() => (
+                  <StepIconBox active={activeStep === index} completed={activeStep > index}>
+                    {activeStep > index ? <CheckCircle sx={{ fontSize: 16 }} /> : index + 1}
+                  </StepIconBox>
+                )}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, whiteSpace: 'nowrap' }}>
+                    {step.icon}
+                    <Typography sx={{ 
+                      fontWeight: activeStep === index ? 700 : 500,
+                      color: activeStep === index ? COLORS.teal : alpha(COLORS.navy, 0.6),
+                      fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                    }}>
+                      {step.label}
+                    </Typography>
+                  </Box>
+                </StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        </Paper>
+
+        {/* Form Content */}
+        <StyledPaper elevation={0} sx={{ p: { xs: 2, sm: 3, md: 4 }, width: '100%' }}>
+          {renderStepContent()}
+
+          {/* Navigation Buttons */}
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            mt: 4, 
+            pt: 3, 
+            borderTop: `1px solid ${alpha(COLORS.teal, 0.15)}`,
+            flexWrap: 'wrap',
+            gap: 2,
+          }}>
+            <OutlineButton
+              disabled={activeStep === 0}
+              onClick={() => setActiveStep(prev => prev - 1)}
+              startIcon={<ArrowBack />}
+              sx={{ minWidth: { xs: '100px', sm: 'auto' } }}
+            >
+              Retour
+            </OutlineButton>
+
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <OutlineButton
+                startIcon={<Save />}
+                onClick={handleSaveDraft}
                 disabled={saving}
-                sx={{
-                  background: primaryGradient,
-                  '&:hover': {
-                    background: `linear-gradient(90deg, ${alpha(primaryColor, 0.9)}, ${alpha(secondaryColor, 0.9)})`,
-                  },
-                }}
+                sx={{ minWidth: { xs: '140px', sm: 'auto' } }}
               >
-                {saving ? <CircularProgress size={24} color="inherit" /> : 'Publier'}
-              </Button>
-            )}
+                Sauvegarder brouillon
+              </OutlineButton>
+
+              {activeStep < steps.length - 1 ? (
+                <GradientButton
+                  onClick={() => setActiveStep(prev => prev + 1)}
+                  endIcon={<ArrowForward />}
+                >
+                  Suivant
+                </GradientButton>
+              ) : (
+                <GradientButton
+                  startIcon={<Send />}
+                  onClick={handlePublish}
+                  disabled={saving}
+                >
+                  {saving ? <CircularProgress size={24} sx={{ color: COLORS.white }} /> : 'Publier'}
+                </GradientButton>
+              )}
+            </Box>
           </Box>
-        </Box>
-      </Paper>
-    </Container>
+        </StyledPaper>
+      </Container>
+    </Box>
   );
 };
 

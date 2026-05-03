@@ -1,29 +1,25 @@
 import React from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  Divider,
-  Link,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, Box, Typography, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, Paper, Chip,
+  Divider, Stack
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
-  Cancel,
-  CheckCircle,
-  Replay,
-  Article,
+  Cancel, CheckCircle, Replay, Article, HelpOutline
 } from '@mui/icons-material';
+
+// --- PALETTE LUNA ---
+const LUNA = {
+  PALE: '#A7EBF2',
+  MED: '#26658C',
+  DEEP: '#023859',
+  NIGHT: '#011C40',
+  SUCCESS: '#00BFA5',
+  WARNING: '#FFB74D',
+  ERROR: '#FF5252',
+};
 
 interface PolicyModalProps {
   open: boolean;
@@ -37,78 +33,86 @@ interface PolicyModalProps {
 }
 
 const CancellationPolicyModal: React.FC<PolicyModalProps> = ({
-  open,
-  onClose,
-  policy,
-  onViewTerms,
+  open, onClose, policy, onViewTerms,
 }) => {
-  if (!policy) {
-    return (
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Politique d'annulation</DialogTitle>
-        <DialogContent>
-          <Typography>Chargement...</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Fermer</Button>
-        </DialogActions>
-      </Dialog>
-    );
-  }
+  if (!policy) return null;
 
   const formatDays = (days: number) => {
-    if (days === 0) return 'Jour du départ';
-    if (days === 1) return '1 jour';
+    if (days === 0) return 'Jour J';
     return `${days} jours`;
   };
 
   const sortedRules = [...policy.rules].sort((a, b) => b.days - a.days);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Cancel color="primary" />
-          Politique d'annulation
-        </Box>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="sm" 
+      fullWidth
+      PaperProps={{ 
+        sx: { borderRadius: 4, boxShadow: '0 20px 40px rgba(1, 28, 64, 0.2)' } 
+      }}
+    >
+      <DialogTitle sx={{ bgcolor: alpha(LUNA.PALE, 0.1), py: 3 }}>
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Box sx={{ 
+            display: 'flex', p: 1, borderRadius: 2, 
+            bgcolor: alpha(LUNA.MED, 0.1), color: LUNA.MED 
+          }}>
+            <Cancel fontSize="small" />
+          </Box>
+          <Typography variant="h6" fontWeight={800} color={LUNA.NIGHT}>
+            Politique d'annulation
+          </Typography>
+        </Stack>
       </DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Frais d'annulation selon le nombre de jours avant le départ :
+
+      <DialogContent sx={{ pt: 3 }}>
+        <Typography variant="body2" sx={{ mb: 3, color: LUNA.DEEP, fontWeight: 500 }}>
+          Le remboursement dépend du délai entre l'annulation et le départ :
         </Typography>
 
-        <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+        <TableContainer 
+          component={Paper} 
+          elevation={0} 
+          sx={{ 
+            mb: 4, border: `1px solid ${alpha(LUNA.MED, 0.1)}`, 
+            borderRadius: 3, overflow: 'hidden' 
+          }}
+        >
           <Table size="small">
-            <TableHead>
+            <TableHead sx={{ bgcolor: alpha(LUNA.PALE, 0.05) }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Délai avant départ</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Frais</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Remboursement</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: LUNA.MED }}>Délai</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: LUNA.MED }}>Frais</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: LUNA.MED }} align="right">Remboursement</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {sortedRules.map((rule, index) => {
-                const prevRule = sortedRules[index + 1];
-                const daysBefore = prevRule ? prevRule.days - 1 : rule.days;
                 const fees = 100 - rule.refund;
-                
+                const isFree = fees === 0;
+
                 return (
-                  <TableRow key={index}>
-                    <TableCell>
-                      {rule.days > 0 ? `${formatDays(rule.days)} et plus` : formatDays(rule.days)}
+                  <TableRow key={index} sx={{ '&:last-child td': { border: 0 } }}>
+                    <TableCell sx={{ fontWeight: 600, color: LUNA.NIGHT }}>
+                      {rule.days > 0 ? `> ${formatDays(rule.days)}` : 'Dernier moment'}
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={`${fees}%`}
+                        label={isFree ? 'Gratuit' : `${fees}%`}
                         size="small"
-                        color={fees === 0 ? 'success' : fees <= 25 ? 'warning' : 'error'}
-                        variant="filled"
+                        sx={{ 
+                          fontWeight: 700,
+                          bgcolor: isFree ? alpha(LUNA.SUCCESS, 0.1) : alpha(LUNA.ERROR, 0.05),
+                          color: isFree ? LUNA.SUCCESS : LUNA.ERROR,
+                          border: `1px solid ${isFree ? LUNA.SUCCESS : alpha(LUNA.ERROR, 0.2)}`
+                        }}
                       />
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={rule.refund > 0 ? 600 : 400}>
-                        {rule.refund}% remboursé
-                      </Typography>
+                    <TableCell align="right" sx={{ fontWeight: 800, color: LUNA.DEEP }}>
+                      {rule.refund}%
                     </TableCell>
                   </TableRow>
                 );
@@ -117,51 +121,56 @@ const CancellationPolicyModal: React.FC<PolicyModalProps> = ({
           </Table>
         </TableContainer>
 
-        <Divider sx={{ my: 2 }} />
+        <Typography variant="overline" sx={{ color: LUNA.MED, fontWeight: 800, letterSpacing: 1.2 }}>
+          Options de compensation
+        </Typography>
+        
+        <Stack spacing={1.5} sx={{ mt: 1, mb: 3 }}>
+          {[
+            { show: policy.allowVoucher, icon: <HelpOutline />, text: "Bon d'achat valable 12 mois" },
+            { show: policy.allowRebooking, icon: <Replay />, text: "Reprogrammation flexible" },
+            { show: true, icon: <CheckCircle />, text: "Crédit direct sur votre compte" }
+          ].filter(opt => opt.show).map((opt, i) => (
+            <Stack key={i} direction="row" spacing={1.5} alignItems="center">
+              <Box sx={{ color: LUNA.SUCCESS, display: 'flex' }}>
+                {React.cloneElement(opt.icon as React.ReactElement, { sx: { fontSize: 18 } })}
+              </Box>
+              <Typography variant="body2" fontWeight={500} color={LUNA.DEEP}>{opt.text}</Typography>
+            </Stack>
+          ))}
+        </Stack>
 
-        <Typography variant="subtitle2" gutterBottom>Options disponibles :</Typography>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {policy.allowVoucher && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CheckCircle color="success" fontSize="small" />
-              <Typography variant="body2">Bon d'achat (valable pour un futur voyage)</Typography>
-            </Box>
-          )}
-          {policy.allowRebooking && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Replay color="primary" fontSize="small" />
-              <Typography variant="body2">Reprogrammer pour une autre date</Typography>
-            </Box>
-          )}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CheckCircle color="success" fontSize="small" />
-            <Typography variant="body2">Remboursement sur moyen de paiement initial</Typography>
-          </Box>
-        </Box>
-
-        <Box sx={{ mt: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
-          <Typography variant="caption" color="text.secondary">
-            * Les frais sont calculés sur le montant total de la réservation.
-            * Le remboursement sera effectuées dans les 14 jours ouvrables après l'annulation.
+        <Box sx={{ p: 2, bgcolor: alpha(LUNA.PALE, 0.1), borderRadius: 3, border: `1px dashed ${LUNA.PALE}` }}>
+          <Typography variant="caption" sx={{ color: LUNA.MED, display: 'block', fontStyle: 'italic' }}>
+            * Remboursement effectué sous 14 jours ouvrables.
           </Typography>
         </Box>
       </DialogContent>
-      <DialogActions sx={{ flexDirection: 'column', alignItems: 'stretch', px: 3, pb: 2 }}>
+
+      <DialogActions sx={{ p: 3, pt: 0, flexDirection: 'column', gap: 1.5 }}>
         <Button
+          fullWidth
           startIcon={<Article />}
           onClick={onViewTerms}
-          sx={{ mb: 1 }}
+          sx={{ 
+            color: LUNA.MED, fontWeight: 700, textTransform: 'none',
+            '&:hover': { bgcolor: alpha(LUNA.MED, 0.05) }
+          }}
         >
-          Voir Terms & Conditions
+          Lire les conditions complètes
         </Button>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button onClick={onClose} variant="outlined" fullWidth>
-            Fermer
-          </Button>
-          <Button onClick={onClose} variant="contained" color="primary" fullWidth>
-            J'ai compris
-          </Button>
-        </Box>
+        <Button 
+          fullWidth 
+          onClick={onClose} 
+          variant="contained" 
+          sx={{ 
+            bgcolor: LUNA.NIGHT, borderRadius: 3, py: 1.2, fontWeight: 700,
+            textTransform: 'none',
+            '&:hover': { bgcolor: LUNA.DEEP }
+          }}
+        >
+          J'ai compris
+        </Button>
       </DialogActions>
     </Dialog>
   );

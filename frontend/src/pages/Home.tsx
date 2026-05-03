@@ -2,711 +2,397 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  Container,
-  Typography,
-  Box,
-  Button,
-  Grid,
-  Card,
-  CardContent,
-  CardMedia,
-  TextField,
-  Paper,
-  Chip,
-  Skeleton,
-  IconButton,
-  Rating,
-  Avatar,
-  Badge,
-  Fade,
-  Zoom,
-  Grow,
-  Slide,
+  Container, Typography, Box, Button, Grid, Card,
+  CardContent, TextField, Paper, Chip, Skeleton,
+  IconButton, Rating, Avatar, Fade, Zoom, Grow, Slide,
 } from '@mui/material';
+import { styled, alpha, keyframes } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import BeachAccessIcon from '@mui/icons-material/BeachAccess';
 import ExploreIcon from '@mui/icons-material/Explore';
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import HowToRegIcon from '@mui/icons-material/HowToReg';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { styled, alpha, keyframes } from '@mui/material/styles';
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import GroupsIcon from '@mui/icons-material/Groups';
+import StarIcon from '@mui/icons-material/Star';
+import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import { tripAPI, destinationAPI, searchAI, recommendationAPI, reviewAPI, fixImageUrl } from '../services/api';
 import { RootState } from '../store/index';
 import TripCard from '../components/TripCard';
 
-// Animations keyframes
+// ── Animations ───────────────────────────────────────────────────
 const float = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
 `;
 
-const slowZoom = keyframes`
-  0% { transform: scale(1); }
-  100% { transform: scale(1.1); }
+const fadeInUp = keyframes`
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
 `;
 
-// Hero images for infinite scroll
+const shimmer = keyframes`
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+`;
+
+// ── Hero images ───────────────────────────────────────────────────
 const HERO_IMAGES = [
   {
-    url: 'https://images.unsplash.com/photo-1771325676184-44d8035e3cd1?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    title: 'Aventure en Montagne',
-    location: 'Atlas, Maroc',
+    url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=90',
+    label: 'Atlas, Maroc',
+    subtitle: 'Explorez la beauté',
+    title: 'MONTAGNES',
   },
   {
-    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80',
-    title: 'Plages Paradisiaques',
-    location: 'Djerba, Tunisie',
+    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=90',
+    label: 'Djerba, Tunisie',
+    subtitle: 'Découvrez le paradis',
+    title: 'PLAGES',
   },
   {
-    url: 'https://images.unsplash.com/photo-1528127269322-539801943592?w=1920&q=80',
-    title: 'Désert du Sahara',
-    location: 'Douz, Tunisie',
+    url: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=1920&q=90',
+    label: 'Sahara, Tunisie',
+    subtitle: 'Traversez',
+    title: 'DÉSERT',
   },
   {
-    url: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=1920&q=80',
-    title: 'Médinas Historiques',
-    location: 'Tunis, Tunisie',
+    url: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=1920&q=90',
+    label: 'Tunis, Tunisie',
+    subtitle: 'Plongez dans',
+    title: 'HISTOIRE',
   },
 ];
 
-// Styled components
+// ── Styled ────────────────────────────────────────────────────────
 const HorizontalScroll = styled(Box)(({ theme }) => ({
   display: 'flex',
   overflowX: 'auto',
-  gap: theme.spacing(6),
+  gap: theme.spacing(3),
   padding: theme.spacing(2, 1),
   scrollBehavior: 'smooth',
-  '&::-webkit-scrollbar': {
-    height: 8,
-  },
-  '&::-webkit-scrollbar-track': {
-    backgroundColor: alpha(theme.palette.primary.main, 0.05),
-    borderRadius: 4,
-  },
+  '&::-webkit-scrollbar': { height: 6 },
+  '&::-webkit-scrollbar-track': { background: 'transparent' },
   '&::-webkit-scrollbar-thumb': {
-    backgroundColor: alpha(theme.palette.primary.main, 0.2),
+    background: alpha('#0EA5A0', 0.3),
     borderRadius: 4,
-    '&:hover': {
-      backgroundColor: alpha(theme.palette.primary.main, 0.3),
-    },
   },
 }));
 
-const DestinationCard = styled(Card)(({ theme }) => ({
-  minWidth: 260,
-  maxWidth: 260,
-  height: 300,
-  position: 'relative',
-  overflow: 'hidden',
-  cursor: 'pointer',
-  borderRadius: theme.spacing(3),
-  boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    transform: 'translateY(-8px)',
-    boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
-    '& .destination-image': {
-      transform: 'scale(1.1)',
-    },
-    '& .destination-content': {
-      transform: 'translateY(0)',
-    },
-  },
-}));
-
-const DestinationImage = styled(Box)({
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  transition: 'transform 0.5s ease',
-});
-
-const DestinationContent = styled(Box)(({ theme }) => ({
-  position: 'absolute',
-  bottom: 0,
-  left: 0,
-  right: 0,
-  padding: theme.spacing(2),
-  background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
-  color: 'white',
-  transform: 'translateY(20px)',
-  transition: 'transform 0.3s ease',
-}));
-
-const AnimatedBackground = styled(Box)({
-  position: 'absolute',
-  borderRadius: '50%',
-  background: 'rgba(255,255,255,0.05)',
-  animation: `${float} 6s ease-in-out infinite`,
-});
-
-const HeroBackground = styled(Box)(({ theme }) => ({
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  transition: 'opacity 1.5s ease-in-out',
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)',
-  },
-}));
-
-// Types
+// ── Types ─────────────────────────────────────────────────────────
 interface Destination {
-  id: number;
-  name: string;
-  country: string;
-  image: string;
-  price: number;
-  trips_count: number;
-  min_price?: number;
+  id: number; name: string; country: string;
+  image: string; price: number; trips_count: number; min_price?: number;
 }
-
 interface Trip {
-  id: number;
-  title: string;
-  short_description: string;
-  base_price: string;
-  currency: string;
-  duration_days: number;
+  id: number; title: string; short_description: string;
+  base_price: string; currency: string; duration_jours: number;
   images: Array<{ url: string; is_cover: boolean }>;
   organizer?: { id: number; agency_name?: string };
-  avg_rating?: number;
-  total_reviews?: number;
-  agency_name?: string;
+  avg_rating?: number; total_reviews?: number; agency_name?: string;
 }
-
-const normalizeTripImages = (images: any): Array<{ url: string; is_cover: boolean }> => {
-  if (Array.isArray(images)) {
-    return images
-      .filter((img: any) => img && img.url)
-      .map((img: any) => ({ url: img.url, is_cover: Boolean(img.is_cover) }));
-  }
-  if (images && typeof images === 'object') {
-    if (Array.isArray(images['hydra:member'])) {
-      return images['hydra:member']
-        .filter((img: any) => img && img.url)
-        .map((img: any) => ({ url: img.url, is_cover: Boolean(img.is_cover) }));
-    }
-    return (Object.values(images) as any[])
-      .filter((img: any) => img && typeof img === 'object' && img.url)
-      .map((img: any) => ({ url: img.url, is_cover: Boolean(img.is_cover) }));
-  }
-  return [];
-};
-
-// Destination icons
-const getDestinationIcon = (name: string) => {
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes('djerba') || lowerName.includes('beach') || lowerName.includes('mer')) {
-    return <BeachAccessIcon />;
-  }
-  if (lowerName.includes('sahara') || lowerName.includes('désert') || lowerName.includes('montagne')) {
-    return <TerrainIcon />;
-  }
-  if (lowerName.includes('kairouan') || lowerName.includes('histor') || lowerName.includes('culture')) {
-    return <HistoryEduIcon />;
-  }
-  return <ExploreIcon />;
-};
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const { user, token } = useSelector((state: RootState) => state.auth);
-  
-  const [featuredTrips, setFeaturedTrips] = useState<Trip[]>([]);
+
+  const [featuredTrips, setFeaturedTrips]   = useState<Trip[]>([]);
   const [recommendations, setRecommendations] = useState<Trip[]>([]);
-  const [destinations, setDestinations] = useState<Destination[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [destinationsLoading, setDestinationsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
-  
+  const [destinations, setDestinations]     = useState<Destination[]>([]);
+  const [loading, setLoading]               = useState(true);
+  const [destLoading, setDestLoading]       = useState(true);
+  const [searchQuery, setSearchQuery]       = useState('');
+  const [searchFocused, setSearchFocused]   = useState(false);
+  const [heroIdx, setHeroIdx]               = useState(0);
+  const [heroVisible, setHeroVisible]       = useState(true);
+
   const scrollRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadFeaturedTrips();
     loadDestinations();
-    loadRecommendations(); // Always load recommendations (trending trips)
-    
-    // Hero image infinite scroll - seulement l'image change, pas le contenu
-    const interval = setInterval(() => {
-      setCurrentHeroIndex((prev) => (prev + 1) % HERO_IMAGES.length);
-    }, 5000);
-    
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user]);
+    loadRecommendations();
+    const iv = setInterval(() => {
+      setHeroVisible(false);
+      setTimeout(() => {
+        setHeroIdx(p => (p + 1) % HERO_IMAGES.length);
+        setHeroVisible(true);
+      }, 600);
+    }, 6000);
+    return () => clearInterval(iv);
+  }, [token]);
 
   const loadFeaturedTrips = async () => {
     try {
-      console.log('Loading featured trips...');
-      const response = await tripAPI.list({ limit: 10 });
-      console.log('Featured trips response:', response.data);
-      // Handle both Hydra format and regular array response
-      let trips = response.data;
-      if (trips && typeof trips === 'object') {
-        trips = trips['hydra:member'] || trips;
-      }
+      const res = await tripAPI.list({ limit: 10 });
+      let trips = res.data;
+      if (trips && typeof trips === 'object') trips = trips['hydra:member'] || trips;
       setFeaturedTrips(Array.isArray(trips) ? trips : []);
-    } catch (error) {
-      console.error('Error loading trips:', error);
-      setFeaturedTrips([]);
-    } finally {
-      setLoading(false);
-    }
+    } catch { setFeaturedTrips([]); }
+    finally { setLoading(false); }
   };
 
   const loadDestinations = async () => {
     try {
-      const response = await destinationAPI.list();
-      const data = response.data;
-      setDestinations(Array.isArray(data) ? data : data['hydra:member'] || []);
-    } catch (error) {
-      console.error('Error loading destinations:', error);
-    } finally {
-      setDestinationsLoading(false);
-    }
+      const res = await destinationAPI.list();
+      const d = res.data;
+      setDestinations(Array.isArray(d) ? d : d['hydra:member'] || []);
+    } catch { }
+    finally { setDestLoading(false); }
   };
 
   const loadRecommendations = async () => {
     try {
-      const response = await recommendationAPI.getTrending(4);
-      const data = response.data;
-      console.log('Trending response:', data);
-      if (data.trending && Array.isArray(data.trending) && data.trending.length > 0) {
-        const tripsWithReviews = await Promise.all(
-          data.trending.map(async (item: any) => {
-            const trip = item.trip;
-            try {
-              const reviewRes = await reviewAPI.getTripReviews(trip.id);
-              const reviewData = reviewRes.data || {};
-
-              return {
-                ...trip,
-                images: trip.images || [],
-                avg_rating: Number(reviewData.avg_rating ?? 0),
-                total_reviews: Number(reviewData.total ?? 0),
-                agency_name: trip.organizer?.agency_name || trip.organizer?.agencyName || `Agence #${trip.organizer?.id ?? '-'}`,
-              };
-            } catch (reviewError) {
-              console.warn(`Could not load reviews for trip ${trip.id}:`, reviewError);
-              return {
-                ...trip,
-                images: trip.images || [],
-                avg_rating: 0,
-                total_reviews: 0,
-                agency_name: trip.organizer?.agency_name || trip.organizer?.agencyName || `Agence #${trip.organizer?.id ?? '-'}`,
-              };
-            }
-          })
-        );
-        console.log('Loaded trips with reviews:', tripsWithReviews);
-        setRecommendations(tripsWithReviews);
-      } else {
-        console.log('No trending trips found');
-        setRecommendations([]);
+      const res = await recommendationAPI.getTrending(4);
+      const data = res.data;
+      if (data.trending?.length) {
+        const trips = await Promise.all(data.trending.map(async (item: any) => {
+          const trip = item.trip;
+          try {
+            const rRes = await reviewAPI.getTripReviews(trip.id);
+            return { ...trip, images: trip.images || [], avg_rating: Number(rRes.data?.avg_rating ?? 0), total_reviews: Number(rRes.data?.total ?? 0), agency_name: trip.organizer?.agency_name || `Agence #${trip.organizer?.id ?? '-'}` };
+          } catch { return { ...trip, images: trip.images || [], avg_rating: 0, total_reviews: 0 }; }
+        }));
+        setRecommendations(trips);
       }
-    } catch (error) {
-      console.error('Error loading recommendations:', error);
-      setRecommendations([]);
-    }
+    } catch { setRecommendations([]); }
   };
 
-  const handleSmartSearch = async () => {
+  const handleSearch = async () => {
     try {
-      console.log('AI Search request:', searchQuery);
-      const response = await searchAI.smartSearch(searchQuery);
-      console.log('AI Search response status:', response.status);
-      console.log('AI Search response data:', response.data);
-      const parsed = response.data;
-      
-      console.log('Parsed response:', parsed);
-      
-      const params = new URLSearchParams();
-      if (searchQuery) {
-        params.append('search', searchQuery);
-      }
-      
-      // Always pass trip IDs if available (this ensures exact AI search results are used)
-      if (parsed && parsed.trips && parsed.trips.length > 0) {
-        const tripIds = parsed.trips.map((t: any) => t.id);
-        params.append('ids', tripIds.join(','));
-        console.log('Using AI search trip IDs:', tripIds);
-      }
-      
-      // Also add AI-parsed filters for reference (but TripList will use IDs primarily)
-      if (parsed && parsed.ai_analysis && !parsed.ai_warning) {
-        if (parsed.ai_analysis?.destination) {
-          params.append('destination', parsed.ai_analysis.destination);
-        }
-        if (parsed.ai_analysis?.max_price) {
-          params.append('max_price', parsed.ai_analysis.max_price.toString());
-        }
-        if (parsed.ai_analysis?.category) {
-          params.append('category', parsed.ai_analysis.category);
-        }
-        console.log('Also added AI-parsed filters');
-      }
-      
-      const url = `/trips?${params.toString()}`;
-      console.log('Navigating to:', url);
-      navigate(url);
-    } catch (error: any) {
-      console.error('AI search error:', error?.response?.data || error?.message || error);
-      // Fallback: just do basic search
+      const res = await searchAI.smartSearch(searchQuery);
+      const parsed = res.data;
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
+      if (parsed?.trips?.length) params.append('ids', parsed.trips.map((t: any) => t.id).join(','));
       navigate(`/trips?${params.toString()}`);
+    } catch {
+      navigate(`/trips?search=${encodeURIComponent(searchQuery)}`);
     }
   };
 
-  const handleHeroNext = () => {
-    setCurrentHeroIndex((prev) => (prev + 1) % HERO_IMAGES.length);
-  };
-
-  const handleHeroPrev = () => {
-    setCurrentHeroIndex((prev) => (prev - 1 + HERO_IMAGES.length) % HERO_IMAGES.length);
-  };
-
-  // Auto-scroll infini pour destinations
+  // Auto-scroll destinations
   useEffect(() => {
     const row = scrollRef.current;
     if (!row || destinations.length === 0) return;
-
     let animId: number;
     let isPaused = false;
-    let isDown = false;
-    let startX = 0;
     let scrollLeft = 0;
-    const speed = 1.2; // px par frame — vitesse augmentée
-
+    const speed = 0.6;
     const animate = () => {
       if (!isPaused && row) {
         row.scrollLeft += speed;
-        // quand on atteint la moitié (les items sont doublés), on revient au début silencieusement
-        if (row.scrollLeft >= row.scrollWidth / 2) {
-          row.scrollLeft = 0;
-        }
-        // update scale + info reveal
-        const center = row.scrollLeft + row.clientWidth / 2;
-        row.querySelectorAll<HTMLElement>('[data-dest-card]').forEach((card) => {
-          const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-          const dist = Math.abs(center - cardCenter);
-          const isActive = dist < card.offsetWidth * 0.6;
-          card.style.transform = isActive ? 'scale(1)' : 'scale(0.85)';
-          card.style.opacity = isActive ? '1' : '0.5';
-          // show/hide info overlay
-          const info = card.querySelector<HTMLElement>('[data-card-info]');
-          if (info) {
-            info.style.opacity = isActive ? '1' : '0';
-            info.style.transform = isActive ? 'translateY(0)' : 'translateY(10px)';
-          }
-        });
-        // progress bar removed
+        if (row.scrollLeft >= row.scrollWidth / 2) row.scrollLeft = 0;
       }
       animId = requestAnimationFrame(animate);
     };
-
     animId = requestAnimationFrame(animate);
-
-    // pause on hover
     const onEnter = () => { isPaused = true; };
-    const onLeave = () => { if (!isDown) isPaused = false; };
+    const onLeave = () => { isPaused = false; };
     row.addEventListener('mouseenter', onEnter);
     row.addEventListener('mouseleave', onLeave);
-
-    // drag to scroll
-    const onDown = (e: MouseEvent) => { isDown = true; isPaused = true; startX = e.pageX - row.offsetLeft; scrollLeft = row.scrollLeft; };
-    const onUp = () => { isDown = false; isPaused = false; };
-    const onMove = (e: MouseEvent) => {
-      if (!isDown) return;
-      e.preventDefault();
-      row.scrollLeft = scrollLeft - (e.pageX - row.offsetLeft - startX) * 1.2;
-      if (row.scrollLeft >= row.scrollWidth / 2) row.scrollLeft = 0;
-      if (row.scrollLeft < 0) row.scrollLeft = row.scrollWidth / 2 - row.clientWidth;
-    };
-
-    row.addEventListener('mousedown', onDown);
-    window.addEventListener('mouseup', onUp);
-    row.addEventListener('mousemove', onMove);
-
     return () => {
       cancelAnimationFrame(animId);
       row.removeEventListener('mouseenter', onEnter);
       row.removeEventListener('mouseleave', onLeave);
-      row.removeEventListener('mousedown', onDown);
-      window.removeEventListener('mouseup', onUp);
-      row.removeEventListener('mousemove', onMove);
     };
   }, [destinations]);
 
-
+  const hero = HERO_IMAGES[heroIdx];
 
   return (
-    <Box sx={{ overflow: 'hidden' }}>
-     {/* Hero Section avec arrière-plan qui change seulement */}
-        <Box
-          sx={{
-            position: 'relative',
-            width: 'min(1300px, calc(100% - 24px))', 
-            mx: 'auto',
-            mt: { xs: 10, md: 12 },
-            height: { xs: '62vh', md: '70vh' },
-            minHeight: { xs: 400, md: 480 },
-            maxHeight: 900,
-            borderRadius: { xs: '36px', md: '36x' },
-            overflow: 'hidden',
-          }}
-        >
-        {/* Images d'arrière-plan avec transition en fondu */}
-        {HERO_IMAGES.map((image, index) => (
-          <HeroBackground
-            key={index}
-            sx={{
-              backgroundImage: `url(${image.url})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              opacity: index === currentHeroIndex ? 1 : 0,
-              zIndex: index === currentHeroIndex ? 1 : 0,
-            }}
-          />
+    <Box sx={{ overflow: 'hidden', bgcolor: '#fff' }}>
+
+      {/* ════════════════════════════════════════════════
+          HERO — Fullscreen avec search bar flottante
+      ════════════════════════════════════════════════ */}
+      <Box sx={{ position: 'relative', width: '100%', height: '100vh', minHeight: 600, maxHeight: 900,  mt: '-72px',pt: '72px'   }}>
+
+        {/* Background images avec crossfade */}
+        {HERO_IMAGES.map((img, i) => (
+          <Box key={i} sx={{
+            position: 'absolute', inset: 0,
+            backgroundImage: `url(${img.url})`,
+            backgroundSize: 'cover', backgroundPosition: 'center',
+            transition: 'opacity 1s ease-in-out',
+            opacity: i === heroIdx ? 1 : 0,
+            '&::after': {
+              content: '""', position: 'absolute', inset: 0,
+              background: 'linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.55) 100%)',
+            },
+          }} />
         ))}
-        
-        {/* Éléments décoratifs animés (restent stables) */}
-        <AnimatedBackground
-          sx={{
-            top: '10%',
-            left: '5%',
-            width: 300,
-            height: 300,
-            animationDelay: '0s',
-            zIndex: 2,
-          }}
-        />
-        <AnimatedBackground
-          sx={{
-            bottom: '20%',
-            right: '10%',
-            width: 200,
-            height: 200,
-            animationDelay: '2s',
-            animationDirection: 'reverse',
-            zIndex: 2,
-          }}
-        />
-        
-        {/* Contenu fixe qui ne change pas avec les images */}
-        <Container
-          maxWidth="lg"
-          sx={{
-            position: 'relative',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 3,
-          }}
-        >
-          <Box sx={{ textAlign: 'center', color: 'white', width: '100%' }}>
-            {/* Location Chip - change avec l'image mais en douceur */}
-            <Fade key={currentHeroIndex} in={true} timeout={1000}>
-              <Chip
-                label={HERO_IMAGES[currentHeroIndex].location}
-                sx={{
-                  mb: 3,
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  backdropFilter: 'blur(10px)',
-                  color: 'white',
-                  fontSize: '1rem',
-                  px: 2,
-                }}
-              />
-            </Fade>
-            
-            {/* Titre principal - change avec l'image mais en douceur */}
-            <Fade key={`title-${currentHeroIndex}`} in={true} timeout={1500}>
-              <Typography
-                variant="h1"
-                sx={{
-                  fontWeight: 800,
-                  fontSize: { xs: '3rem', md: '5rem' },
-                  mb: 2,
-                  textShadow: '0 4px 30px rgba(0,0,0,0.3)',
-                }}
-              >
-                {HERO_IMAGES[currentHeroIndex].title}
-              </Typography>
-            </Fade>
-            
-            {/* Sous-titre - reste fixe */}
-            <Typography
-              variant="h5"
-              sx={{
-                maxWidth: 600,
-                mx: 'auto',
-                mb: 4,
-                opacity: 0.9,
-              }}
-            >
-              Découvrez des expériences uniques avec TripBooking
+
+        {/* Left/Right location labels (style Travalo) */}
+        <Box sx={{
+          position: 'absolute', top: '50%', left: 40,
+          transform: 'translateY(-50%)',
+          zIndex: 5, display: { xs: 'none', md: 'flex' },
+          flexDirection: 'column', alignItems: 'center', gap: 1,
+        }}>
+          <IconButton onClick={() => setHeroIdx(p => (p - 1 + HERO_IMAGES.length) % HERO_IMAGES.length)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.3)', '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' } }}>
+            <ChevronLeftIcon />
+          </IconButton>
+          <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, letterSpacing: 2,
+            textTransform: 'uppercase', writingMode: 'vertical-rl', mt: 1 }}>
+            {HERO_IMAGES[(heroIdx - 1 + HERO_IMAGES.length) % HERO_IMAGES.length].label}
+          </Typography>
+        </Box>
+
+        <Box sx={{
+          position: 'absolute', top: '50%', right: 40,
+          transform: 'translateY(-50%)',
+          zIndex: 5, display: { xs: 'none', md: 'flex' },
+          flexDirection: 'column', alignItems: 'center', gap: 1,
+        }}>
+          <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, letterSpacing: 2,
+            textTransform: 'uppercase', writingMode: 'vertical-rl', mb: 1 }}>
+            {HERO_IMAGES[(heroIdx + 1) % HERO_IMAGES.length].label}
+          </Typography>
+          <IconButton onClick={() => setHeroIdx(p => (p + 1) % HERO_IMAGES.length)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.3)', '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' } }}>
+            <ChevronRightIcon />
+          </IconButton>
+        </Box>
+
+        {/* Hero content */}
+        <Box sx={{
+          position: 'relative', zIndex: 3, height: '100%',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          px: 2, pb: 12,
+        }}>
+          {/* Subtitle script */}
+          <Fade in={heroVisible} timeout={800}>
+            <Typography sx={{
+              fontFamily: '"Dancing Script", "Brush Script MT", cursive',
+              fontSize: { xs: '1.6rem', md: '2.4rem' },
+              color: 'rgba(255,255,255,0.92)',
+              letterSpacing: 1, mb: 0,
+              textShadow: '0 2px 12px rgba(0,0,0,0.4)',
+              animation: `${fadeInUp} 0.8s ease`,
+            }}>
+              {hero.subtitle}
             </Typography>
+          </Fade>
 
-            {/* Barre de recherche - FIXE, ne change pas avec les images */}
-            <Paper
-              component="form"
-              onSubmit={(e) => { e.preventDefault(); handleSmartSearch(); }}
+          {/* Big title */}
+          <Fade in={heroVisible} timeout={1000}>
+            <Typography sx={{
+              fontSize: { xs: '14vw', sm: '10vw', md: '9vw', lg: '8vw' },
+              fontWeight: 900,
+              color: '#fff',
+              lineHeight: 0.9,
+              letterSpacing: '-0.02em',
+              textShadow: '0 8px 40px rgba(0,0,0,0.3)',
+              mb: 2,
+              animation: `${fadeInUp} 0.9s ease`,
+            }}>
+              {hero.title}
+            </Typography>
+          </Fade>
+
+          {/* Location pill */}
+          <Fade in={heroVisible} timeout={1200}>
+            <Chip label={hero.label}
+              icon={<LocationOnIcon sx={{ fontSize: 14, color: '#fff !important' }} />}
               sx={{
-                maxWidth: 1100,
-                width: '100%',
-                mx: 'auto',
-                minHeight: { xs: 64, md: 74 },
-                px: { xs: 1.2, md: 1.6 },
-                py: { xs: 0.6, md: 0.8 },
-                borderRadius: '999px',
-                backgroundColor: 'rgba(255,255,255,0.95)',
-                backdropFilter: 'blur(20px)',
-                display: 'flex',
-                alignItems: 'center',
-                transition: 'all 0.3s ease',
-                '&:focus-within': {
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-                  transform: 'scale(1.02)',
-                },
-              }}
-            >
-              <SearchIcon sx={{ mx: 2, color: 'primary.main' }} />
-              <TextField
-                fullWidth
-                inputRef={searchInputRef}
-                placeholder="Où voulez-vous aller ? (ex: Djerba, montagne, budget 500 DT...)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                variant="standard"
-                InputProps={{ 
-                  disableUnderline: true,
-                  sx: { 
-                    fontSize: { xs: '1rem', md: '1.1rem' },
-                    py: { xs: 1.1, md: 1.4 },
+                bgcolor: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)',
+                color: '#fff', fontSize: '0.85rem', fontWeight: 600,
+                border: '1px solid rgba(255,255,255,0.3)', mb: 3,
+                animation: `${fadeInUp} 1s ease`,
+              }} />
+          </Fade>
 
-                  }
-                }}
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                sx={{
-                  mx: 1,
-                  px: { xs: 3, md: 4.5 },
-                  py: { xs: 1.2, md: 1.5 },
-                  borderRadius: '999px',
-                  background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Rechercher
-              </Button>
-            </Paper>
-
-            {/* Suggestions de recherche rapide - apparaissent au focus */}
-            <Fade in={isSearchFocused}>
-              <Box
-                sx={{
-                  mt: 2,
-                  display: 'flex',
-                  gap: 1,
-                  flexWrap: 'wrap',
-                  justifyContent: 'center',
-                }}
-              >
-                {['Djerba', 'Sahara', 'Montagne', 'Historique', 'Plage'].map((suggestion) => (
-                  <Chip
-                    key={suggestion}
-                    label={suggestion}
-                    onClick={() => {
-                      setSearchQuery(suggestion);
-                      searchInputRef.current?.focus();
-                    }}
-                    sx={{
-                      backgroundColor: 'rgba(255,255,255,0.15)',
-                      color: 'white',
-                      backdropFilter: 'blur(10px)',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        backgroundColor: 'rgba(255,255,255,0.25)',
-                      },
-                    }}
-                  />
-                ))}
-              </Box>
-            </Fade>
+          {/* Dots navigation */}
+          <Box sx={{ display: 'flex', gap: 1, mb: 4 }}>
+            {HERO_IMAGES.map((_, i) => (
+              <Box key={i} onClick={() => setHeroIdx(i)} sx={{
+                width: i === heroIdx ? 32 : 8, height: 4, borderRadius: 2,
+                bgcolor: i === heroIdx ? '#fff' : 'rgba(255,255,255,0.4)',
+                cursor: 'pointer', transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#fff' },
+              }} />
+            ))}
           </Box>
-        </Container>
+        </Box>
 
-        {/* Hero Indicators */}
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: 40,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex',
-            gap: 1,
-            zIndex: 4,
-          }}
-        >
-          {HERO_IMAGES.map((_, index) => (
-            <Box
-              key={index}
-              onClick={() => setCurrentHeroIndex(index)}
-              sx={{
-                width: 40,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: index === currentHeroIndex ? 'white' : 'rgba(255,255,255,0.3)',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  backgroundColor: 'white',
-                },
-              }}
+        {/* ── Search bar flottante — chevauche hero + section blanche ── */}
+        <Box sx={{
+          position: 'absolute', bottom: -65, left: '50%',
+          transform: 'translateX(-50%)',
+          width: { xs: '90%', md: '85%' }, // Occupe plus d'espace sur l'écran
+          maxWidth: 1100,  zIndex: 10,
+        }}>
+          <Paper component="form" onSubmit={e => { e.preventDefault(); handleSearch(); }}
+            elevation={0}
+            sx={{
+              display: 'flex', alignItems: 'center',
+              bgcolor: '#fff', borderRadius: '16px',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08)',
+              px: 2, py: 3,
+              border: searchFocused ? '1px solid #0EA5A0' : '2px solid transparent',
+              transition: 'border-color 0.2s',
+            }}>
+            <SearchIcon sx={{ color: '#0EA5A0', fontSize: 24, mr: 1.5, flexShrink: 0 }} />
+            <TextField fullWidth variant="standard"
+              placeholder="Où voulez-vous aller ? (ex: Djerba, safari, montagne...)"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              InputProps={{ disableUnderline: true, sx: { fontSize: { xs: '0.9rem', md: '1rem' }, py: 0.8 } }}
             />
-          ))}
+            <Button type="submit" variant="contained"
+              sx={{
+                ml: 1, flexShrink: 0, borderRadius: '12px',
+                px: { xs: 2, md: 3.5 }, py: 1.2,
+                background: 'linear-gradient(135deg, #0EA5A0, #0F2D5C)',
+                textTransform: 'none', fontWeight: 700, fontSize: '0.9rem',
+                '&:hover': { background: 'linear-gradient(135deg, #0c9490, #0d2550)' },
+              }}>
+              Rechercher
+            </Button>
+          </Paper>
+
+          {/* Suggestions rapides */}
+          <Fade in={searchFocused}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.5, px: 1 }}>
+              {['Djerba', 'Sahara', 'Montagne', 'Plage', 'Culture'].map(s => (
+                <Chip key={s} label={s} size="small" onClick={() => setSearchQuery(s)}
+                  sx={{ bgcolor: '#fff', border: '1px solid #e2e8f0', cursor: 'pointer',
+                    fontSize: '0.8rem', '&:hover': { borderColor: '#0EA5A0', color: '#0EA5A0' } }} />
+              ))}
+            </Box>
+          </Fade>
         </Box>
       </Box>
-
+       
+      {/* ════════════════════════════════════════════════
+          DESTINATIONS populaires
+      ════════════════════════════════════════════════ */}
+    
       {/* Popular Destinations Section */}
-      <Box sx={{ py: { xs: 4, md: 6 }, bgcolor: '#f8fafc' }}>
+      <Box sx={{ py: { xs: 4, md: 6 },pt: { xs: 12, md: 20 }, bgcolor: '#f8fafc' }}>
         <Container maxWidth="lg">
           {/* Header */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5, color: '#0D47A1' }}>
+            <Typography sx={{ fontSize: { xs: '1.6rem', md: '2rem' }, fontWeight: 800, color: '#0F2D5C' }}>
                 Destinations populaires
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography sx={{ fontSize: 14, color: '#64748B', mb: 4 }}>
                 Les destinations préférées de nos voyageurs
               </Typography>
             </Box>
@@ -716,13 +402,12 @@ const Home: React.FC = () => {
               to="/destinations"
               size="small"
               endIcon={<ArrowForwardIcon />}
-              sx={{ borderRadius: 2, borderColor: '#00BFA5', color: '#00BFA5', '&:hover': { borderColor: '#0D47A1', bgcolor: alpha('#00BFA5', 0.04) } }}
+              sx={{ borderRadius: 2, borderColor: '#0d2550', color: '#0d2550', '&:hover': { borderColor: '#0d2550', bgcolor: alpha('#0d2550', 0.04) } }}
             >
               Voir tout
             </Button>
           </Box>
-
-          {destinationsLoading ? (
+           {destLoading ? (
             <Grid container spacing={2}>
               {[1, 2, 3, 4].map((i) => (
                 <Grid item xs={12} sm={6} md={3} key={i}>
@@ -779,7 +464,6 @@ const Home: React.FC = () => {
                         borderRadius: 8,
                       }}
                     />
-
                     {/* Overlay gradient to match reference-style card readability */}
                     <Box sx={{
                       position: 'absolute',
@@ -787,7 +471,6 @@ const Home: React.FC = () => {
                       background: 'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.08) 35%, rgba(0,0,0,0.7) 100%)',
                       borderRadius: 2,
                     }} />
-
                     {/* Info overlay — hidden by default, revealed when card is center */}
                     <Box
                       data-card-info
@@ -863,195 +546,169 @@ const Home: React.FC = () => {
           )}
         </Container>
       </Box>
-      {/* AI Recommendations Section */}
+
+
+     {/* ════════════════════════════════════════════════
+          RECOMMENDATIONS — Style "Nouveaux Voyages" comme l'image
+      ════════════════════════════════════════════════ */}
       {recommendations.length > 0 && (
-        <Box
-          sx={{
-            py: { xs: 5, md: 8 },
-            backgroundColor: '#F8FAFC',
-          }}
-        >
-          <Container maxWidth="lg">
-            <Slide direction="down" in={true} timeout={1000}>
-              <Box
+        <Box sx={{
+          position: 'relative',
+          py: { xs: 6, md: 9 },
+          overflow: 'hidden',
+          bgcolor: '#F8F9FA',
+        }}>
+
+          {/* Watermark montagne en bas */}
+          <Box sx={{
+            position: 'absolute',
+            bottom: 0, left: 0, right: 0,
+            height: '100%',
+            backgroundImage: 'url(https://i.pinimg.com/736x/fe/17/78/fe17784f7dcf764a6a7cf67dd0511829.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center top',
+            opacity: 0.07,
+            filter: 'grayscale(100%)',
+          }} />
+
+          <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+
+            {/* Header row */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <AutoAwesomeIcon sx={{ color: '#0F2D5C', fontSize: 55 }} />
+                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Typography sx={{ fontSize: { xs: '1.5rem', md: '1.9rem' }, fontWeight: 800, color: '#0F2D5C', letterSpacing: '0.05em' }}>
+                      {token ? 'Recommandations pour vous' : 'Tendances du moment qui inspirent nos voyageurs'}
+                    </Typography>
+                   
+                  </Box>
+              </Box>
+              
+              <Typography
+                onClick={() => navigate('/trips')}
                 sx={{
-                  background: 'linear-gradient(180deg,rgb(83, 149, 159) 0%,rgb(32, 54, 90) 100%)',
-                  borderRadius: 1,
-                  p: { xs: 2, md: 3 },
-                  boxShadow: '0 16px 38px rgba(17, 24, 39, 0.24)',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  color: '#0F2D5C',
+                  cursor: 'pointer',
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' },
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-                  <AutoAwesomeIcon sx={{ color: '#BBD4FF', fontSize: 26 }} />
-                  <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>
-                    {token ? 'Recommandations pour vous' : 'Tendances du moment qui inspirent nos voyageurs'}
-                  </Typography>
-                </Box>
-                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.78)', mb: 2.5 }}>
-                  {token ? 'Basé sur vos préférences de voyage' : 'Découvrez des expériences recommandées cette semaine'}
-                </Typography>
+                Voir tous les voyages →
+              </Typography>
+            </Box>
 
-                <Box
-                  sx={{
-                    display: 'flex',
-                    gap: 2,
-                    overflowX: 'auto',
-                    pb: 0.5,
-                    scrollbarWidth: 'none',
-                    '&::-webkit-scrollbar': { display: 'none' },
-                  }}
-                >
-                  {recommendations.map((trip: any, index) => {
-                    return (
-                      <Zoom in={true} timeout={1000} style={{ transitionDelay: `${index * 90}ms` }} key={trip.id}>
-                        <Card
-                          sx={{
-                            minWidth: { xs: 320, md: 335 },
-                            maxWidth: { xs: 320, md: 335 },
-                            borderRadius: 1,
-                            p: 2,
-                            bgcolor: 'rgba(255,255,255,0.98)',
-                            boxShadow: '0 8px 24px rgba(6, 12, 24, 0.2)',
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              fontWeight: 700,
-                              fontSize: '0.97rem',
-                              color: '#0F172A',
-                              lineHeight: 1.25,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                              mb: 0.8,
-                              textDecoration: 'underline',
-                              textUnderlineOffset: '2px',
-                            }}
-                          >
-                            {trip.title}
-                          </Typography>
+            {/* Cards grid */}
+            <Grid container spacing={3}>
+              {recommendations.slice(0, 3).map((trip: any, i: number) => (
+                <Grid item xs={12} md={4} key={trip.id}>
+                  <Box
+                    onClick={() => navigate(`/trips/${trip.id}`)}
+                    sx={{
+                      cursor: 'pointer',
+                      transition: 'transform 0.22s ease',
+                      '&:hover': { transform: 'translateY(-4px)' },
+                      '&:hover .trip-img': { transform: 'scale(1.04)' },
+                    }}
+                  >
+                    {/* Image — pas de border-radius bas */}
+                    <Box sx={{
+                      height: 210,
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      mb: 1.5,
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
+                    }}>
+                      <Box
+                        component="img"
+                        className="trip-img"
+                        src={fixImageUrl(trip.images?.find((img: any) => img.is_cover)?.url || trip.images?.[0]?.url)}
+                        alt={trip.title}
+                        sx={{
+                          width: '100%', height: '100%', objectFit: 'cover',
+                          transition: 'transform 0.35s ease',
+                        }}
+                        onError={(e: any) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=70';
+                        }}
+                      />
+                    </Box>
 
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.2 }}>
-                            <Rating
-                              value={Number(trip.avg_rating || 0)}
-                              precision={0.1}
-                              readOnly
-                              size="small"
-                            />
-                            <Typography sx={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
-                              {(trip.avg_rating || 0).toFixed(1)} ({trip.total_reviews || 0} avis)
-                            </Typography>
-                          </Box>
+                    {/* Rating */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.6 }}>
+                      <Rating value={Number(trip.avg_rating || 5)} precision={0.1} readOnly size="small"
+                        sx={{ '& .MuiRating-iconFilled': { color: '#FFB300' } }} />
+                      <Typography sx={{ fontSize: '0.78rem', color: '#666' }}>
+                        ({trip.total_reviews || 1} Avis{(trip.total_reviews || 1) > 1 ? 's' : ''})
+                      </Typography>
+                    </Box>
 
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.1 }}>
-                            <Avatar sx={{ width: 28, height: 28, bgcolor: '#FF5A36', fontSize: '0.82rem', fontWeight: 700 }}>
-                              {(trip.agency_name || 'A').charAt(0).toUpperCase()}
-                            </Avatar>
-                            <Typography sx={{ fontWeight: 700, fontSize: '0.88rem', color: '#0F172A' }}>
-                              {trip.agency_name || 'Agence'}
-                            </Typography>
-                            <Typography sx={{ fontSize: '0.76rem', color: '#64748B' }}>
-                              - {trip.duration_days} jours
-                            </Typography>
-                          </Box>
+                    {/* Title */}
+                    <Typography sx={{
+                      fontWeight: 700,
+                      fontSize: '0.97rem',
+                      color: '#1a1a2e',
+                      lineHeight: 1.35,
+                      mb: 0.8,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}>
+                      {trip.title}
+                    </Typography>
 
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: '#1F2937',
-                              minHeight: 72,
-                              mb: 1.2,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 4,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {trip.short_description || 'Expérience recommandée par notre communauté de voyageurs.'}
-                          </Typography>
-                         {/* Images with +N overlay + placeholder fallback */}
-                            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                              {(() => {
-                                const PLACEHOLDERS = [
-                                  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=120&q=60',
-                                  'https://images.unsplash.com/photo-1528127269322-539801943592?w=120&q=60',
-                                  'https://images.unsplash.com/photo-1548013146-72479768bada?w=120&q=60',
-                                ];
+                    {/* Duration */}
+                    {trip.duration_jours && (
+                      <Typography sx={{ fontSize: '0.8rem', color: '#888', mb: 0.4 }}>
+                        {trip.duration_days} jours {Math.max(trip.duration_jours - 1, 1)} nuit
+                      </Typography>
+                    )}
 
-                                const nonCoverImages = trip.images?.filter((img: any) => !img.is_cover) || [];
-                                const allImages = nonCoverImages.length > 0 ? nonCoverImages : (trip.images || []);
+                    {/* Destination */}
+                    <Typography sx={{ fontSize: '0.8rem', color: '#888', mb: 1 }}>
+                      {trip.destinations?.map((d: any) => d.name).join(', ') || trip.destination || ''}
+                    </Typography>
 
-                                const finalImages = allImages.length > 0
-                                  ? allImages.map((img: any) => ({ url: fixImageUrl(img?.url), real: true }))
-                                  : PLACEHOLDERS.map(url => ({ url, real: false }));
+                    {/* Prix — style "From $5,100  $4,900" */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography sx={{ fontSize: '0.82rem', color: '#999' }}>"À partir de</Typography>
+                      {trip.original_price && trip.original_price > trip.base_price && (
+                        <Typography sx={{
+                          fontSize: '0.82rem',
+                          color: '#aaa',
+                          textDecoration: 'line-through',
+                        }}>
+                          ${Number(trip.original_price).toLocaleString()}
+                        </Typography>
+                      )}
+                      <Typography sx={{
+                        fontSize: '0.95rem',
+                        fontWeight: 700,
+                        color: '#FF6D00',
+                      }}>
+                        {Number(trip.base_price).toLocaleString()} {trip.currency || 'TND'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
 
-                                const MAX_VISIBLE = 3;
-                                const visible = finalImages.slice(0, MAX_VISIBLE);
-                                const hiddenCount = Math.max(0, allImages.length - MAX_VISIBLE);
-
-                                return visible.map((img: any, i: number) => {
-                                  const isLast = i === MAX_VISIBLE - 1 && hiddenCount > 0;
-                                  return (
-                                    <Box
-                                      key={i}
-                                      sx={{
-                                        position: 'relative',
-                                        width: 60,
-                                        height: 60,
-                                        borderRadius: 0.5,
-                                        overflow: 'hidden',
-                                        flexShrink: 0,
-                                      }}
-                                    >
-                                      <Box
-                                        component="img"
-                                        src={img.url}
-                                        alt={`${trip.title} ${i + 1}`}
-                                        sx={{
-                                          width: '100%',
-                                          height: '100%',
-                                          objectFit: 'cover',
-                                          display: 'block',
-                                          filter: img.real ? 'none' : 'brightness(0.85) saturate(0.7)',
-                                        }}
-                                      />
-                                      {isLast && (
-                                        <Box sx={{
-                                          position: 'absolute',
-                                          inset: 0,
-                                          bgcolor: 'rgba(0,0,0,0.52)',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                        }}>
-                                          <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
-                                            +{hiddenCount}
-                                          </Typography>
-                                        </Box>
-                                      )}
-                                    </Box>
-                                  );
-                                });
-                              })()}
-                            </Box>
-                        </Card>
-                      </Zoom>
-                    );
-                  })}
-                </Box>
-              </Box>
-            </Slide>
           </Container>
         </Box>
       )}
-
-      {/* Featured Trips Section */}
-      <Box sx={{ py: { xs: 6, md: 10 }, backgroundColor: '#F8FAFC' }}>
+      {/* ════════════════════════════════════════════════
+          VOYAGES POPULAIRES
+      ════════════════════════════════════════════════ */}
+       {/* Featured Trips Section */}
+       <Box sx={{ py: { xs: 6, md: 10 }, backgroundColor: '#F8FAFC' }}>
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
             <Box>
-              <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
+              <Typography variant="h3" color="#0F2D5C" sx={{ fontWeight: 700, mb: 1 }}>
                 Voyages en Vedette
               </Typography>
               <Typography variant="body1" color="text.secondary">
@@ -1064,22 +721,14 @@ const Home: React.FC = () => {
           to="/trips"
           size="small"
           endIcon={<ArrowForwardIcon />}
-          sx={{ 
-            borderRadius: 2,
-            borderColor: '#00BFA5',
-            color: '#00BFA5',
-            '&:hover': {
-              borderColor: '#0D47A1',
-              bgcolor: alpha('#00BFA5', 0.04),
-            }
-          }}
+          sx={{ borderRadius: 2, borderColor: '#0d2550', color: '#0d2550', '&:hover': { borderColor: '#0d2550', bgcolor: alpha('#0d2550', 0.04) } }}
+
         >
           Voir tout
         </Button>
           </Box>
-
           {loading ? (
-            <Box sx={{ display: 'flex', gap: 3, overflowX: 'auto', pb: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 2 }}>
               {[1, 2, 3, 4].map((i) => (
                 <Box key={i} sx={{ minWidth: 280 }}>
                   <Skeleton variant="rectangular" height={350} sx={{ borderRadius: 3 }} />
@@ -1088,97 +737,65 @@ const Home: React.FC = () => {
             </Box>
           ) : (
             <HorizontalScroll>
-              {(Array.isArray(featuredTrips) ? featuredTrips : []).map((trip: any, index) => (
-                <Grow
-                  key={trip.id}
-                  in={true}
-                  timeout={1000}
-                  style={{ transformOrigin: '0 0 0' }}
-                >
+            <Box sx={{ display: 'flex', gap: 3 }}> {/* gap: 3 correspond à 24px (8px * 3) */}
+              {(Array.isArray(featuredTrips) ? featuredTrips : []).map((trip: any) => (
+                <Grow key={trip.id} in={true} timeout={1000}>
                   <Box sx={{ minWidth: 280, maxWidth: 320 }}>
                     <TripCard trip={trip} />
                   </Box>
                 </Grow>
               ))}
-            </HorizontalScroll>
+            </Box>
+          </HorizontalScroll>
           )}
         </Container>
       </Box>
-
-      {/* How It Works Section */}
-      <Box sx={{ py: { xs: 6, md: 10 }, background: '#FFFFFF' }}>
+      {/* ════════════════════════════════════════════════
+          COMMENT ÇA MARCHE — 3 étapes
+      ════════════════════════════════════════════════ */}
+      <Box sx={{ py: { xs: 6, md: 10 }, bgcolor: '#fff' }}>
         <Container maxWidth="lg">
-          <Slide direction="up" in={true} timeout={1000}>
-            <Box sx={{ textAlign: 'center', mb: 6 }}>
-              <Typography variant="h3" sx={{ fontWeight: 700, mb: 2 }}>
-                Comment ça marche ?
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600, mx: 'auto' }}>
-                Réservez votre voyage en quelques étapes simples
-              </Typography>
-            </Box>
-          </Slide>
+          <Box sx={{ textAlign: 'center', mb: 7 }}>
+            <Typography sx={{ fontSize: { xs: '1.6rem', md: '2.2rem' }, fontWeight: 800, color: '#0F2D5C', mb: 1 }}>
+              Comment ça marche ?
+            </Typography>
+            <Typography sx={{ fontSize: 15, color: '#64748B', maxWidth: 500, mx: 'auto' }}>
+              Réservez votre prochain voyage en quelques étapes simples
+            </Typography>
+          </Box>
 
           <Grid container spacing={4}>
             {[
-              {
-                icon: <SearchIcon sx={{ fontSize: 40 }} />,
-                title: 'Recherchez',
-                description: 'Explorez parmi des centaines de voyages disponibles',
-                color: '#00BFA5',
-              },
-              {
-                icon: <HowToRegIcon sx={{ fontSize: 40 }} />,
-                title: 'Réservez',
-                description: 'Choisissez vos dates et réservez en quelques clics',
-                color: '#0D47A1',
-              },
-              {
-                icon: <CheckCircleIcon sx={{ fontSize: 40 }} />,
-                title: 'Profitez',
-                description: 'Vivez une expérience inoubliable',
-                color: '#00BFA5',
-              },
-            ].map((step, index) => (
-              <Grid item xs={12} md={4} key={index}>
-                <Zoom in={true} timeout={1000} style={{ transitionDelay: `${index * 200}ms` }}>
-                  <Paper
-                    sx={{
-                      p: 4,
-                      textAlign: 'center',
-                      borderRadius: 4,
-                      height: '100%',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-8px)',
-                        boxShadow: '0 16px 48px rgba(0,0,0,0.15)',
-                      },
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: '50%',
-                        background: alpha(step.color, 0.1),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mx: 'auto',
-                        mb: 3,
-                        color: step.color,
-                      }}
-                    >
+              { icon: <SearchIcon sx={{ fontSize: 36 }} />, color: '#0EA5A0', bg: alpha('#0EA5A0', 0.08),
+                num: '01', title: 'Recherchez', desc: 'Explorez des centaines de voyages avec notre IA et trouvez l\'expérience parfaite selon vos envies et votre budget.' },
+              { icon: <HowToRegIcon sx={{ fontSize: 36 }} />, color: '#0F2D5C', bg: alpha('#0F2D5C', 0.08),
+                num: '02', title: 'Réservez', desc: 'Choisissez vos dates, confirmez votre réservation et payez en toute sécurité via notre système de paiement Stripe.' },
+              { icon: <FlightTakeoffIcon sx={{ fontSize: 36 }} />, color: '#D97706', bg: alpha('#D97706', 0.08),
+                num: '03', title: 'Profitez', desc: 'Vivez une expérience inoubliable et gagnez des points fidélité à chaque voyage pour débloquer des réductions exclusives.' },
+            ].map((step, i) => (
+              <Grid item xs={12} md={4} key={i}>
+                <Zoom in timeout={800} style={{ transitionDelay: `${i * 150}ms` }}>
+                  <Box sx={{
+                    p: 4, borderRadius: '20px', height: '100%',
+                    border: '1px solid #E2E8F0', bgcolor: '#fff',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                    transition: 'all 0.25s ease', position: 'relative', overflow: 'hidden',
+                    '&:hover': { transform: 'translateY(-6px)', boxShadow: '0 16px 40px rgba(0,0,0,0.1)', borderColor: step.color },
+                    '&::before': { content: `"${step.num}"`, position: 'absolute', top: 16, right: 20,
+                      fontSize: '4rem', fontWeight: 900, color: alpha(step.color, 0.06), lineHeight: 1 },
+                  }}>
+                    <Box sx={{ width: 68, height: 68, borderRadius: '18px', bgcolor: step.bg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: step.color, mb: 3 }}>
                       {step.icon}
                     </Box>
-                    <Typography variant="h5" fontWeight={600} gutterBottom>
+                    <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#0F172A', mb: 1.5 }}>
                       {step.title}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {step.description}
+                    <Typography sx={{ fontSize: '0.9rem', color: '#64748B', lineHeight: 1.7 }}>
+                      {step.desc}
                     </Typography>
-                  </Paper>
+                  </Box>
                 </Zoom>
               </Grid>
             ))}
@@ -1186,62 +803,210 @@ const Home: React.FC = () => {
         </Container>
       </Box>
 
-      {/* CTA Section */}
-      {!token && (
-        <Box
-          sx={{
-            py: { xs: 6, md: 10 },
-            background: 'linear-gradient(135deg, #1A2027 0%, #2D3748 100%)',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
-            <Slide direction="up" in={true} timeout={1000}>
-              <Grid container spacing={4} alignItems="center">
-                <Grid item xs={12} md={7}>
-                  <Typography variant="h3" sx={{ fontWeight: 700, color: 'white', mb: 3 }}>
-                    Prêt à vivre l'aventure ?
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 4, fontSize: '1.1rem' }}>
-                    Créez un compte gratuitement et bénéficiez de recommandations personnalisées 
-                    grâce à notre intelligence artificielle.
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    <Button
-                      variant="contained"
-                      size="large"
-                      onClick={() => navigate('/register')}
-                      sx={{
-                        px: 4,
-                        py: 1.5,
-                        borderRadius: 3,
-                        background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-                      }}
-                    >
-                      Créer un compte
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="large"
-                      onClick={() => navigate('/login')}
-                      sx={{
-                        px: 4,
-                        py: 1.5,
-                        borderRadius: 3,
-                        borderColor: 'rgba(255,255,255,0.3)',
-                        color: 'white',
-                      }}
-                    >
-                      Se connecter
-                    </Button>
-                  </Box>
-                </Grid>
+      {/* ════════════════════════════════════════════════
+          PUBLICITÉ PLATEFORME + CTA ORGANISATEUR
+      ════════════════════════════════════════════════ */}
+      <Box sx={{ position: 'relative', py: { xs: 7, md: 11 }, overflow: 'hidden', bgcolor: '#fff' }}>
+        {/* Background dégradé - now using subtle white/gray gradient */}
+        <Box sx={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%)',
+        }} />
+        {/* Cercles décoratifs with brand colors */}
+        <Box sx={{ position: 'absolute', top: -80, right: -80, width: 400, height: 400,
+          borderRadius: '50%', bgcolor: 'rgba(14,165,160,0.06)', animation: `${float} 8s ease-in-out infinite` }} />
+        <Box sx={{ position: 'absolute', bottom: -60, left: -60, width: 300, height: 300,
+          borderRadius: '50%', bgcolor: 'rgba(15,45,92,0.04)', animation: `${float} 10s ease-in-out infinite reverse` }} />
+
+        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+          <Grid container spacing={6} alignItems="center">
+
+            {/* Left — Stats plateforme */}
+            <Grid item xs={12} md={6}>
+            <Box sx={{ mb: { xs: 4, md: 6 } }}>
+    
+    {/* Subtitle script */}
+    <Fade in={heroVisible} timeout={800}>
+      <Typography sx={{
+        fontFamily: '"Dancing Script", "Brush Script MT", cursive',
+        fontSize: { xs: '1.6rem', md: '2.4rem' },
+        color: '#0EA5A0',
+        letterSpacing: 1,
+        mb: 1,
+        animation: `${fadeInUp} 0.8s ease`,
+      }}>
+        Voyagez autrement
+      </Typography>
+    </Fade>
+
+    {/* Big title */}
+    <Fade in={heroVisible} timeout={1000}>
+      <Typography 
+        sx={{ 
+          fontSize: { xs: '2rem', md: '3.5rem' }, 
+          fontWeight: 800,
+          color: '#0F2D5C', 
+          lineHeight: 1.1,
+          mb: 2,
+          animation: `${fadeInUp} 0.9s ease`,
+        }}
+      >
+        L'excellence du voyage en <br />
+        <Box component="span" sx={{ color: '#0EA5A0' }}>Afrique du Nord.</Box>
+      </Typography>
+    </Fade>
+
+    <Fade in={heroVisible} timeout={1200}>
+      <Typography 
+        sx={{ 
+          color: '#64748B', 
+          fontSize: '1.1rem', 
+          fontWeight: 500, 
+          maxWidth: '500px',
+          mb: 4,
+          animation: `${fadeInUp} 1s ease`,
+        }}
+      >
+        Découvrez des expériences authentiques via notre écosystème complet.
+      </Typography>
+    </Fade>
+
+  </Box>
+             
+
+              {/* Stats */}
+              <Grid container spacing={2}>
+                {[
+                  { icon: <GroupsIcon />, value: '10K+', label: 'Voyageurs satisfaits' },
+                  { icon: <BusinessCenterIcon />, value: '200+', label: 'Organisateurs certifiés' },
+                  { icon: <FlightTakeoffIcon />, value: '500+', label: 'Voyages disponibles' },
+                  { icon: <StarIcon />, value: '4.8/5', label: 'Note moyenne' },
+                ].map((stat, i) => (
+                  <Grid item xs={6} key={i}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5,
+                      p: 2, borderRadius: '14px', bgcolor: '#f8fafc',
+                      border: '1px solid #e2e8f0' }}>
+                      <Box sx={{ color: '#0EA5A0', '& svg': { fontSize: 22 } }}>{stat.icon}</Box>
+                      <Box>
+                        <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', color: '#0F2D5C', lineHeight: 1 }}>
+                          {stat.value}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.72rem', color: '#64748B', lineHeight: 1.3 }}>
+                          {stat.label}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                ))}
               </Grid>
-            </Slide>
-          </Container>
-        </Box>
-      )}
+            </Grid>
+
+            {/* Right — CTA cards */}
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+
+                {/* Card voyageur */}
+                {!token && (
+                  <Box sx={{
+                    p: 3.5, borderRadius: '20px',
+                    bgcolor: '#ffffff',
+                    boxShadow: '0 20px 48px rgba(0,0,0,0.08)',
+                    border: '1px solid #e2e8f0',
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Box sx={{ width: 48, height: 48, borderRadius: '14px',
+                        bgcolor: alpha('#0EA5A0', 0.1), display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', color: '#0EA5A0' }}>
+                        <FlightTakeoffIcon sx={{ fontSize: 24 }} />
+                      </Box>
+                      <Box>
+                        <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#0F2D5C' }}>
+                          Je suis un voyageur
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.8rem', color: '#64748B' }}>
+                          Rejoignez +10 000 voyageurs
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Typography sx={{ fontSize: '0.85rem', color: '#475569', mb: 2.5, lineHeight: 1.6 }}>
+                      Créez votre compte gratuitement et accédez à des recommandations personnalisées, 
+                      un système de fidélité et des offres exclusives.
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1.5 }}>
+                      <Button fullWidth variant="contained" onClick={() => navigate('/register')}
+                        sx={{ borderRadius: '12px', py: 1.2, textTransform: 'none', fontWeight: 700,
+                          background: 'linear-gradient(135deg, #0EA5A0, #0F2D5C)',
+                          '&:hover': { opacity: 0.9 } }}>
+                        Créer un compte
+                      </Button>
+                      <Button fullWidth variant="outlined" onClick={() => navigate('/login')}
+                        sx={{ borderRadius: '12px', py: 1.2, textTransform: 'none', fontWeight: 600,
+                          borderColor: '#0EA5A0', color: '#0EA5A0',
+                          '&:hover': { borderColor: '#0F2D5C', color: '#0F2D5C' } }}>
+                        Se connecter
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Card organisateur */}
+                <Box sx={{
+                  p: 3.5, borderRadius: '20px',
+                  background: 'linear-gradient(135deg, #0F2D5C 0%, #0EA5A0 100%)',
+                  border: '1px solid rgba(14,165,160,0.3)',
+                  boxShadow: '0 20px 48px rgba(0,0,0,0.12)',
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <Box sx={{ width: 48, height: 48, borderRadius: '14px',
+                      bgcolor: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', color: '#fff' }}>
+                      <BusinessCenterIcon sx={{ fontSize: 24 }} />
+                    </Box>
+                    <Box>
+                      <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>
+                        Je suis un organisateur
+                      </Typography>
+                      <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                        Développez votre activité
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Typography sx={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', mb: 2.5, lineHeight: 1.6 }}>
+                    Publiez vos voyages, gérez vos réservations et accédez à un tableau de bord 
+                    complet pour développer votre agence de voyage.
+                  </Typography>
+
+                  {/* Étapes devenir organisateur */}
+                  {[
+                    { step: '1', text: 'Inscrivez-vous et créez votre profil' },
+                    { step: '2', text: 'Soumettez une demande d\'organisateur' },
+                    { step: '3', text: 'Publiez vos voyages après validation' },
+                  ].map(s => (
+                    <Box key={s.step} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                      <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, color: '#0EA5A0' }}>{s.step}</Typography>
+                      </Box>
+                      <Typography sx={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.85)' }}>{s.text}</Typography>
+                    </Box>
+                  ))}
+
+                  <Button fullWidth variant="contained" onClick={() => navigate(token ? '/organizer-request' : '/register')}
+                    sx={{
+                      mt: 2.5, borderRadius: '12px', py: 1.2, textTransform: 'none', fontWeight: 700,
+                      bgcolor: '#fff', color: '#0F2D5C',
+                      '&:hover': { bgcolor: '#f8fafc', transform: 'translateY(-2px)' },
+                    }}>
+                    Devenir organisateur
+                  </Button>
+                </Box>
+
+              </Box>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+
     </Box>
   );
 };

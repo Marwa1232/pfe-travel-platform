@@ -22,11 +22,6 @@ import {
   Zoom,
   LinearProgress,
   Autocomplete,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormHelperText,
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import {
@@ -49,75 +44,134 @@ import {
   CloudUpload,
   Delete,
   Info,
+  Terrain,
+  Diamond,
+  Museum,
+  FamilyRestroom,
+  Favorite,
+  SportsSoccer,
+  Park,
+  Church,
+  Assignment,
+  Description,
+  Badge,
+  Store,
+  School,
+  Groups,
+  PestControl,
+  Spa,
+  Hiking,
+  FlightTakeoff,
 } from '@mui/icons-material';
 import api from '../services/api';
 
+// Couleurs personnalisées
+const COLORS = {
+  primary: '#0EA5A0',
+  primaryDark: '#0C8F8A',
+  secondary: '#0F2D5C',
+  secondaryLight: '#1A3F7A',
+  white: '#FFFFFF',
+  grey50: '#F8FAFC',
+  grey100: '#F1F5F9',
+  grey200: '#E2E8F0',
+  grey400: '#94A3B8',
+  grey600: '#475569',
+  grey700: '#334155',
+  grey800: '#1E293B',
+  red: '#EF4444',
+  green: '#10B981',
+  amber: '#F59E0B',
+};
+
 // Styled components
 const GlassPaper = styled(Paper)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.95)',
+  background: COLORS.white,
   backdropFilter: 'blur(10px)',
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-  boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+  border: `1px solid ${alpha(COLORS.primary, 0.15)}`,
+  boxShadow: `0 8px 32px ${alpha(COLORS.secondary, 0.08)}`,
   borderRadius: theme.spacing(3),
   padding: theme.spacing(4),
 }));
 
 const StepCard = styled(Card)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.95)',
+  background: COLORS.white,
   backdropFilter: 'blur(10px)',
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-  boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+  border: `1px solid ${alpha(COLORS.primary, 0.1)}`,
+  boxShadow: `0 8px 24px ${alpha(COLORS.secondary, 0.06)}`,
   borderRadius: theme.spacing(2),
   transition: 'all 0.3s ease',
   '&:hover': {
     transform: 'translateY(-4px)',
-    boxShadow: '0 12px 32px rgba(0,191,165,0.15)',
+    boxShadow: `0 12px 32px ${alpha(COLORS.primary, 0.12)}`,
   },
 }));
 
 const UploadZone = styled(Box)(({ theme }) => ({
-  border: `2px dashed ${alpha(theme.palette.primary.main, 0.3)}`,
+  border: `2px dashed ${alpha(COLORS.primary, 0.3)}`,
   borderRadius: theme.spacing(2),
   padding: theme.spacing(3),
   textAlign: 'center',
   cursor: 'pointer',
   transition: 'all 0.3s ease',
   '&:hover': {
-    borderColor: theme.palette.primary.main,
-    backgroundColor: alpha(theme.palette.primary.main, 0.02),
+    borderColor: COLORS.primary,
+    backgroundColor: alpha(COLORS.primary, 0.02),
   },
 }));
 
 const FileCard = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
   borderRadius: theme.spacing(2),
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-  background: alpha(theme.palette.primary.main, 0.02),
+  border: `1px solid ${alpha(COLORS.primary, 0.1)}`,
+  background: alpha(COLORS.primary, 0.02),
   transition: 'all 0.3s ease',
   '&:hover': {
-    borderColor: theme.palette.primary.main,
+    borderColor: COLORS.primary,
     transform: 'translateY(-2px)',
   },
 }));
 
 const GradientButton = styled(Button)(({ theme }) => ({
-  background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
+  background: `linear-gradient(90deg, ${COLORS.primary}, ${COLORS.secondary})`,
   borderRadius: theme.spacing(2),
   padding: theme.spacing(1.5, 4),
   fontSize: '1rem',
   fontWeight: 600,
   textTransform: 'none',
+  color: COLORS.white,
   transition: 'all 0.3s ease',
   '&:hover': {
-    background: 'linear-gradient(90deg, #0D47A1, #00BFA5)',
+    background: `linear-gradient(90deg, ${COLORS.secondary}, ${COLORS.primary})`,
     transform: 'translateY(-2px)',
-    boxShadow: '0 8px 20px rgba(0,191,165,0.3)',
+    boxShadow: `0 8px 20px ${alpha(COLORS.primary, 0.3)}`,
   },
+  '&.Mui-disabled': {
+    background: COLORS.grey200,
+    color: COLORS.grey400,
+  }
+}));
+
+const OutlineButton = styled(Button)(({ theme }) => ({
+  borderRadius: theme.spacing(2),
+  padding: theme.spacing(1.5, 4),
+  fontSize: '1rem',
+  fontWeight: 600,
+  textTransform: 'none',
+  backgroundColor: COLORS.secondary,
+  color: COLORS.white,
+  '&:hover': {
+    backgroundColor: COLORS.secondaryLight,
+  },
+  '&.Mui-disabled': {
+    backgroundColor: COLORS.grey200,
+    color: COLORS.grey400,
+  }
 }));
 
 const BackgroundBox = styled(Box)({
   minHeight: '100vh',
-  background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
+  background: `linear-gradient(135deg, ${COLORS.grey50} 0%, ${COLORS.grey100} 100%)`,
   position: 'relative',
   overflow: 'hidden',
   py: 4,
@@ -125,8 +179,8 @@ const BackgroundBox = styled(Box)({
 
 const FloatingIcon = styled(Box)({
   position: 'absolute',
-  opacity: 0.1,
-  color: '#00BFA5',
+  opacity: 0.08,
+  color: COLORS.primary,
   animation: 'float 6s ease-in-out infinite',
   '@keyframes float': {
     '0%, 100%': { transform: 'translateY(0)' },
@@ -135,14 +189,14 @@ const FloatingIcon = styled(Box)({
 });
 
 const tripTypes = [
-  { value: 'aventure', label: 'Aventure', icon: '🏔️', color: '#FF6B6B' },
-  { value: 'luxe', label: 'Luxe', icon: '💎', color: '#B983FF' },
-  { value: 'culturel', label: 'Culturel', icon: '🏛️', color: '#45B7D1' },
-  { value: 'familial', label: 'Familial', icon: '👨‍👩‍👧', color: '#94B49F' },
-  { value: 'romantique', label: 'Romantique', icon: '❤️', color: '#FFA07A' },
-  { value: 'sportif', label: 'Sportif', icon: '⚽', color: '#FFD93D' },
-  { value: 'ecotourisme', label: 'Écotourisme', icon: '🌿', color: '#95E1D3' },
-  { value: 'religieux', label: 'Religieux', icon: '🕊️', color: '#C0C0C0' },
+  { value: 'aventure', label: 'Aventure', icon: <Terrain />, color: '#16A34A' },
+  { value: 'luxe', label: 'Luxe', icon: <Diamond />, color: '#8B5CF6' },
+  { value: 'culturel', label: 'Culturel', icon: <Museum />, color: '#3B82F6' },
+  { value: 'familial', label: 'Familial', icon: <FamilyRestroom />, color: '#F59E0B' },
+  { value: 'romantique', label: 'Romantique', icon: <Favorite />, color: '#EC4899' },
+  { value: 'sportif', label: 'Sportif', icon: <SportsSoccer />, color: '#EF4444' },
+  { value: 'ecotourisme', label: 'Écotourisme', icon: <Park />, color: '#10B981' },
+  { value: 'religieux', label: 'Religieux', icon: <Church />, color: '#6366F1' },
 ];
 
 const COUNTRIES = [
@@ -303,9 +357,9 @@ const OrganizerRequest: React.FC = () => {
   };
 
   const getFileIcon = (type: string) => {
-    if (type.includes('pdf')) return <PictureAsPdf sx={{ color: '#F44336' }} />;
-    if (type.includes('image')) return <Image sx={{ color: '#4CAF50' }} />;
-    return <InsertDriveFile sx={{ color: '#00BFA5' }} />;
+    if (type.includes('pdf')) return <PictureAsPdf sx={{ color: COLORS.red }} />;
+    if (type.includes('image')) return <Image sx={{ color: COLORS.green }} />;
+    return <InsertDriveFile sx={{ color: COLORS.primary }} />;
   };
 
   const handleNext = () => {
@@ -353,24 +407,18 @@ const OrganizerRequest: React.FC = () => {
     setError('');
 
     try {
-      // Créer FormData pour l'envoi des fichiers
       const formDataToSend = new FormData();
       
-      // Ajouter les données texte
       Object.keys(formData).forEach(key => {
         const value = formData[key as keyof typeof formData];
         if (key === 'trip_types') {
-          // Convertir le tableau en JSON string pour l'envoi
           formDataToSend.append(key, JSON.stringify(value));
         } else {
           formDataToSend.append(key, value as string);
         }
       });
 
-      // Ajouter les documents
-      console.log('Documents to upload:', documents);
       documents.forEach((doc, index) => {
-        console.log(`Appending document_${index}:`, doc.file.name);
         formDataToSend.append(`document_${index}`, doc.file);
       });
 
@@ -399,7 +447,7 @@ const OrganizerRequest: React.FC = () => {
                     width: 120,
                     height: 120,
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+                    background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -412,12 +460,12 @@ const OrganizerRequest: React.FC = () => {
                     },
                   }}
                 >
-                  <CheckCircle sx={{ fontSize: 70, color: 'white' }} />
+                  <CheckCircle sx={{ fontSize: 70, color: COLORS.white }} />
                 </Box>
               </Zoom>
               
               <Typography variant="h3" fontWeight={800} gutterBottom sx={{
-                background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+                background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`,
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}>
@@ -431,13 +479,20 @@ const OrganizerRequest: React.FC = () => {
               <Card sx={{ maxWidth: 400, mx: 'auto', mb: 4, borderRadius: 3 }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Security sx={{ color: '#00BFA5', fontSize: 40 }} />
+                    <Security sx={{ color: COLORS.primary, fontSize: 40 }} />
                     <Box>
                       <Typography variant="body2" color="text.secondary">Statut de la demande</Typography>
                       <Typography variant="h6" fontWeight={600}>En attente de vérification</Typography>
                     </Box>
                   </Box>
-                  <LinearProgress sx={{ mt: 2, borderRadius: 2 }} />
+                  <LinearProgress 
+                    sx={{ 
+                      mt: 2, 
+                      borderRadius: 2,
+                      bgcolor: alpha(COLORS.primary, 0.1),
+                      '& .MuiLinearProgress-bar': { bgcolor: COLORS.primary }
+                    }} 
+                  />
                   <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                     Vérification sous 24-48 heures
                   </Typography>
@@ -445,18 +500,10 @@ const OrganizerRequest: React.FC = () => {
               </Card>
 
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  onClick={() => navigate('/dashboard')}
-                  sx={{ borderRadius: 2, px: 4 }}
-                >
+                <OutlineButton onClick={() => navigate('/dashboard')}>
                   Retour au tableau de bord
-                </Button>
-                <GradientButton
-                  size="large"
-                  onClick={() => navigate('/organizer/profile')}
-                >
+                </OutlineButton>
+                <GradientButton onClick={() => navigate('/organizer/profile')}>
                   Compléter mon profil
                 </GradientButton>
               </Box>
@@ -469,31 +516,32 @@ const OrganizerRequest: React.FC = () => {
 
   return (
     <BackgroundBox>
-      {/* Éléments décoratifs flottants */}
       <FloatingIcon sx={{ top: '10%', left: '5%', transform: 'rotate(-15deg)' }}>
         <BusinessCenter sx={{ fontSize: 120 }} />
       </FloatingIcon>
       <FloatingIcon sx={{ bottom: '10%', right: '5%', transform: 'rotate(20deg)' }}>
         <RocketLaunch sx={{ fontSize: 100 }} />
       </FloatingIcon>
+      <FloatingIcon sx={{ top: '50%', left: '2%', transform: 'rotate(10deg)' }}>
+        <FlightTakeoff sx={{ fontSize: 80 }} />
+      </FloatingIcon>
 
       <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
-        {/* Header */}
         <Fade in timeout={1000}>
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Avatar
               sx={{
                 width: 80,
                 height: 80,
-                background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+                background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`,
                 mx: 'auto',
                 mb: 2,
               }}
             >
-              <Verified sx={{ fontSize: 40 }} />
+              <Verified sx={{ fontSize: 40, color: COLORS.white }} />
             </Avatar>
             <Typography variant="h2" fontWeight="800" sx={{
-              background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+              background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               mb: 1,
@@ -506,7 +554,6 @@ const OrganizerRequest: React.FC = () => {
           </Box>
         </Fade>
 
-        {/* Stepper */}
         <GlassPaper sx={{ mb: 4, p: 3 }}>
           <Stepper activeStep={activeStep} alternativeLabel>
             {steps.map((label, index) => (
@@ -514,8 +561,8 @@ const OrganizerRequest: React.FC = () => {
                 <StepLabel
                   StepIconProps={{
                     sx: {
-                      '&.Mui-active': { color: '#00BFA5' },
-                      '&.Mui-completed': { color: '#0D47A1' },
+                      '&.Mui-active': { color: COLORS.primary },
+                      '&.Mui-completed': { color: COLORS.secondary },
                     }
                   }}
                 >
@@ -527,11 +574,16 @@ const OrganizerRequest: React.FC = () => {
           <LinearProgress 
             variant="determinate" 
             value={(activeStep + 1) * 25} 
-            sx={{ mt: 2, borderRadius: 2, height: 6 }}
+            sx={{ 
+              mt: 2, 
+              borderRadius: 2, 
+              height: 6,
+              bgcolor: alpha(COLORS.primary, 0.1),
+              '& .MuiLinearProgress-bar': { bgcolor: COLORS.primary }
+            }}
           />
         </GlassPaper>
 
-        {/* Form */}
         <GlassPaper>
           {error && (
             <Fade in>
@@ -545,13 +597,15 @@ const OrganizerRequest: React.FC = () => {
             </Fade>
           )}
 
-          {/* Step 1: Informations */}
           {activeStep === 0 && (
             <Fade in timeout={500}>
               <Box>
-                <Typography variant="h5" fontWeight={700} gutterBottom>
-                  📋 Informations de l'agence
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Assignment sx={{ color: COLORS.primary }} />
+                  <Typography variant="h5" fontWeight={700}>
+                    Informations de l'agence
+                  </Typography>
+                </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
                   Veuillez fournir les informations de votre agence ou votre marque personnelle
                 </Typography>
@@ -587,7 +641,7 @@ const OrganizerRequest: React.FC = () => {
                           helperText={errors.country}
                           InputProps={{
                             ...params.InputProps,
-                            startAdornment: <LocationOn sx={{ mr: 1, color: '#00BFA5' }} />,
+                            startAdornment: <LocationOn sx={{ mr: 1, color: COLORS.primary }} />,
                           }}
                         />
                       )}
@@ -647,7 +701,7 @@ const OrganizerRequest: React.FC = () => {
                       onChange={handleChange}
                       placeholder="https://votre-site.com"
                       InputProps={{
-                        startAdornment: <Language sx={{ mr: 1, color: '#00BFA5' }} />,
+                        startAdornment: <Language sx={{ mr: 1, color: COLORS.primary }} />,
                         sx: { borderRadius: 2 }
                       }}
                     />
@@ -661,14 +715,14 @@ const OrganizerRequest: React.FC = () => {
                       onChange={handleChange}
                       placeholder="Rue, ville, code postal"
                       InputProps={{
-                        startAdornment: <LocationOn sx={{ mr: 1, color: '#00BFA5' }} />,
+                        startAdornment: <LocationOn sx={{ mr: 1, color: COLORS.primary }} />,
                         sx: { borderRadius: 2 }
                       }}
                     />
                   </Grid>
                   {formData.country && (
                     <Grid item xs={12}>
-                      <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 2 }}>
+                      <Box sx={{ p: 2, bgcolor: alpha(COLORS.grey100, 0.5), borderRadius: 2 }}>
                         <Typography variant="caption" color="text.secondary" display="block">
                           Formats acceptés pour {COUNTRIES.find(c => c.code === formData.country)?.name}:
                         </Typography>
@@ -686,13 +740,15 @@ const OrganizerRequest: React.FC = () => {
             </Fade>
           )}
 
-          {/* Step 2: Expérience */}
           {activeStep === 1 && (
             <Fade in timeout={500}>
               <Box>
-                <Typography variant="h5" fontWeight={700} gutterBottom>
-                  💼 Expérience professionnelle
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Badge sx={{ color: COLORS.primary }} />
+                  <Typography variant="h5" fontWeight={700}>
+                    Expérience professionnelle
+                  </Typography>
+                </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
                   Partagez votre expérience dans l'organisation de voyages
                 </Typography>
@@ -725,11 +781,16 @@ const OrganizerRequest: React.FC = () => {
                       {tripTypes.map((type) => (
                         <Chip
                           key={type.value}
-                          label={`${type.icon} ${type.label}`}
+                          label={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              {type.icon}
+                              <span>{type.label}</span>
+                            </Box>
+                          }
                           onClick={() => handleTripTypeToggle(type.value)}
                           sx={{
                             bgcolor: formData.trip_types.includes(type.value) ? type.color : 'transparent',
-                            color: formData.trip_types.includes(type.value) ? 'white' : 'text.primary',
+                            color: formData.trip_types.includes(type.value) ? COLORS.white : COLORS.grey700,
                             borderColor: type.color,
                             '&:hover': {
                               bgcolor: formData.trip_types.includes(type.value) ? type.color : alpha(type.color, 0.1),
@@ -750,13 +811,15 @@ const OrganizerRequest: React.FC = () => {
             </Fade>
           )}
 
-          {/* Step 3: Documents */}
           {activeStep === 2 && (
             <Fade in timeout={500}>
               <Box>
-                <Typography variant="h5" fontWeight={700} gutterBottom>
-                  📄 Documents professionnels
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Description sx={{ color: COLORS.primary }} />
+                  <Typography variant="h5" fontWeight={700}>
+                    Documents professionnels
+                  </Typography>
+                </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
                   Téléchargez vos documents justificatifs (licence, registre de commerce, etc.)
                 </Typography>
@@ -773,7 +836,7 @@ const OrganizerRequest: React.FC = () => {
                     />
                     <label htmlFor="file-upload">
                       <UploadZone>
-                        <CloudUpload sx={{ fontSize: 48, color: '#00BFA5', mb: 1 }} />
+                        <CloudUpload sx={{ fontSize: 48, color: COLORS.primary, mb: 1 }} />
                         <Typography variant="h6" fontWeight={600}>
                           Cliquez pour télécharger
                         </Typography>
@@ -797,7 +860,7 @@ const OrganizerRequest: React.FC = () => {
                           <Grid item xs={12} sm={6} md={4} key={doc.id}>
                             <FileCard>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <Avatar sx={{ bgcolor: alpha('#00BFA5', 0.1) }}>
+                                <Avatar sx={{ bgcolor: alpha(COLORS.primary, 0.1) }}>
                                   {getFileIcon(doc.type)}
                                 </Avatar>
                                 <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -811,7 +874,7 @@ const OrganizerRequest: React.FC = () => {
                                 <IconButton 
                                   size="small" 
                                   onClick={() => handleRemoveDocument(doc.id)}
-                                  sx={{ color: '#F44336' }}
+                                  sx={{ color: COLORS.red }}
                                 >
                                   <Delete fontSize="small" />
                                 </IconButton>
@@ -858,13 +921,15 @@ const OrganizerRequest: React.FC = () => {
             </Fade>
           )}
 
-          {/* Step 4: Réseaux sociaux */}
           {activeStep === 3 && (
             <Fade in timeout={500}>
               <Box>
-                <Typography variant="h5" fontWeight={700} gutterBottom>
-                  🌐 Réseaux sociaux (optionnel)
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Store sx={{ color: COLORS.primary }} />
+                  <Typography variant="h5" fontWeight={700}>
+                    Réseaux sociaux (optionnel)
+                  </Typography>
+                </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
                   Ajoutez vos réseaux sociaux professionnels pour améliorer votre visibilité
                 </Typography>
@@ -903,72 +968,33 @@ const OrganizerRequest: React.FC = () => {
             </Fade>
           )}
 
-          {/* Navigation buttons */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4, pt: 3, borderTop: `1px solid ${alpha('#000', 0.1)}` }}>
-            <Button
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4, pt: 3, borderTop: `1px solid ${alpha(COLORS.grey200, 0.8)}` }}>
+            <OutlineButton
               disabled={activeStep === 0}
               onClick={handleBack}
               startIcon={<ArrowBack />}
-              variant="outlined"
-              sx={{ borderRadius: 2, px: 4 }}
             >
               Retour
-            </Button>
+            </OutlineButton>
             
             {activeStep < steps.length - 1 ? (
-              <Button
-                variant="contained"
+              <GradientButton
                 onClick={handleNext}
                 endIcon={<ArrowForward />}
-                sx={{ borderRadius: 2, px: 4 }}
               >
                 Suivant
-              </Button>
+              </GradientButton>
             ) : (
               <GradientButton
                 onClick={handleSubmit}
                 disabled={loading}
-                startIcon={loading ? <CircularProgress size={20} /> : <Send />}
+                startIcon={loading ? <CircularProgress size={20} sx={{ color: COLORS.white }} /> : <Send />}
               >
                 {loading ? 'Envoi...' : 'Soumettre la demande'}
               </GradientButton>
             )}
           </Box>
         </GlassPaper>
-
-        {/* Info box */}
-        <Fade in timeout={1000}>
-          <StepCard sx={{ mt: 4 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Security sx={{ color: '#00BFA5', fontSize: 30 }} />
-                <Typography variant="h6" fontWeight={600}>
-                  Processus de vérification
-                </Typography>
-              </Box>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={4}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CheckCircle sx={{ color: '#4CAF50', fontSize: 20 }} />
-                    <Typography variant="body2">Vérification des documents</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CheckCircle sx={{ color: '#4CAF50', fontSize: 20 }} />
-                    <Typography variant="body2">Validation de l'expérience</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CheckCircle sx={{ color: '#4CAF50', fontSize: 20 }} />
-                    <Typography variant="body2">Approbation sous 24-48h</Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </StepCard>
-        </Fade>
       </Container>
     </BackgroundBox>
   );

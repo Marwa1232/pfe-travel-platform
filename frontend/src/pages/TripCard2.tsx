@@ -528,7 +528,7 @@ const s: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   btnPrimary: {
-    background: '#1e40af',
+    background: '#0F2D5C',
     color: '#fff',
     border: 'none',
     borderRadius: 24,
@@ -539,8 +539,8 @@ const s: Record<string, React.CSSProperties> = {
     width: '100%',
   },
   btnSecondary: {
-    background: '#e0e7ff',
-    color: '#1e40af',
+    background: '#5F9EAO',
+    color: '#0F2D5C',
     border: 'none',
     borderRadius: 24,
     padding: '9px 0',

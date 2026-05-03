@@ -21,22 +21,42 @@ import {
   Fade,
   Zoom,
 } from '@mui/material';
-import { styled, alpha } from '@mui/material/styles';
+import { styled, alpha, keyframes } from '@mui/material/styles';
 import { Visibility, VisibilityOff, Email, Lock, Login as LoginIcon } from '@mui/icons-material';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import { login } from '../store/authSlice';
 import { RootState } from '../store/index';
 
-// Styled components
+// ─── 3 COULEURS UNIQUEMENT ──────────────────────────────────────
+const COLORS = {
+  teal: '#0EA5A0',
+  navy: '#0F2D5C',
+  white: '#FFFFFF',
+};
+
+const fadeUp = keyframes`
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
+
+const float = keyframes`
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(10px, -15px) rotate(5deg); }
+  50% { transform: translate(-5px, -25px) rotate(-5deg); }
+  75% { transform: translate(15px, -10px) rotate(3deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+`;
+
+// ─── Styled components ──────────────────────────────────────────
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(5),
-  borderRadius: theme.spacing(3),
-  background: 'rgba(255, 255, 255, 0.98)',
+  borderRadius: 20,
+  background: COLORS.white,
   backdropFilter: 'blur(10px)',
-  boxShadow: '0 20px 60px rgba(0,0,0,0.1)',
+  boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.12)}`,
   position: 'relative',
   overflow: 'hidden',
-  border: '1px solid rgba(0,191,165,0.2)',
+  border: `1px solid ${alpha(COLORS.teal, 0.15)}`,
   '&::before': {
     content: '""',
     position: 'absolute',
@@ -44,45 +64,63 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
     left: 0,
     right: 0,
     height: 4,
-    background: 'linear-gradient(90deg, #00BFA5, #0D47A1, #00BFA5)',
+    background: `linear-gradient(90deg, ${COLORS.teal}, ${COLORS.navy}, ${COLORS.teal})`,
   },
+  animation: `${fadeUp} 0.6s ease-out`,
 }));
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
-    borderRadius: theme.spacing(2),
-    backgroundColor: alpha(theme.palette.common.white, 0.9),
+    borderRadius: 12,
+    backgroundColor: alpha(COLORS.white, 0.9),
     transition: 'all 0.3s ease',
     '&:hover': {
-      backgroundColor: theme.palette.common.white,
-      boxShadow: '0 4px 12px rgba(0,191,165,0.1)',
+      backgroundColor: COLORS.white,
+      boxShadow: `0 4px 12px ${alpha(COLORS.teal, 0.1)}`,
     },
     '&.Mui-focused': {
-      backgroundColor: theme.palette.common.white,
-      boxShadow: '0 4px 20px rgba(0,191,165,0.2)',
+      backgroundColor: COLORS.white,
+      boxShadow: `0 4px 20px ${alpha(COLORS.teal, 0.15)}`,
       '& fieldset': {
-        borderColor: '#00BFA5',
+        borderColor: COLORS.teal,
         borderWidth: 2,
       },
     },
   },
+  '& .MuiInputLabel-root.Mui-focused': {
+    color: COLORS.teal,
+  },
 }));
 
 const GradientButton = styled(Button)(({ theme }) => ({
-  background: 'linear-gradient(90deg, #00BFA5, #0D47A1)',
-  borderRadius: theme.spacing(2),
+  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+  borderRadius: 12,
   padding: theme.spacing(1.5),
-  fontSize: '1.1rem',
+  fontSize: '1rem',
   fontWeight: 600,
   textTransform: 'none',
   transition: 'all 0.3s ease',
+  color: COLORS.white,
   '&:hover': {
-    background: 'linear-gradient(90deg, #0D47A1, #00BFA5)',
+    background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.teal})`,
     transform: 'translateY(-2px)',
-    boxShadow: '0 8px 20px rgba(0,191,165,0.3)',
+    boxShadow: `0 8px 20px ${alpha(COLORS.teal, 0.35)}`,
   },
   '&:disabled': {
-    background: alpha(theme.palette.grey[500], 0.3),
+    background: alpha(COLORS.navy, 0.3),
+  },
+}));
+
+const OutlineButton = styled(Button)(({ theme }) => ({
+  borderRadius: 12,
+  padding: theme.spacing(1.2, 3),
+  fontWeight: 600,
+  textTransform: 'none',
+  borderColor: COLORS.teal,
+  color: COLORS.teal,
+  '&:hover': {
+    borderColor: COLORS.navy,
+    backgroundColor: alpha(COLORS.teal, 0.05),
   },
 }));
 
@@ -93,7 +131,7 @@ const BackgroundBox = styled(Box)({
   justifyContent: 'center',
   position: 'relative',
   overflow: 'hidden',
-  background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
+  background: `linear-gradient(135deg, ${alpha(COLORS.navy, 0.03)} 0%, ${alpha(COLORS.teal, 0.02)} 100%)`,
   '&::before': {
     content: '""',
     position: 'absolute',
@@ -102,8 +140,8 @@ const BackgroundBox = styled(Box)({
     width: 400,
     height: 400,
     borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(0,191,165,0.1) 0%, transparent 70%)',
-    animation: 'float 20s ease-in-out infinite',
+    background: `radial-gradient(circle, ${alpha(COLORS.teal, 0.08)} 0%, transparent 70%)`,
+    animation: `${float} 20s ease-in-out infinite`,
   },
   '&::after': {
     content: '""',
@@ -113,25 +151,21 @@ const BackgroundBox = styled(Box)({
     width: 300,
     height: 300,
     borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(13,71,161,0.1) 0%, transparent 70%)',
-    animation: 'float 15s ease-in-out infinite reverse',
-  },
-  '@keyframes float': {
-    '0%, 100%': { transform: 'translate(0, 0)' },
-    '50%': { transform: 'translate(30px, -30px)' },
+    background: `radial-gradient(circle, ${alpha(COLORS.navy, 0.08)} 0%, transparent 70%)`,
+    animation: `${float} 15s ease-in-out infinite reverse`,
   },
 });
 
 const FloatingIcon = styled(Box)({
   position: 'absolute',
-  opacity: 0.05,
-  color: '#00BFA5',
+  opacity: 0.06,
+  color: COLORS.teal,
+  animation: `${float} 25s ease-in-out infinite`,
 });
 
 const Login: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const theme = useTheme();
   const { loading, error } = useSelector((state: RootState) => state.auth);
 
   const [formData, setFormData] = useState({
@@ -171,11 +205,14 @@ const Login: React.FC = () => {
   return (
     <BackgroundBox>
       {/* Floating decorative icons */}
-      <FloatingIcon sx={{ top: '15%', left: '10%', transform: 'rotate(-15deg)' }}>
+      <FloatingIcon sx={{ top: '12%', left: '8%', transform: 'rotate(-15deg)', animationDelay: '0s' }}>
         <FlightTakeoffIcon sx={{ fontSize: 80 }} />
       </FloatingIcon>
-      <FloatingIcon sx={{ bottom: '20%', right: '15%', transform: 'rotate(20deg)' }}>
+      <FloatingIcon sx={{ bottom: '15%', right: '12%', transform: 'rotate(20deg)', animationDelay: '2s' }}>
         <FlightTakeoffIcon sx={{ fontSize: 100 }} />
+      </FloatingIcon>
+      <FloatingIcon sx={{ top: '60%', left: '5%', transform: 'rotate(10deg)', animationDelay: '4s' }}>
+        <FlightTakeoffIcon sx={{ fontSize: 60 }} />
       </FloatingIcon>
 
       <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 2 }}>
@@ -184,40 +221,42 @@ const Login: React.FC = () => {
             {/* Logo/Brand */}
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <Typography
-                variant="h3"
+                variant="h2"
                 sx={{
                   fontWeight: 800,
-                  background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+                  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   mb: 1,
-                  letterSpacing: '-0.5px',
+                  letterSpacing: '-0.02em',
+                  fontSize: { xs: '2.5rem', md: '3rem' },
                 }}
               >
                 TripBooking
               </Typography>
-              <Typography variant="body1" color="text.secondary">
+              <Typography variant="body1" sx={{ color: alpha(COLORS.navy, 0.6) }}>
                 Votre aventure commence ici
               </Typography>
             </Box>
 
             <Fade in timeout={1000}>
-              <StyledPaper elevation={3}>
+              <StyledPaper elevation={0}>
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
                   <Avatar
                     sx={{
                       width: 80,
                       height: 80,
                       margin: '0 auto 16px',
-                      background: 'linear-gradient(135deg, #00BFA5, #0D47A1)',
+                      background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
+                      boxShadow: `0 8px 20px ${alpha(COLORS.teal, 0.3)}`,
                     }}
                   >
-                    <LoginIcon sx={{ fontSize: 40 }} />
+                    <LoginIcon sx={{ fontSize: 40, color: COLORS.white }} />
                   </Avatar>
-                  <Typography variant="h4" component="h1" gutterBottom fontWeight={700}>
+                  <Typography variant="h4" component="h1" gutterBottom fontWeight={800} sx={{ color: COLORS.navy }}>
                     Content de vous revoir !
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
                     Connectez-vous pour accéder à votre espace personnel
                   </Typography>
                 </Box>
@@ -228,8 +267,9 @@ const Login: React.FC = () => {
                       severity="error" 
                       sx={{ 
                         mb: 3, 
-                        borderRadius: 2,
-                        '& .MuiAlert-icon': { color: 'error.main' }
+                        borderRadius: 12,
+                        bgcolor: alpha(COLORS.teal, 0.05),
+                        '& .MuiAlert-icon': { color: COLORS.teal },
                       }}
                     >
                       {error}
@@ -251,7 +291,7 @@ const Login: React.FC = () => {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Email sx={{ color: '#00BFA5' }} />
+                          <Email sx={{ color: COLORS.teal, fontSize: 20 }} />
                         </InputAdornment>
                       ),
                     }}
@@ -270,7 +310,7 @@ const Login: React.FC = () => {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Lock sx={{ color: '#00BFA5' }} />
+                          <Lock sx={{ color: COLORS.teal, fontSize: 20 }} />
                         </InputAdornment>
                       ),
                       endAdornment: (
@@ -278,7 +318,7 @@ const Login: React.FC = () => {
                           <IconButton
                             onClick={() => setShowPassword(!showPassword)}
                             edge="end"
-                            sx={{ color: 'text.secondary' }}
+                            sx={{ color: alpha(COLORS.navy, 0.5) }}
                           >
                             {showPassword ? <VisibilityOff /> : <Visibility />}
                           </IconButton>
@@ -300,21 +340,24 @@ const Login: React.FC = () => {
                           checked={rememberMe}
                           onChange={(e) => setRememberMe(e.target.checked)}
                           sx={{
-                            color: 'text.secondary',
-                            '&.Mui-checked': { color: '#00BFA5' },
+                            color: alpha(COLORS.navy, 0.4),
+                            '&.Mui-checked': { color: COLORS.teal },
                           }}
                         />
                       }
-                      label="Se souvenir de moi"
+                      label={<Typography sx={{ fontSize: '0.85rem', color: alpha(COLORS.navy, 0.7) }}>Se souvenir de moi</Typography>}
                     />
                     <Link 
                       to="/forgot-password" 
                       style={{ 
                         textDecoration: 'none', 
-                        color: '#00BFA5',
-                        fontSize: '0.9rem',
-                        fontWeight: 500,
+                        color: COLORS.teal,
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        transition: 'color 0.3s ease',
                       }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = COLORS.navy}
+                      onMouseLeave={(e) => e.currentTarget.style.color = COLORS.teal}
                     >
                       Mot de passe oublié ?
                     </Link>
@@ -327,22 +370,28 @@ const Login: React.FC = () => {
                     disabled={loading}
                     endIcon={!loading && <LoginIcon />}
                   >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : 'Se connecter'}
+                    {loading ? <CircularProgress size={24} sx={{ color: COLORS.white }} /> : 'Se connecter'}
                   </GradientButton>
 
-                  <Box textAlign="center" sx={{ mt: 4 }}>
-                    <Typography variant="body2" color="text.secondary">
+                  <Divider sx={{ my: 3, borderColor: alpha(COLORS.teal, 0.15) }}>
+                    <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.5) }}>
+                      ou
+                    </Typography>
+                  </Divider>
+
+                  <Box textAlign="center">
+                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
                       Pas encore de compte ?{' '}
                       <Link 
                         to="/register" 
                         style={{ 
                           textDecoration: 'none', 
-                          color: '#00BFA5',
-                          fontWeight: 600,
+                          color: COLORS.teal,
+                          fontWeight: 700,
                           transition: 'color 0.3s ease',
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#0D47A1'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = '#00BFA5'}
+                        onMouseEnter={(e) => e.currentTarget.style.color = COLORS.navy}
+                        onMouseLeave={(e) => e.currentTarget.style.color = COLORS.teal}
                       >
                         Créer un compte
                       </Link>
@@ -356,7 +405,7 @@ const Login: React.FC = () => {
             <Typography 
               variant="body2" 
               align="center" 
-              sx={{ mt: 3, color: 'text.secondary' }}
+              sx={{ mt: 3, color: alpha(COLORS.navy, 0.5), fontSize: '0.75rem' }}
             >
               En vous connectant, vous acceptez nos conditions d'utilisation
             </Typography>
