@@ -20,7 +20,7 @@ interface BookingFormProps {
   sessions: any[];
   selectedSession?: any;
   participantCount?: number;
-  onSuccess: (bookingId?: number) => void;
+  onSuccess: (bookingId?: number, paymentMethod?: string) => void;
   onCancel: () => void;
 }
 
@@ -30,7 +30,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const [formData, setFormData] = useState({
     trip_session_id: selectedSession?.id || sessions[0]?.id || '',
     num_travelers:   participantCount,
-    payment_method:  'STRIPE',
+    payment_method: 'CASH',
+    
   });
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -57,7 +58,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         num_travelers:   parseInt(formData.num_travelers.toString()),
         payment_method:  formData.payment_method,
       });
-      onSuccess(res.data.id);
+      onSuccess(res.data.id, formData.payment_method);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Erreur lors de la réservation');
     } finally {
@@ -153,10 +154,10 @@ const BookingForm: React.FC<BookingFormProps> = ({
               '& .MuiOutlinedInput-root': { borderRadius: 2,
                 '&.Mui-focused fieldset': { borderColor: T.teal } },
             }}>
-            <MenuItem value="STRIPE">💳 Carte bancaire (Stripe)</MenuItem>
-            <MenuItem value="CASH">💵 Espèces</MenuItem>
-            <MenuItem value="BANK_TRANSFER">🏦 Virement bancaire</MenuItem>
-          </TextField>
+           <MenuItem value="CARD_SIMULATED">Carte bancaire</MenuItem>
+            <MenuItem value="CASH">Espèces</MenuItem>
+            <MenuItem value="BANK_TRANSFER">Virement bancaire</MenuItem>
+           </TextField>
         </Box>
 
         {/* Total */}

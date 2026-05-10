@@ -29,8 +29,15 @@ class LoyaltyService
 
     public function earnPoints(User $user, Booking $booking): int
     {
-        $amount  = (float) $booking->getTotalPrice();
-        $points  = (int) floor($amount * self::POINTS_PER_EUR);
+        // Utiliser le montant du Payment (EUR après discount) si disponible
+        // Cela garantit que les points sont toujours calculés sur des EUR, quelle que soit
+        // la devise affichée au voyageur (Multi-Currency Stripe)
+        $payment = $booking->getPayment();
+        $amount  = $payment
+            ? (float) $payment->getAmount()        // EUR — après réduction fidélité éventuelle
+            : (float) $booking->getTotalPrice();   // fallback (cash)
+
+        $points = (int) floor($amount * self::POINTS_PER_EUR);
         if ($points <= 0) return 0;
 
         $lp = $this->getOrCreate($user);

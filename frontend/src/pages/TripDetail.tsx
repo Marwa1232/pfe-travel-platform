@@ -55,7 +55,6 @@ import {
   Cancel,
   Flight,
   Umbrella,
-  SixK,
 } from '@mui/icons-material';
 import { styled, alpha, keyframes } from '@mui/material/styles';
 import { tripAPI, bookingAPI, fixImageUrl } from '../services/api';
@@ -326,6 +325,14 @@ const TripDetail: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, token } = useSelector((state: RootState) => state.auth);
 
+  // Vérification des rôles
+  const isAdmin = user?.roles?.includes('ROLE_ADMIN');
+  const isOrganizer = user?.roles?.includes('ROLE_ORGANIZER');
+  // Le booking sidebar et les reviews s'affichent pour:
+  // - Non connecté (token = false)
+  // - ROLE_USER (token = true && !isAdmin && !isOrganizer)
+  const showBookingAndReviews = !token || (token && !isAdmin && !isOrganizer);
+
   const [trip, setTrip] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -449,15 +456,14 @@ const TripDetail: React.FC = () => {
     setShowBookingForm(true);
   };
 
-  const handleBookingSuccess = (bookingId?: number) => {
+  const handleBookingSuccess = (bookingId?: number, paymentMethod?: string) => {
     setShowBookingForm(false);
-    if (bookingId) {
+    if (bookingId && paymentMethod === 'CARD_SIMULATED') {
       navigate(`/checkout/${bookingId}`);
     } else {
       navigate('/bookings');
     }
   };
-
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({ title: trip.title, text: trip.short_description, url: window.location.href });
@@ -792,291 +798,328 @@ const TripDetail: React.FC = () => {
                 </Stack>
               </Paper>
 
-              {/* Reviews */}
-              <TripReviews tripId={Number(id)} tripTitle={trip.title} />
+              {/* Reviews - Affiché seulement si showBookingAndReviews est true (USER ou non connecté) */}
+              {showBookingAndReviews && (
+                <TripReviews tripId={Number(id)} tripTitle={trip.title} />
+              )}
+
+              {/* Message pour les admins/organisateurs */}
+              {!showBookingAndReviews && (
+                <Paper elevation={0} sx={{ p: 4, borderRadius: 2, border: `1px solid ${alpha(COLORS.navy, 0.12)}`, textAlign: 'center' }}>
+                  <Typography variant="body1" sx={{ color: COLORS.navy }}>
+                    En tant qu'organisateur ou administrateur, vous ne pouvez pas laisser d'avis sur ce voyage.
+                  </Typography>
+                </Paper>
+              )}
             </Stack>
           </Grid>
 
-          {/* Right Column – Booking Sidebar */}
-          <Grid item xs={12} md={4}>
-            <Box sx={{ position: 'sticky', top: 24 }}>
-              <Zoom in timeout={500}>
+          {/* Right Column – Booking Sidebar - Affiché seulement si showBookingAndReviews est true */}
+          {showBookingAndReviews && (
+            <Grid item xs={12} md={4}>
+              <Box sx={{ position: 'sticky', top: 24 }}>
+                <Zoom in timeout={500}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      borderRadius: 2,
+                      border: `1px solid ${alpha(COLORS.teal, 0.14)}`,
+                      boxShadow: '0 14px 30px rgba(15,23,42,0.14)',
+                    }}
+                  >
+                    {/* Price */}
+                    <PriceTag>
+                      <Typography variant="h3" fontWeight="bold" sx={{ color: COLORS.teal }}>
+                        {trip.base_price?.toLocaleString('fr-FR')}
+                      </Typography>
+                      <Typography variant="body1" color="text.secondary" sx={{ mb: 0.5 }}>
+                        EUR&nbsp;/&nbsp;personne
+                      </Typography>
+                    </PriceTag>
+
+                    <Divider sx={{ mb: 2.5 }} />
+
+                    {/* Session list */}
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                      <CalendarMonth color="action" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy }}>
+                        Choisir une date de départ
+                      </Typography>
+                    </Stack>
+
+                    {availableSessions.length === 0 ? (
+                      <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+                        Aucune session disponible pour le moment.
+                      </Alert>
+                    ) : (
+                      <Stack spacing={1} sx={{ mb: 2.5 }}>
+                        {availableSessions.map((session: any) => {
+                          const avail = getAvailableSeats(session);
+                          const total = getTotalSeats(session);
+                          const booked = total - avail;
+                          const pct = total > 0 ? Math.round((booked / total) * 100) : 0;
+                          const status = getAvailStatus(avail, total);
+                          const isFull = status === 'full';
+                          const isSelected = selectedSession?.id === session.id;
+
+                          const barColor = isFull ? COLORS.navy : COLORS.teal;
+
+                          const chipProps = isFull
+                            ? { label: 'Complet', sx: { bgcolor: alpha(COLORS.navy, 0.1), color: COLORS.navy, fontWeight: 'bold' } }
+                            : status === 'low'
+                            ? { label: `${avail} place${avail > 1 ? 's' : ''}`, sx: { bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, fontWeight: 'bold' } }
+                            : { label: `${avail} dispo.`, sx: { bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, fontWeight: 'bold' } };
+
+                          return (
+                            <SessionCard
+                              key={session.id}
+                              selected={isSelected}
+                              disabled={isFull}
+                              variant="outlined"
+                              onClick={() => handleSelectSession(session)}
+                            >
+                              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                                <Typography variant="body2" fontWeight="bold" sx={{ color: COLORS.navy }}>
+                                  {new Date(session.start_date).toLocaleDateString('fr-FR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric',
+                                  })}
+                                </Typography>
+                              </Stack>
+
+                              <Box sx={{ mt: 1 }}>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={pct}
+                                  sx={{
+                                    height: 5,
+                                    borderRadius: 2,
+                                    bgcolor: alpha(barColor, 0.15),
+                                    '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 2 },
+                                  }}
+                                />
+                                <Stack direction="row" justifyContent="space-between" mt={0.5}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {booked}/{total} réservés
+                                  </Typography>
+                                  {!isFull && (
+                                    <Typography variant="caption" sx={{ color: barColor, fontWeight: 500 }}>
+                                      {avail} libre{avail > 1 ? 's' : ''}
+                                    </Typography>
+                                  )}
+                                </Stack>
+                              </Box>
+                            </SessionCard>
+                          );
+                        })}
+                      </Stack>
+                    )}
+
+                    <Divider sx={{ mb: 2.5 }} />
+
+                    {/* Participant counter */}
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                      <PeopleAlt color="action" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy }}>
+                        Nombre de participants
+                      </Typography>
+                    </Stack>
+
+                    <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 0.5 }}>
+                      <CounterButton size="small" onClick={() => handleCountChange(-1)} disabled={participantCount <= 1}>
+                        <Remove fontSize="small" />
+                      </CounterButton>
+
+                      <Typography variant="h5" fontWeight="bold" sx={{ minWidth: 32, textAlign: 'center', color: COLORS.navy }}>
+                        {participantCount}
+                      </Typography>
+
+                      <CounterButton size="small" onClick={() => handleCountChange(1)} disabled={!selectedSession || participantCount >= selectedAvail}>
+                        <Add fontSize="small" />
+                      </CounterButton>
+
+                      {selectedSession && (
+                        <Typography variant="caption" color="text.secondary">
+                          max {selectedAvail} place{selectedAvail > 1 ? 's' : ''}
+                        </Typography>
+                      )}
+                    </Stack>
+
+                    {/* Booking alert */}
+                    {bookingAlert && (
+                      <Alert
+                        severity={bookingAlert.type}
+                        icon={
+                          bookingAlert.type === 'error' ? <ErrorOutline fontSize="small" /> :
+                          bookingAlert.type === 'warning' ? <WarningAmber fontSize="small" /> :
+                          <CheckCircleOutline fontSize="small" />
+                        }
+                        sx={{ mt: 1.5, mb: 1, borderRadius: 2, fontSize: '0.8rem', py: 0.5 }}
+                      >
+                        {bookingAlert.message}
+                      </Alert>
+                    )}
+
+                    <Divider sx={{ my: 2 }} />
+
+                    {/* Tarif détaillé */}
+                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy, mb: 1 }}>
+                      Récapitulatif du tarif
+                    </Typography>
+
+                    <Stack spacing={0.5} sx={{ mb: 2 }}>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="body2" color="text.secondary">
+                          {participantCount} personne{participantCount > 1 ? 's' : ''} × {trip.base_price?.toLocaleString('fr-FR')} EUR
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: COLORS.navy }}>
+                          {(participantCount * (trip.base_price || 0)).toLocaleString('fr-FR')} EUR
+                        </Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="body2" color="text.secondary">Frais de service</Typography>
+                        <Typography variant="body2" sx={{ color: COLORS.teal, fontWeight: 600 }}>Gratuit</Typography>
+                      </Stack>
+                      <Divider sx={{ my: 1 }} />
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ color: COLORS.navy }}>Total</Typography>
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ color: COLORS.teal }}>
+                          {totalPrice.toLocaleString('fr-FR')} EUR
+                        </Typography>
+                      </Stack>
+                    </Stack>
+
+                    {/* Organizer */}
+                    {trip.organizer && (
+                      <>
+                        <Divider sx={{ mb: 2 }} />
+                        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                          <Avatar src={trip.organizer.logo} sx={{ width: 40, height: 40, bgcolor: COLORS.teal, color: COLORS.white }}>
+                            {trip.organizer.agency_name?.[0]}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">Organisé par</Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: COLORS.navy }}>{trip.organizer.agency_name}</Typography>
+                          </Box>
+                        </Stack>
+                      </>
+                    )}
+
+                    {/* Difficulty */}
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                      <Typography variant="body2" color="text.secondary">Niveau :</Typography>
+                      <Chip
+                        label={
+                          trip.difficulty_level === 'easy' ? 'Facile' :
+                          trip.difficulty_level === 'medium' ? 'Intermédiaire' : 'Difficile'
+                        }
+                        size="small"
+                        sx={{ 
+                          bgcolor: trip.difficulty_level === 'easy' ? alpha(COLORS.teal, 0.1) : alpha(COLORS.navy, 0.1),
+                          color: trip.difficulty_level === 'easy' ? COLORS.teal : COLORS.navy,
+                          fontWeight: 'bold',
+                          borderRadius: 3
+                        }}
+                      />
+                    </Stack>
+
+                    {/* Politique d'annulation - Carte séparée */}
+                    {policy && (
+                      <PolicyCard elevation={0}>
+                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy, mb: 1 }}>
+                          Politique d'annulation
+                        </Typography>
+                        <Stack spacing={1}>
+                          {policy.rules?.slice(0, 3).map((rule, idx) => (
+                            <Stack key={idx} direction="row" justifyContent="space-between">
+                              <Typography variant="caption" color="text.secondary">
+                                {rule.days === 0 ? 'Moins de 7 jours' : `Plus de ${rule.days} jours`}
+                              </Typography>
+                              <Typography variant="caption" fontWeight="bold" sx={{ color: COLORS.teal }}>
+                                {rule.refund}% remboursé
+                              </Typography>
+                            </Stack>
+                          ))}
+                          <Button
+                            size="small"
+                            onClick={() => setPolicyModalOpen(true)}
+                            sx={{ mt: 1, color: COLORS.teal, justifyContent: 'flex-start', p: 0 }}
+                          >
+                            Voir tous les détails →
+                          </Button>
+                        </Stack>
+                      </PolicyCard>
+                    )}
+                    <Divider sx={{ mb: 2.5 }} />
+                    {/* Booking form or button */}
+                    {showBookingForm ? (
+                      <BookingForm
+                        trip={trip}
+                        sessions={availableSessions}
+                        selectedSession={selectedSession}
+                        participantCount={participantCount}
+                        onSuccess={handleBookingSuccess}
+                        onCancel={() => setShowBookingForm(false)}
+                      />
+                    ) : (
+                      <GradientButton
+                        fullWidth
+                        onClick={handleBook}
+                        disabled={availableSessions.length === 0}
+                      >
+                        {availableSessions.length === 0
+                          ? 'Aucune session disponible'
+                          : !selectedSession
+                          ? 'Sélectionner une date'
+                          : !canBook
+                          ? 'Vérifier les disponibilités'
+                          : `Réserver — ${totalPrice.toLocaleString('fr-FR')} EUR`}
+                      </GradientButton>
+                    )}
+
+                    {/* Trust badges */}
+                    <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2, gap: 0.5 }}>
+                      {['Paiement sécurisé', 'Meilleur prix garanti'].map((txt) => (
+                        <Chip
+                          key={txt}
+                          label={txt}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontSize: '0.7rem', borderColor: alpha(COLORS.teal, 0.3), color: alpha(COLORS.navy, 0.7) }}
+                        />
+                      ))}
+                    </Stack>
+                  </Paper>
+                </Zoom>
+              </Box>
+            </Grid>
+          )}
+
+          {/* Si l'utilisateur est admin/organisateur, on affiche un message dans la colonne de droite */}
+          {!showBookingAndReviews && (
+            <Grid item xs={12} md={4}>
+              <Box sx={{ position: 'sticky', top: 24 }}>
                 <Paper
                   elevation={0}
                   sx={{
-                    p: 3,
+                    p: 4,
                     borderRadius: 2,
-                    border: `1px solid ${alpha(COLORS.teal, 0.14)}`,
-                    boxShadow: '0 14px 30px rgba(15,23,42,0.14)',
+                    border: `1px solid ${alpha(COLORS.navy, 0.14)}`,
+                    textAlign: 'center',
                   }}
                 >
-                  {/* Price */}
-                  <PriceTag>
-                    <Typography variant="h3" fontWeight="bold" sx={{ color: COLORS.teal }}>
-                      {trip.base_price?.toLocaleString('fr-FR')}
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 0.5 }}>
-                      TND&nbsp;/&nbsp;personne
-                    </Typography>
-                  </PriceTag>
-
-                  <Divider sx={{ mb: 2.5 }} />
-
-                  {/* Session list */}
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-                    <CalendarMonth color="action" fontSize="small" />
-                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy }}>
-                      Choisir une date de départ
-                    </Typography>
-                  </Stack>
-
-                  {availableSessions.length === 0 ? (
-                    <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
-                      Aucune session disponible pour le moment.
-                    </Alert>
-                  ) : (
-                    <Stack spacing={1} sx={{ mb: 2.5 }}>
-                      {availableSessions.map((session: any) => {
-                        const avail = getAvailableSeats(session);
-                        const total = getTotalSeats(session);
-                        const booked = total - avail;
-                        const pct = total > 0 ? Math.round((booked / total) * 100) : 0;
-                        const status = getAvailStatus(avail, total);
-                        const isFull = status === 'full';
-                        const isSelected = selectedSession?.id === session.id;
-
-                        const barColor = isFull ? COLORS.navy : COLORS.teal;
-
-                        const chipProps = isFull
-                          ? { label: 'Complet', sx: { bgcolor: alpha(COLORS.navy, 0.1), color: COLORS.navy, fontWeight: 'bold' } }
-                          : status === 'low'
-                          ? { label: `${avail} place${avail > 1 ? 's' : ''}`, sx: { bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, fontWeight: 'bold' } }
-                          : { label: `${avail} dispo.`, sx: { bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, fontWeight: 'bold' } };
-
-                        return (
-                          <SessionCard
-                            key={session.id}
-                            selected={isSelected}
-                            disabled={isFull}
-                            variant="outlined"
-                            onClick={() => handleSelectSession(session)}
-                          >
-                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                              <Typography variant="body2" fontWeight="bold" sx={{ color: COLORS.navy }}>
-                                {new Date(session.start_date).toLocaleDateString('fr-FR', {
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric',
-                                })}
-                              </Typography>
-                            </Stack>
-
-                            <Box sx={{ mt: 1 }}>
-                              <LinearProgress
-                                variant="determinate"
-                                value={pct}
-                                sx={{
-                                  height: 5,
-                                  borderRadius: 2,
-                                  bgcolor: alpha(barColor, 0.15),
-                                  '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 2 },
-                                }}
-                              />
-                              <Stack direction="row" justifyContent="space-between" mt={0.5}>
-                                <Typography variant="caption" color="text.secondary">
-                                  {booked}/{total} réservés
-                                </Typography>
-                                {!isFull && (
-                                  <Typography variant="caption" sx={{ color: barColor, fontWeight: 500 }}>
-                                    {avail} libre{avail > 1 ? 's' : ''}
-                                  </Typography>
-                                )}
-                              </Stack>
-                            </Box>
-                          </SessionCard>
-                        );
-                      })}
-                    </Stack>
-                  )}
-
-                  <Divider sx={{ mb: 2.5 }} />
-
-                  {/* Participant counter */}
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-                    <PeopleAlt color="action" fontSize="small" />
-                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy }}>
-                      Nombre de participants
-                    </Typography>
-                  </Stack>
-
-                  <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 0.5 }}>
-                    <CounterButton size="small" onClick={() => handleCountChange(-1)} disabled={participantCount <= 1}>
-                      <Remove fontSize="small" />
-                    </CounterButton>
-
-                    <Typography variant="h5" fontWeight="bold" sx={{ minWidth: 32, textAlign: 'center', color: COLORS.navy }}>
-                      {participantCount}
-                    </Typography>
-
-                    <CounterButton size="small" onClick={() => handleCountChange(1)} disabled={!selectedSession || participantCount >= selectedAvail}>
-                      <Add fontSize="small" />
-                    </CounterButton>
-
-                    {selectedSession && (
-                      <Typography variant="caption" color="text.secondary">
-                        max {selectedAvail} place{selectedAvail > 1 ? 's' : ''}
-                      </Typography>
-                    )}
-                  </Stack>
-
-                  {/* Booking alert */}
-                  {bookingAlert && (
-                    <Alert
-                      severity={bookingAlert.type}
-                      icon={
-                        bookingAlert.type === 'error' ? <ErrorOutline fontSize="small" /> :
-                        bookingAlert.type === 'warning' ? <WarningAmber fontSize="small" /> :
-                        <CheckCircleOutline fontSize="small" />
-                      }
-                      sx={{ mt: 1.5, mb: 1, borderRadius: 2, fontSize: '0.8rem', py: 0.5 }}
-                    >
-                      {bookingAlert.message}
-                    </Alert>
-                  )}
-
-                  <Divider sx={{ my: 2 }} />
-
-                  {/* Tarif détaillé */}
-                  <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy, mb: 1 }}>
-                    Récapitulatif du tarif
+                  <Typography variant="h6" fontWeight="bold" sx={{ color: COLORS.navy, mb: 2 }}>
+                    Réservation indisponible
                   </Typography>
-
-                  <Stack spacing={0.5} sx={{ mb: 2 }}>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="body2" color="text.secondary">
-                        {participantCount} personne{participantCount > 1 ? 's' : ''} × {trip.base_price?.toLocaleString('fr-FR')} TND
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: COLORS.navy }}>
-                        {(participantCount * (trip.base_price || 0)).toLocaleString('fr-FR')} TND
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="body2" color="text.secondary">Frais de service</Typography>
-                      <Typography variant="body2" sx={{ color: COLORS.teal, fontWeight: 600 }}>Gratuit</Typography>
-                    </Stack>
-                    <Divider sx={{ my: 1 }} />
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="subtitle1" fontWeight="bold" sx={{ color: COLORS.navy }}>Total</Typography>
-                      <Typography variant="subtitle1" fontWeight="bold" sx={{ color: COLORS.teal }}>
-                        {totalPrice.toLocaleString('fr-FR')} TND
-                      </Typography>
-                    </Stack>
-                  </Stack>
-
-                  {/* Organizer */}
-                  {trip.organizer && (
-                    <>
-                      <Divider sx={{ mb: 2 }} />
-                      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Avatar src={trip.organizer.logo} sx={{ width: 40, height: 40, bgcolor: COLORS.teal, color: COLORS.white }}>
-                          {trip.organizer.agency_name?.[0]}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Organisé par</Typography>
-                          <Typography variant="body2" fontWeight="bold" sx={{ color: COLORS.navy }}>{trip.organizer.agency_name}</Typography>
-                        </Box>
-                      </Stack>
-                    </>
-                  )}
-
-                  {/* Difficulty */}
-                  <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary">Niveau :</Typography>
-                    <Chip
-                      label={
-                        trip.difficulty_level === 'easy' ? 'Facile' :
-                        trip.difficulty_level === 'medium' ? 'Intermédiaire' : 'Difficile'
-                      }
-                      size="small"
-                      sx={{ 
-                        bgcolor: trip.difficulty_level === 'easy' ? alpha(COLORS.teal, 0.1) : alpha(COLORS.navy, 0.1),
-                        color: trip.difficulty_level === 'easy' ? COLORS.teal : COLORS.navy,
-                        fontWeight: 'bold',
-                        borderRadius: 3
-                      }}
-                    />
-                  </Stack>
-
-                  {/* Politique d'annulation - Carte séparée */}
-                  {policy && (
-                    <PolicyCard elevation={0}>
-                      <Typography variant="subtitle2" fontWeight="bold" sx={{ color: COLORS.navy, mb: 1 }}>
-                        Politique d'annulation
-                      </Typography>
-                      <Stack spacing={1}>
-                        {policy.rules?.slice(0, 3).map((rule, idx) => (
-                          <Stack key={idx} direction="row" justifyContent="space-between">
-                            <Typography variant="caption" color="text.secondary">
-                              {rule.days === 0 ? 'Moins de 7 jours' : `Plus de ${rule.days} jours`}
-                            </Typography>
-                            <Typography variant="caption" fontWeight="bold" sx={{ color: COLORS.teal }}>
-                              {rule.refund}% remboursé
-                            </Typography>
-                          </Stack>
-                        ))}
-                        <Button
-                          size="small"
-                          onClick={() => setPolicyModalOpen(true)}
-                          sx={{ mt: 1, color: COLORS.teal, justifyContent: 'flex-start', p: 0 }}
-                        >
-                          Voir tous les détails →
-                        </Button>
-                      </Stack>
-                    </PolicyCard>
-                  )}
-                  <Divider sx={{ mb: 2.5 }} />
-                  {/* Booking form or button */}
-                  {showBookingForm ? (
-                    <BookingForm
-                      trip={trip}
-                      sessions={availableSessions}
-                      selectedSession={selectedSession}
-                      participantCount={participantCount}
-                      onSuccess={handleBookingSuccess}
-                      onCancel={() => setShowBookingForm(false)}
-                    />
-                  ) : (
-                    <GradientButton
-                      fullWidth
-                      onClick={handleBook}
-                      disabled={availableSessions.length === 0}
-                    >
-                      {availableSessions.length === 0
-                        ? 'Aucune session disponible'
-                        : !selectedSession
-                        ? 'Sélectionner une date'
-                        : !canBook
-                        ? 'Vérifier les disponibilités'
-                        : `Réserver — ${totalPrice.toLocaleString('fr-FR')} TND`}
-                    </GradientButton>
-                  )}
-
-                  {/* Trust badges */}
-                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2, gap: 0.5 }}>
-                    {['Paiement sécurisé', 'Meilleur prix garanti'].map((txt) => (
-                      <Chip
-                        key={txt}
-                        label={txt}
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontSize: '0.7rem', borderColor: alpha(COLORS.teal, 0.3), color: alpha(COLORS.navy, 0.7) }}
-                      />
-                    ))}
-                  </Stack>
+                  <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
+                    En tant qu'organisateur ou administrateur, vous ne pouvez pas réserver ce voyage.
+                  </Typography>
                 </Paper>
-              </Zoom>
-            </Box>
-          </Grid>
+              </Box>
+            </Grid>
+          )}
         </Grid>
       </Container>
 

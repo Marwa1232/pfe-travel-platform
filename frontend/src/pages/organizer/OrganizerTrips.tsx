@@ -30,6 +30,11 @@ import {
   Card,
   CardContent,
   Grid,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
 } from '@mui/material';
 import {
   Add,
@@ -46,6 +51,7 @@ import {
   TrendingDown,
   Schedule,
   LocationOn,
+  KeyboardArrowDown,
 } from '@mui/icons-material';
 import { styled, alpha, keyframes } from '@mui/material/styles';
 import { tripAPI } from '../../services/api';
@@ -182,6 +188,19 @@ const OrganizerTrips: React.FC = () => {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; trip: any | null }>({ open: false, trip: null });
   const [cancelSessionDialog, setCancelSessionDialog] = useState<{ open: boolean; trip: any; session: any } | null>(null);
   const [sessionDialog, setSessionDialog] = useState<{ open: boolean; trip: any } | null>(null);
+
+  // Menu dropdown state
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>, id: number) => {
+    setMenuAnchor(e.currentTarget);
+    setOpenMenuId(id);
+  };
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setOpenMenuId(null);
+  };
 
   useEffect(() => { loadTrips(); }, []);
 
@@ -441,47 +460,70 @@ const OrganizerTrips: React.FC = () => {
                           <StatusChip status={getTripStatus(trip)} />
                         </TableCell>
                         <TableCell align="center">
-                          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                            <Tooltip title="Voir">
-                              <IconButton 
-                                size="small"
-                                onClick={() => navigate(`/trips/${trip.id}`)}
-                                sx={{ 
-                                  color: COLORS.teal, 
-                                  borderRadius: 8,
-                                  '&:hover': { bgcolor: alpha(COLORS.teal, 0.1) } 
-                                }}
-                              >
-                                <Visibility fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Modifier">
-                              <IconButton 
-                                size="small"
-                                onClick={() => navigate(`/organizer/trips/${trip.id}/edit`)}
-                                sx={{ 
-                                  color: COLORS.navy, 
-                                  borderRadius: 8,
-                                  '&:hover': { bgcolor: alpha(COLORS.navy, 0.08) } 
-                                }}
-                              >
-                                <Edit fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Supprimer">
-                              <IconButton 
-                                size="small"
-                                onClick={() => setDeleteDialog({ open: true, trip })}
-                                sx={{ 
-                                  color: COLORS.amber, 
-                                  borderRadius: 8,
-                                  '&:hover': { bgcolor: alpha(COLORS.amber, 0.08) } 
-                                }}
-                              >
-                                <Delete fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            endIcon={<KeyboardArrowDown sx={{ fontSize: 14 }} />}
+                            onClick={(e) => handleMenuOpen(e, trip.id)}
+                            sx={{
+                              borderRadius: 2,
+                              textTransform: 'none',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              borderColor: alpha(COLORS.navy, 0.2),
+                              color: COLORS.navy,
+                              px: 1.5, py: 0.5,
+                              '&:hover': { borderColor: COLORS.teal, color: COLORS.teal, bgcolor: alpha(COLORS.teal, 0.04) },
+                            }}
+                          >
+                            Actions
+                          </Button>
+                          <Menu
+                            anchorEl={openMenuId === trip.id ? menuAnchor : null}
+                            open={openMenuId === trip.id}
+                            onClose={handleMenuClose}
+                            elevation={2}
+                            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                            PaperProps={{
+                              sx: {
+                                borderRadius: 2,
+                                border: `0.5px solid ${alpha(COLORS.navy, 0.1)}`,
+                                boxShadow: `0 8px 24px ${alpha(COLORS.navy, 0.1)}`,
+                                minWidth: 175,
+                                mt: 0.5,
+                              }
+                            }}
+                          >
+                            <MenuItem
+                              onClick={() => { navigate(`/trips/${trip.id}`); handleMenuClose(); }}
+                              sx={{ fontSize: 13, py: 1, '&:hover': { bgcolor: alpha(COLORS.navy, 0.04) } }}
+                            >
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <Visibility sx={{ fontSize: 16, color: alpha(COLORS.navy, 0.5) }} />
+                              </ListItemIcon>
+                              <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Voir</ListItemText>
+                            </MenuItem>
+                            <MenuItem
+                              onClick={() => { navigate(`/organizer/trips/${trip.id}/edit`); handleMenuClose(); }}
+                              sx={{ fontSize: 13, py: 1, '&:hover': { bgcolor: alpha(COLORS.navy, 0.04) } }}
+                            >
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <Edit sx={{ fontSize: 16, color: COLORS.navy }} />
+                              </ListItemIcon>
+                              <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Modifier</ListItemText>
+                            </MenuItem>
+                            <Divider sx={{ my: 0.5 }} />
+                            <MenuItem
+                              onClick={() => { setDeleteDialog({ open: true, trip }); handleMenuClose(); }}
+                              sx={{ fontSize: 13, color: COLORS.amber, py: 1, '&:hover': { bgcolor: alpha(COLORS.amber, 0.06) } }}
+                            >
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <Delete sx={{ fontSize: 16, color: COLORS.amber }} />
+                              </ListItemIcon>
+                              <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Supprimer</ListItemText>
+                            </MenuItem>
+                          </Menu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -523,7 +565,7 @@ const OrganizerTrips: React.FC = () => {
           onClose={() => setDeleteDialog({ open: false, trip: null })}
           PaperProps={{ 
             sx: { 
-              borderRadius: 16, 
+              borderRadius: 2, 
               boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}`,
               border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
             } 
@@ -574,7 +616,7 @@ const OrganizerTrips: React.FC = () => {
             onClose={() => setCancelSessionDialog(null)}
             PaperProps={{ 
               sx: { 
-                borderRadius: 16, 
+                borderRadius: 2, 
                 boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}`,
                 border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
               } 
@@ -636,7 +678,7 @@ const OrganizerTrips: React.FC = () => {
             fullWidth
             PaperProps={{ 
               sx: { 
-                borderRadius: 16, 
+                borderRadius: 2, 
                 boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}`,
                 border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
               } 
@@ -672,7 +714,7 @@ const OrganizerTrips: React.FC = () => {
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Box>
                         <Typography fontWeight={700} variant="body2" sx={{ color: COLORS.navy }}>
-                          📅 {session.start_date && new Date(session.start_date).toLocaleDateString('fr-FR', {
+                          {session.start_date && new Date(session.start_date).toLocaleDateString('fr-FR', {
                             day: 'numeric',
                             month: 'long',
                             year: 'numeric',

@@ -270,13 +270,12 @@ class AdminApiController extends AbstractController
             return $authCheck;
         }
 
-        $bookings = $this->em->getRepository(Booking::class)->findAll();
+        $payments  = $this->em->getRepository(Payment::class)->findBy(['status' => 'SUCCEEDED']);
         $organizers = $this->em->getRepository(OrganizerProfile::class)->findAll();
         
-        $totalRevenue = 0;
-        $commissionRate = 0.10; // 10% commission
+        $totalRevenue    = 0;
         $totalCommission = 0;
-        $pendingPayouts = 0;
+        $pendingPayouts  = 0;
         $completedPayouts = 0;
         
         $organizerRevenues = [];
@@ -284,31 +283,40 @@ class AdminApiController extends AbstractController
             $organizerRevenues[$organizer->getId()] = 0;
         }
         
-        foreach ($bookings as $booking) {
-            if ($booking->getStatus() === 'CONFIRMED' || $booking->getStatus() === 'COMPLETED') {
-                $price = (float) $booking->getTotalPrice();
-                $totalRevenue += $price;
-                $commission = $price * $commissionRate;
-                $totalCommission += $commission;
-                
-                $trip = $booking->getTrip();
-                if ($trip && $trip->getOrganizer()) {
-                    $orgId = $trip->getOrganizer()->getId();
-                    if (isset($organizerRevenues[$orgId])) {
-                        $organizerRevenues[$orgId] += ($price - $commission);
-                    }
+        // Lire la commission depuis Payment::platform_fee (persistée, immuable)
+        // Jamais recalculée rétroactivement → les changements de taux n'affectent pas l'historique
+        foreach ($payments as $payment) {
+            $booking = $payment->getBooking();
+            if (!$booking) continue;
+
+            $amount = (float) $payment->getAmount();
+            // Si platform_fee non encore persisté (anciennes réservations), fallback 10%
+            $fee    = $payment->getPlatformFee() !== null
+                ? (float) $payment->getPlatformFee()
+                : round($amount * 0.10, 2);
+
+            $totalRevenue    += $amount;
+            $totalCommission += $fee;
+
+            $trip = $booking->getTrip();
+            if ($trip && $trip->getOrganizer()) {
+                $orgId = $trip->getOrganizer()->getId();
+                if (isset($organizerRevenues[$orgId])) {
+                    $payout = $payment->getOrganizerPayout() ?? ($amount - $fee);
+                    $organizerRevenues[$orgId] += $payout;
                 }
             }
         }
 
         return $this->json([
-            'totalRevenue' => $totalRevenue,
-            'totalCommission' => $totalCommission,
-            'commissionRate' => $commissionRate * 100,
-            'platformRevenue' => $totalCommission,
+            'totalRevenue'     => $totalRevenue,
+            'totalCommission'  => $totalCommission,
+            'commissionRate'   => 10,
+            'platformRevenue'  => $totalCommission,
             'organizerPayouts' => array_sum($organizerRevenues),
-            'pendingPayouts' => $pendingPayouts,
+            'pendingPayouts'   => $pendingPayouts,
             'completedPayouts' => $completedPayouts,
+            'currency'         => 'EUR',
         ]);
     }
 

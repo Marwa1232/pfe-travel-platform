@@ -5,13 +5,15 @@ import {
   Container, Typography, Box, Paper, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Chip,
   Button, CircularProgress, Alert, Stack, Avatar, IconButton,
-  Tooltip, Grid, Card, CardContent, Fade, Zoom
+  Tooltip, Grid, Card, CardContent, Fade, Zoom,
+  Menu, MenuItem, ListItemIcon, ListItemText, Divider,
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import { 
-  PictureAsPdf, DeleteOutline, ArrowBack, 
+  DeleteOutline, ArrowBack, 
   ConfirmationNumber, EventAvailable, History,
-  TravelExplore, Receipt, Cancel
+  TravelExplore, Receipt, Cancel, KeyboardArrowDown,
+  PictureAsPdf,
 } from '@mui/icons-material';
 import { jsPDF } from 'jspdf';
 import { bookingAPI } from '../services/api';
@@ -71,34 +73,6 @@ const GradientButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-const OutlinedButton = styled(Button)(({ theme }) => ({
-  borderRadius: 12,
-  padding: theme.spacing(0.8, 2),
-  fontWeight: 600,
-  textTransform: 'none',
-  fontSize: '0.75rem',
-  borderColor: COLORS.teal,
-  color: COLORS.teal,
-  '&:hover': {
-    borderColor: COLORS.navy,
-    backgroundColor: alpha(COLORS.teal, 0.05),
-  },
-}));
-
-const DangerButton = styled(Button)(({ theme }) => ({
-  borderRadius: 12,
-  padding: theme.spacing(0.8, 2),
-  fontWeight: 600,
-  textTransform: 'none',
-  fontSize: '0.75rem',
-  borderColor: COLORS.amber,
-  color: COLORS.amber,
-  '&:hover': {
-    borderColor: COLORS.amber,
-    backgroundColor: alpha(COLORS.amber, 0.08),
-  },
-}));
-
 const BookingHistory: React.FC = () => {
   const navigate = useNavigate();
   const { token } = useSelector((state: RootState) => state.auth);
@@ -107,6 +81,19 @@ const BookingHistory: React.FC = () => {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelBookingId, setCancelId] = useState<number | null>(null);
   const [cancelHasPaid, setCancelHasPaid] = useState(false);
+
+  // Menu state
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>, id: number) => {
+    setMenuAnchor(e.currentTarget);
+    setOpenMenuId(id);
+  };
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setOpenMenuId(null);
+  };
 
   useEffect(() => {
     if (!token) { navigate('/login'); return; }
@@ -249,7 +236,7 @@ const BookingHistory: React.FC = () => {
                     <HeaderCell>Date de Départ</HeaderCell>
                     <HeaderCell>Prix Total</HeaderCell>
                     <HeaderCell>Statut</HeaderCell>
-                    <HeaderCell align="right">Actions</HeaderCell>
+                    <HeaderCell align="center">Actions</HeaderCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -311,46 +298,85 @@ const BookingHistory: React.FC = () => {
                             }}
                           />
                         </TableCell>
-                        <TableCell align="right">
-                          <Stack direction="row" spacing={1} justifyContent="flex-end">
-                            <Tooltip title="Télécharger le reçu">
-                              <OutlinedButton
-                                startIcon={<Receipt fontSize="small" />}
-                                onClick={() => handleExportPdf(booking)}
-                              >
-                                Reçu
-                              </OutlinedButton>
-                            </Tooltip>
-                            
+
+                        {/* ── DROPDOWN MENU ── */}
+                        <TableCell align="center">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            endIcon={<KeyboardArrowDown sx={{ fontSize: 14 }} />}
+                            onClick={(e) => handleMenuOpen(e, booking.id)}
+                            sx={{
+                              borderRadius: 2,
+                              textTransform: 'none',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              borderColor: alpha(COLORS.navy, 0.2),
+                              color: COLORS.navy,
+                              px: 1.5, py: 0.5,
+                              '&:hover': { borderColor: COLORS.teal, color: COLORS.teal, bgcolor: alpha(COLORS.teal, 0.04) },
+                            }}
+                          >
+                            Actions
+                          </Button>
+                          <Menu
+                            anchorEl={openMenuId === booking.id ? menuAnchor : null}
+                            open={openMenuId === booking.id}
+                            onClose={handleMenuClose}
+                            elevation={2}
+                            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                            PaperProps={{
+                              sx: {
+                                borderRadius: 2,
+                                border: `0.5px solid ${alpha(COLORS.navy, 0.1)}`,
+                                boxShadow: `0 8px 24px ${alpha(COLORS.navy, 0.1)}`,
+                                minWidth: 175,
+                                mt: 0.5,
+                              }
+                            }}
+                          >
+                            <MenuItem
+                              onClick={() => { handleExportPdf(booking); handleMenuClose(); }}
+                              sx={{ fontSize: 13, py: 1, '&:hover': { bgcolor: alpha(COLORS.navy, 0.04) } }}
+                            >
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <Receipt sx={{ fontSize: 16, color: alpha(COLORS.navy, 0.5) }} />
+                              </ListItemIcon>
+                              <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Télécharger reçu</ListItemText>
+                            </MenuItem>
+
                             {booking.status !== 'CANCELLED' && (
-                              <Tooltip title="Annuler la réservation">
-                                <DangerButton
-                                  startIcon={<Cancel fontSize="small" />}
-                                  onClick={() => {
-                                    setCancelId(booking.id);
-                                    setCancelHasPaid(booking.payment?.status === 'SUCCEEDED');
-                                    setCancelOpen(true);
-                                  }}
-                                >
-                                  Annuler
-                                </DangerButton>
-                              </Tooltip>
+                              <MenuItem
+                                onClick={() => {
+                                  setCancelId(booking.id);
+                                  setCancelHasPaid(booking.payment?.status === 'SUCCEEDED');
+                                  setCancelOpen(true);
+                                  handleMenuClose();
+                                }}
+                                sx={{ fontSize: 13, color: COLORS.amber, py: 1, '&:hover': { bgcolor: alpha(COLORS.amber, 0.06) } }}
+                              >
+                                <ListItemIcon sx={{ minWidth: 28 }}>
+                                  <Cancel sx={{ fontSize: 16, color: COLORS.amber }} />
+                                </ListItemIcon>
+                                <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Annuler</ListItemText>
+                              </MenuItem>
                             )}
 
-                            <Tooltip title="Supprimer">
-                              <IconButton 
-                                onClick={() => bookingAPI.delete(booking.id).then(loadBookings)}
-                                sx={{ 
-                                  color: alpha(COLORS.navy, 0.3),
-                                  borderRadius: 10,
-                                  '&:hover': { color: COLORS.amber, bgcolor: alpha(COLORS.amber, 0.08) }
-                                }}
-                              >
-                                <DeleteOutline fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Stack>
+                            <Divider sx={{ my: 0.5 }} />
+
+                            <MenuItem
+                              onClick={() => { bookingAPI.delete(booking.id).then(loadBookings); handleMenuClose(); }}
+                              sx={{ fontSize: 13, color: COLORS.amber, py: 1, '&:hover': { bgcolor: alpha(COLORS.amber, 0.06) } }}
+                            >
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <DeleteOutline sx={{ fontSize: 16, color: COLORS.amber }} />
+                              </ListItemIcon>
+                              <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Supprimer</ListItemText>
+                            </MenuItem>
+                          </Menu>
                         </TableCell>
+
                       </TableRow>
                     );
                   })}

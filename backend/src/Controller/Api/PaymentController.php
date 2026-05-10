@@ -159,7 +159,115 @@ class PaymentController extends AbstractController
     }
 
     // ════════════════════════════════════════════════════════
-    //  2. Rembourser
+    //  2. Confirmer côté backend après succès Stripe frontend
+    //     POST /api/payments/confirm
+    //     body: { payment_intent_id, offer_id? }
+    // ════════════════════════════════════════════════════════
+    #[Route('/confirm', methods: ['POST'])]
+    public function confirm(Request $request): JsonResponse
+    {
+        $user = $this->getAuthUser($request);
+        if (!$user) return $this->json(['error' => 'Unauthorized'], 401);
+
+        $body            = json_decode($request->getContent(), true) ?? [];
+        $paymentIntentId = $body['payment_intent_id'] ?? null;
+        $offerId         = $body['offer_id'] ?? null;
+
+        if (!$paymentIntentId) return $this->json(['error' => 'payment_intent_id required'], 400);
+
+        // Vérifier auprès de Stripe que le paiement est bien succeeded
+        try {
+            $intent = $this->stripe->paymentIntents->retrieve($paymentIntentId);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Stripe error: ' . $e->getMessage()], 500);
+        }
+
+        if ($intent->status !== 'succeeded') {
+            return $this->json(['error' => 'Payment not succeeded: ' . $intent->status], 400);
+        }
+
+        $payment = $this->paymentRepo->findOneBy(['stripe_payment_intent_id' => $paymentIntentId]);
+        if (!$payment) return $this->json(['error' => 'Payment not found'], 404);
+
+        // Sécurité — le payment appartient bien à ce user
+        if ($payment->getBooking()->getUser()->getId() !== $user->getId()) {
+            return $this->json(['error' => 'Forbidden'], 403);
+        }
+
+        // Déjà traité — idempotence
+        if ($payment->getStatus() === 'SUCCEEDED') {
+            return $this->json(['message' => 'Already confirmed', 'points_earned' => 0]);
+        }
+
+        $booking = $payment->getBooking();
+
+        // ── 1. Montant réellement payé = ce que Stripe a chargé ──
+        $paidAmount = $intent->amount / 100; // en EUR
+        $payment->setAmount((string) $paidAmount);
+
+        // ── 2. Commission plateforme — 10% sur le montant payé, immuable ──
+        $platformFee = round($paidAmount * 0.10, 2);
+        $payment->setPlatformFee((string) $platformFee);
+
+        // ── 3. Presentment (devise carte du voyageur) ──
+        try {
+            $charge = $this->stripe->charges->retrieve($intent->latest_charge ?? '');
+            $payment->setPresentmentAmount((string) ($charge->amount / 100));
+            $payment->setPresentmentCurrency(strtoupper($charge->currency));
+        } catch (\Exception $e) {
+            error_log('[Confirm] Could not fetch charge: ' . $e->getMessage());
+        }
+
+        // ── 4. Mettre à jour booking.total_price avec le montant réellement payé ──
+        $booking->setTotalPrice((string) $paidAmount);
+        $booking->setUpdatedAt(new \DateTimeImmutable());
+
+        // ── 5. Confirmer ──
+        $payment->setStatus('SUCCEEDED');
+        $payment->setPaidAt(new \DateTime());
+        $booking->setStatus('CONFIRMED');
+        $this->em->flush();
+
+        // ── 6. Appliquer l'offre fidélité (redeem) ──
+        if ($offerId) {
+            try {
+                $offer = $this->em->getRepository(\App\Entity\LoyaltyOffer::class)->find($offerId);
+                if ($offer) {
+                    $this->loyaltyService->redeemPoints($user, $offer, $booking);
+                }
+            } catch (\Exception $e) {
+                error_log('[Confirm] Redeem failed: ' . $e->getMessage());
+            }
+        }
+
+        // ── 7. Points fidélité gagnés ──
+        $pointsEarned = 0;
+        try {
+            $pointsEarned = $this->loyaltyService->earnPoints($user, $booking);
+            if ($pointsEarned > 0) {
+                $this->notificationService->create(
+                    $user,
+                    'Points fidélité gagnés 🎯',
+                    sprintf('Vous avez gagné %d points pour "%s".', $pointsEarned, $booking->getTrip()?->getTitle()),
+                    'loyalty'
+                );
+            }
+        } catch (\Throwable $e) {
+            error_log('[Confirm] earnPoints error: ' . $e->getMessage());
+        }
+
+        $this->notificationService->notifyBookingConfirmed($booking);
+
+        return $this->json([
+            'message'       => 'Payment confirmed',
+            'paid_amount'   => $paidAmount,
+            'platform_fee'  => $platformFee,
+            'points_earned' => $pointsEarned,
+        ]);
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  3. Rembourser
     //     POST /api/payments/refund/{bookingId}
     // ════════════════════════════════════════════════════════
     #[Route('/refund/{bookingId}', methods: ['POST'])]
@@ -286,35 +394,45 @@ class PaymentController extends AbstractController
         $payment = $this->paymentRepo->findOneBy([
             'stripe_payment_intent_id' => $intent->id,
         ]);
-        if (!$payment) {
-            error_log("Payment not found: " . $intent->id);
+        if (!$payment) { error_log("Payment not found: " . $intent->id); return; }
+
+        // Idempotence — déjà traité par /confirm
+        if ($payment->getStatus() === 'SUCCEEDED') {
+            error_log('[Webhook] Already confirmed by frontend: ' . $intent->id);
             return;
         }
-    
+
+        $booking = $payment->getBooking();
+        $user    = $booking->getUser();
+
+        $paidAmount  = $intent->amount / 100;
+        $platformFee = round($paidAmount * 0.10, 2);
+
+        $payment->setAmount((string) $paidAmount);
+        $payment->setPlatformFee((string) $platformFee);
+        $booking->setTotalPrice((string) $paidAmount);
+        $booking->setUpdatedAt(new \DateTimeImmutable());
         $payment->setStatus('SUCCEEDED');
         $payment->setPaidAt(new \DateTime());
-        $payment->getBooking()->setStatus('CONFIRMED');
+        $booking->setStatus('CONFIRMED');
         $this->em->flush();
-        error_log('[Webhook] Payment succeeded BEFORE loyalty: ' . $intent->id);
-    
-        // ── Fidélité ──
-        try {
-            $booking = $payment->getBooking();
-            $user    = $booking->getUser();
-            error_log('[Loyalty] Trying earnPoints for user #' . $user->getId());
-            $points  = $this->loyaltyService->earnPoints($user, $booking);
-            error_log('[Loyalty] +' . $points . ' points pour user #' . $user->getId());
-    
-            $this->notificationService->create(
-                $user,
-                'Points fidélité gagnés 🎯',
-                sprintf('Vous avez gagné %d points pour "%s".', $points, $booking->getTrip()?->getTitle()),
-                'loyalty'
-            );
-        } catch (\Throwable $e) {
-            error_log('[Loyalty] ERREUR: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+
+        $offerId = $intent->metadata['offer_id'] ?? null;
+        if ($offerId) {
+            try {
+                $offer = $this->em->getRepository(\App\Entity\LoyaltyOffer::class)->find($offerId);
+                if ($offer) $this->loyaltyService->redeemPoints($user, $offer, $booking);
+            } catch (\Exception $e) { error_log('[Webhook] Redeem failed: ' . $e->getMessage()); }
         }
-    
+
+        try {
+            $points = $this->loyaltyService->earnPoints($user, $booking);
+            if ($points > 0) {
+                $this->notificationService->create($user, 'Points fidélité gagnés 🎯',
+                    sprintf('Vous avez gagné %d points pour "%s".', $points, $booking->getTrip()?->getTitle()), 'loyalty');
+            }
+        } catch (\Throwable $e) { error_log('[Webhook] earnPoints error: ' . $e->getMessage()); }
+
         error_log('[Webhook] Payment succeeded DONE: ' . $intent->id);
     }
 

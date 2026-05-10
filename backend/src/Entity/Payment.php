@@ -27,7 +27,7 @@ class Payment
 
     #[ORM\Column(length: 5)]
     #[Groups(['booking:read'])]
-    private ?string $currency = 'TND';
+    private ?string $currency = 'EUR';
 
     #[ORM\Column(length: 20)]
     #[Groups(['booking:read'])]
@@ -69,6 +69,23 @@ class Payment
     #[ORM\Column(length: 50, nullable: true)]
     #[Groups(['booking:read'])]
     private ?string $dispute_status = null;
+
+    // ── Multi-Currency (Stripe presentment) ────────────
+    // Montant réellement débité sur la carte du voyageur (ex: 114.17 GBP)
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
+    #[Groups(['booking:read'])]
+    private ?string $presentment_amount = null;
+
+    // Devise du voyageur (GBP, USD, TND…) — ce qu'il a vu sur sa carte
+    #[ORM\Column(length: 10, nullable: true)]
+    #[Groups(['booking:read'])]
+    private ?string $presentment_currency = null;
+
+    // ── Commission plateforme (persistée, immuable après paiement) ──
+    // Toujours calculée sur $amount (EUR), jamais recalculée rétroactivement
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
+    #[Groups(['booking:read'])]
+    private ?string $platform_fee = null;
 
     public function __construct()
     {
@@ -184,4 +201,22 @@ class Payment
 
     public function getDisputeStatus(): ?string { return $this->dispute_status; }
     public function setDisputeStatus(?string $v): static { $this->dispute_status = $v; return $this; }
+
+    // ── Presentment ──
+    public function getPresentmentAmount(): ?string { return $this->presentment_amount; }
+    public function setPresentmentAmount(?string $v): static { $this->presentment_amount = $v; return $this; }
+
+    public function getPresentmentCurrency(): ?string { return $this->presentment_currency; }
+    public function setPresentmentCurrency(?string $v): static { $this->presentment_currency = $v; return $this; }
+
+    // ── Platform fee ──
+    public function getPlatformFee(): ?string { return $this->platform_fee; }
+    public function setPlatformFee(?string $v): static { $this->platform_fee = $v; return $this; }
+
+    /** Montant net revenant à l'organisateur (amount - platform_fee), en EUR */
+    public function getOrganizerPayout(): ?float
+    {
+        if ($this->amount === null || $this->platform_fee === null) return null;
+        return round((float) $this->amount - (float) $this->platform_fee, 2);
+    }
 }

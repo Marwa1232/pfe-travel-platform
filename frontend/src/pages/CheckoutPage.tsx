@@ -34,7 +34,7 @@ const T = {
 };
 
 // ── Stripe Form ──────────────────────────────────────────
-const StripeForm: React.FC<{ booking: any; onSuccess: () => void }> = ({ booking, onSuccess }) => {
+const StripeForm: React.FC<{ booking: any; selectedOffer: any; onSuccess: () => void }> = ({ booking, selectedOffer, onSuccess }) => {
   const stripe   = useStripe();
   const elements = useElements();
   const [ready, setReady]     = useState(false);
@@ -63,6 +63,16 @@ const StripeForm: React.FC<{ booking: any; onSuccess: () => void }> = ({ booking
     }
 
     if (paymentIntent?.status === 'succeeded') {
+      // Confirmer côté backend — applique commission + offer + points
+      try {
+        await api.post('/payments/confirm', {
+          payment_intent_id: paymentIntent.id,
+          offer_id: selectedOffer?.id ?? null,
+        });
+      } catch (err) {
+        console.error('[Confirm] Backend error:', err);
+        // On laisse quand même passer — le paiement Stripe est OK
+      }
       onSuccess();
       return;
     }
@@ -284,7 +294,7 @@ const CheckoutPage: React.FC = () => {
                   clientSecret,
                   appearance: { theme: 'stripe', variables: { colorPrimary: T.teal, colorText: T.ink, borderRadius: '8px' } },
                 }}>
-                  <StripeForm booking={booking} onSuccess={() => setSuccess(true)} />
+                  <StripeForm booking={booking} selectedOffer={selectedOffer} onSuccess={() => setSuccess(true)} />
                 </Elements>
               )}
             </Paper>

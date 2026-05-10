@@ -71,7 +71,7 @@ const SwitchOuter = styled(Box, {
   width: 115,
   borderRadius: 165,
   background: isDark ? COLORS.navy : alpha(COLORS.navy, 0.15),
-  boxShadow: isDark 
+  boxShadow: isDark
     ? `inset 0px 5px 10px 0px ${alpha(COLORS.navy, 0.6)}, 0px 3px 6px -2px ${alpha(COLORS.navy, 0.3)}`
     : `inset 0px 5px 10px 0px ${alpha(COLORS.navy, 0.1)}, 0px 3px 6px -2px ${alpha(COLORS.navy, 0.05)}`,
   border: `1px solid ${isDark ? alpha(COLORS.white, 0.15) : alpha(COLORS.navy, 0.2)}`,
@@ -93,11 +93,11 @@ const ButtonInner = styled(Box)({
 });
 
 const ButtonToggle = styled(Box, {
-  shouldForwardProp: (prop) => prop !== 'isDark',
+  shouldForwardProp: (prop) => prop !== 'isDark' && prop !== 'isChecked',
 })<{ isDark: boolean; isChecked: boolean }>(({ isDark, isChecked }) => ({
   height: 42,
   width: 42,
-  background: isDark 
+  background: isDark
     ? `linear-gradient(135deg, ${COLORS.white}, ${alpha(COLORS.white, 0.8)})`
     : `linear-gradient(135deg, ${COLORS.navy}, ${alpha(COLORS.navy, 0.8)})`,
   borderRadius: '50%',
@@ -181,6 +181,75 @@ const DarkModeSwitch: React.FC<DarkModeSwitchProps> = ({ isDark, onToggle }) => 
   );
 };
 
+// ==================== VIDEO FULLSCREEN OVERLAY ====================
+// بدلنا Dialog بـ fixed overlay — هكا el browser يعتبر el click على el video
+// continuation ta3 el user gesture ويسمح بالصوت
+const VideoOverlay: React.FC<{
+  src: string;
+  onClose: () => void;
+}> = ({ src, onClose }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Ki el overlay yban, play b son directly — nafs el call stack ta3 el click
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.play().catch(() => {
+        // Fallback: user yclic play bnafsou
+      });
+    }
+  }, [src]);
+
+  // Close bi ESC
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return (
+    <Box
+      onClick={onClose}
+      sx={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        bgcolor: 'rgba(0,0,0,0.92)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {/* Stop propagation bch el click 3al video ma ysakarsh el overlay */}
+      <Box onClick={(e) => e.stopPropagation()} sx={{ position: 'relative', maxWidth: '95vw', maxHeight: '90vh' }}>
+        <video
+          ref={videoRef}
+          src={src}
+          controls
+          style={{ maxWidth: '95vw', maxHeight: '85vh', objectFit: 'contain', display: 'block', borderRadius: 8 }}
+        />
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            top: -16,
+            right: -16,
+            bgcolor: COLORS.amber,
+            color: COLORS.white,
+            width: 32,
+            height: 32,
+            '&:hover': { bgcolor: alpha(COLORS.amber, 0.8) },
+          }}
+        >
+          ✕
+        </IconButton>
+      </Box>
+    </Box>
+  );
+};
+
 // ==================== SLIDER PREMIUM ====================
 const PremiumGallerySlider: React.FC<{
   mediaItems: any[];
@@ -210,6 +279,7 @@ const PremiumGallerySlider: React.FC<{
           gap: '14px', alignItems: 'stretch',
           height: { xs: 320, sm: 470, md: 580 }, width: '100%',
         }}>
+          {/* Panneau gauche — prev */}
           <Box onClick={prev} sx={{ cursor: 'pointer', overflow: 'hidden', borderRadius: '10px',
             height: '100%', opacity: 0.75, transform: 'scale(0.92)', transition: '0.3s',
             '&:hover': { opacity: 1, transform: 'scale(0.96)' } }}>
@@ -220,23 +290,28 @@ const PremiumGallerySlider: React.FC<{
             )}
           </Box>
 
+          {/* Panneau central — current */}
           <Box sx={{ position: 'relative', overflow: 'hidden', borderRadius: '10px', height: '100%', boxShadow: `0 25px 45px ${alpha(COLORS.navy, 0.25)}` }}>
             {current.type === 'video' ? (
-              <video src={fixImageUrl(current.url)} onClick={() => setOpenViewer(true)}
+              <video
+                src={fixImageUrl(current.url)}
+                onClick={() => setOpenViewer(true)}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
-                muted loop playsInline autoPlay />
+                muted loop playsInline autoPlay
+              />
             ) : (
               <img src={fixImageUrl(current.url)} alt="" onClick={() => setOpenViewer(true)}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} />
             )}
-            <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent 45%)', borderRadius: '10px' }} />
-            
-            <IconButton onClick={prev} sx={{ position: 'absolute', left: 18, top: '50%',  transform: 'translateY(-50%)',
+            <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent 45%)', borderRadius: '10px', pointerEvents: 'none' }} />
+
+            <IconButton onClick={prev} sx={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)',
               bgcolor: COLORS.white, '&:hover': { bgcolor: alpha(COLORS.white, 0.9) } }}>‹</IconButton>
             <IconButton onClick={next} sx={{ position: 'absolute', right: 18, top: '50%', transform: 'translateY(-50%)',
               bgcolor: COLORS.white, '&:hover': { bgcolor: alpha(COLORS.white, 0.9) } }}>›</IconButton>
           </Box>
 
+          {/* Panneau droite — next */}
           <Box onClick={next} sx={{ cursor: 'pointer', overflow: 'hidden', borderRadius: '10px',
             height: '100%', opacity: 0.75, transform: 'scale(0.92)', transition: '0.3s',
             '&:hover': { opacity: 1, transform: 'scale(0.96)' } }}>
@@ -248,6 +323,7 @@ const PremiumGallerySlider: React.FC<{
           </Box>
         </Box>
 
+        {/* Thumbnails */}
         <Box ref={thumbsRef} sx={{ display: 'flex', gap: 2, mt: 2, overflowX: 'auto', pb: 1,
           scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
           {mediaItems.map((item, index) => (
@@ -266,23 +342,29 @@ const PremiumGallerySlider: React.FC<{
           ))}
         </Box>
 
-        <Dialog open={openViewer} onClose={() => setOpenViewer(false)} maxWidth={false}
-          sx={{ '& .MuiDialog-paper': { bgcolor: alpha(COLORS.navy, 0.95), borderRadius: '12px', maxWidth: '95vw' } }}>
-          <DialogContent sx={{ p: 0, position: 'relative' }}>
-            <Box sx={{ position: 'relative', maxHeight: '85vh' }}>
-              {current.type === 'video' ? (
-                <video src={fixImageUrl(current.url)} controls autoPlay
-                  style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain' }} />
-              ) : (
+        {/* Image viewer (Dialog yebqa lil images barka) */}
+        {current.type !== 'video' && (
+          <Dialog open={openViewer} onClose={() => setOpenViewer(false)} maxWidth={false}
+            sx={{ '& .MuiDialog-paper': { bgcolor: alpha(COLORS.navy, 0.95), borderRadius: '12px', maxWidth: '95vw' } }}>
+            <DialogContent sx={{ p: 0, position: 'relative' }}>
+              <Box sx={{ position: 'relative', maxHeight: '85vh' }}>
                 <img src={fixImageUrl(current.url)} alt=""
                   style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain' }} />
-              )}
-              <IconButton onClick={() => setOpenViewer(false)}
-                sx={{ position: 'absolute', top: 12, right: 12, color: COLORS.white,
-                  bgcolor: alpha(COLORS.navy, 0.5), '&:hover': { bgcolor: COLORS.amber } }}>✕</IconButton>
-            </Box>
-          </DialogContent>
-        </Dialog>
+                <IconButton onClick={() => setOpenViewer(false)}
+                  sx={{ position: 'absolute', top: 12, right: 12, color: COLORS.white,
+                    bgcolor: alpha(COLORS.navy, 0.5), '&:hover': { bgcolor: COLORS.amber } }}>✕</IconButton>
+              </Box>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Video viewer — fixed overlay bch el son ykhraj */}
+        {current.type === 'video' && openViewer && (
+          <VideoOverlay
+            src={fixImageUrl(current.url)}
+            onClose={() => setOpenViewer(false)}
+          />
+        )}
       </Box>
     </>
   );
@@ -363,7 +445,7 @@ const Moments: React.FC = () => {
       formData.append('booking_id', selectedBooking.toString());
       const booking = eligibleBookings.find(b => b.id === selectedBooking);
       if (booking) formData.append('trip_id', booking.trip_id.toString());
-      files.forEach(file => formData.append('media', file));
+      files.forEach(file => formData.append('media[]', file));
       await momentAPI.createMoment(formData);
       setContent('');
       setFiles([]);
@@ -425,15 +507,15 @@ const Moments: React.FC = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: bgColor, transition: 'background-color 0.3s ease', py: 4, px: { xs: 2, sm: 3, md: 4, lg: 5 } }}>
       <Box sx={{ maxWidth: '95%', mx: 'auto' }}>
-        
+
         {/* Header */}
         <Fade in timeout={500}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <IconButton 
+              <IconButton
                 onClick={() => navigate(-1)}
-                sx={{ 
-                  bgcolor: cardBg, 
+                sx={{
+                  bgcolor: cardBg,
                   borderRadius: '12px',
                   border: `1px solid ${alpha(COLORS.teal, 0.2)}`,
                   '&:hover': { bgcolor: alpha(COLORS.teal, 0.1), borderColor: COLORS.teal }
@@ -450,8 +532,7 @@ const Moments: React.FC = () => {
                 </Typography>
               </Box>
             </Box>
-            
-            {/* Custom Dark Mode Switch */}
+
             <DarkModeSwitch isDark={darkMode} onToggle={() => setDarkMode(!darkMode)} />
           </Box>
         </Fade>
@@ -461,29 +542,29 @@ const Moments: React.FC = () => {
           {/* Section création de post */}
           {token && !tripId && eligibleBookings.length > 0 && (
             <Zoom in timeout={500}>
-              <Card sx={{ 
-                borderRadius: '12px', 
-                bgcolor: cardBg, 
+              <Card sx={{
+                borderRadius: '12px',
+                bgcolor: cardBg,
                 backdropFilter: darkMode ? 'blur(10px)' : 'none',
-                border: cardBorder, 
+                border: cardBorder,
                 transition: 'all 0.3s ease',
                 '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 12px 28px ${alpha(COLORS.navy, 0.1)}` }
               }}>
                 <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                    <Avatar sx={{ 
-                      bgcolor: COLORS.teal, 
-                      width: 56, 
-                      height: 56, 
+                    <Avatar sx={{
+                      bgcolor: COLORS.teal,
+                      width: 56,
+                      height: 56,
                       fontSize: 22,
                       boxShadow: `0 0 0 3px ${alpha(COLORS.teal, 0.3)}`
                     }}>
                       {getInitials(user?.first_name, user?.last_name)}
                     </Avatar>
                     <Box sx={{ flex: 1 }}>
-                      <TextField 
-                        fullWidth 
-                        multiline 
+                      <TextField
+                        fullWidth
+                        multiline
                         minRows={3}
                         placeholder="Partagez votre expérience..."
                         value={content}
@@ -493,14 +574,14 @@ const Moments: React.FC = () => {
                             fontSize: '1rem', '& fieldset': { borderColor: 'transparent' },
                             '&:hover fieldset': { borderColor: COLORS.teal },
                             '&.Mui-focused fieldset': { borderColor: COLORS.teal } },
-                        }} 
+                        }}
                       />
 
                       <Stack spacing={2}>
                         <FormControl fullWidth size="small">
                           <InputLabel sx={{ color: textSecondary }}>Sélectionnez un voyage</InputLabel>
-                          <Select 
-                            value={selectedBooking || ''} 
+                          <Select
+                            value={selectedBooking || ''}
                             label="Sélectionnez un voyage"
                             onChange={(e) => setSelectedBooking(e.target.value as number)}
                             sx={{ borderRadius: '10px', fontSize: '0.9rem', color: textPrimary, bgcolor: inputBg,
@@ -599,10 +680,10 @@ const Moments: React.FC = () => {
 
                 return (
                   <Fade in timeout={500 + idx * 100} key={moment.id}>
-                    <Card sx={{ 
-                      borderRadius: '12px', 
+                    <Card sx={{
+                      borderRadius: '12px',
                       bgcolor: cardBg,
-                      backdropFilter: darkMode ? 'blur(10px)' : 'none', 
+                      backdropFilter: darkMode ? 'blur(10px)' : 'none',
                       border: cardBorder,
                       transition: 'all 0.3s ease',
                       '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 16px 32px ${alpha(COLORS.navy, 0.12)}` },
@@ -612,7 +693,7 @@ const Moments: React.FC = () => {
                         {/* En-tête */}
                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
                           <Stack direction="row" spacing={2} alignItems="center">
-                            <Avatar 
+                            <Avatar
                               src={moment.user?.profile_photo_url ? fixImageUrl(moment.user.profile_photo_url) : undefined}
                               sx={{ bgcolor: COLORS.teal, width: 56, height: 56, fontSize: 22,
                                 boxShadow: `0 0 0 3px ${alpha(COLORS.teal, 0.3)}` }}>
@@ -623,8 +704,8 @@ const Moments: React.FC = () => {
                                 {moment.user?.first_name} {moment.user?.last_name}
                               </Typography>
                               <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                                <Chip 
-                                  label={moment.trip?.title || location} 
+                                <Chip
+                                  label={moment.trip?.title || location}
                                   size="small"
                                   sx={{ height: 22, fontSize: 11, bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal, borderRadius: '8px' }}
                                 />

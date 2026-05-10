@@ -119,7 +119,7 @@ const exclusionOptions = [
 // ─── Styled Components ───────────────────────────────────────────
 const GradientHeader = styled(Paper)({
   marginBottom: '3rem' as unknown  | number as string,
-  borderRadius: 16,
+  borderRadius: 2,
   background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.teal} 100%)`,
   boxShadow: `0 14px 34px ${alpha(COLORS.navy, 0.28)}`,
   padding: { xs: '2.5rem' as unknown as string | number, md: '3.5rem' as unknown as string | number } as unknown  | number as CSSProperties,
@@ -127,7 +127,7 @@ const GradientHeader = styled(Paper)({
 
 const StyledPaper = styled(Paper)({
   border: `1px solid ${alpha(COLORS.teal, 0.15)}`,
-  borderRadius: 16,
+  borderRadius: 2,
   boxShadow: `0 12px 30px ${alpha(COLORS.navy, 0.08)}`,
   backgroundColor: COLORS.white,
   overflowX: 'hidden',
@@ -136,7 +136,7 @@ const StyledPaper = styled(Paper)({
 
 const GradientButton = styled(Button)({
   background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
-  borderRadius: 12,
+  borderRadius: 2,
   fontWeight: 600,
   textTransform: 'none',
   padding: '10px 24px',
@@ -148,7 +148,7 @@ const GradientButton = styled(Button)({
 });
 
 const OutlineButton = styled(Button)({
-  borderRadius: 12,
+  borderRadius: 2,
   fontWeight: 600,
   textTransform: 'none',
   padding: '10px 24px',
@@ -161,7 +161,7 @@ const OutlineButton = styled(Button)({
 });
 
 const DangerButton = styled(Button)({
-  borderRadius: 12,
+  borderRadius: 2,
   fontWeight: 600,
   textTransform: 'none',
   padding: '10px 24px',
@@ -172,9 +172,10 @@ const DangerButton = styled(Button)({
   },
 });
 
+// FIX 1 & 3: Remove number input arrows + fix borders
 const StyledTextField = styled(TextField)({
   '& .MuiOutlinedInput-root': {
-    borderRadius: 12,
+    borderRadius: 8,
     '&:hover fieldset': {
       borderColor: COLORS.teal,
     },
@@ -185,12 +186,24 @@ const StyledTextField = styled(TextField)({
   '& .MuiInputLabel-root.Mui-focused': {
     color: COLORS.teal,
   },
+  // FIX 1: Remove spinner arrows from number inputs
+  '& input[type=number]': {
+    MozAppearance: 'textfield',
+  },
+  '& input[type=number]::-webkit-outer-spin-button': {
+    WebkitAppearance: 'none',
+    margin: 0,
+  },
+  '& input[type=number]::-webkit-inner-spin-button': {
+    WebkitAppearance: 'none',
+    margin: 0,
+  },
 });
 
 const StepIconBox = styled(Box)<{ active?: boolean; completed?: boolean }>(({ active, completed }) => ({
   width: 36,
   height: 36,
-  borderRadius: 10,
+  borderRadius: 1,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -264,7 +277,7 @@ const TripForm: React.FC = () => {
     max_places: '',
     program: [] as { day: number; title: string; description: string }[],
     base_price: '',
-    currency: 'TND',
+    currency: 'EUR',
     inclusions: [] as string[],
     exclusions: [] as string[],
     cover_image: null as File | null,
@@ -332,7 +345,7 @@ const TripForm: React.FC = () => {
         meeting_address: trip.meeting_address || '',
         max_places: session.max_capacity?.toString() || '',
         base_price: trip.base_price?.toString() || '',
-        currency: trip.currency || 'TND',
+        currency: trip.currency || 'EUR',
         inclusions: trip.inclusions || [],
         exclusions: trip.exclusions || [],
         cover_image: null,
@@ -597,7 +610,7 @@ const TripForm: React.FC = () => {
         short_description: formData.short_description.trim(),
         long_description: formData.long_description?.trim() || null,
         base_price: parseFloat(formData.base_price) || 0,
-        currency: formData.currency || 'TND',
+        currency: 'EUR',
         duration_days: formData.program.length || 1,
         difficulty_level: formData.difficulty_level || 'medium',
         status: status,
@@ -645,7 +658,8 @@ const TripForm: React.FC = () => {
               <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 3 }}>
                 Définissez l'identité et l'ambiance de votre voyage
               </Typography>
-              <Grid container spacing={3}>
+              {/* FIX 2: Added rowSpacing for more vertical space between fields */}
+              <Grid container spacing={3} rowSpacing={4}>
                 <Grid xs={12}>
                   <StyledTextField
                     fullWidth
@@ -784,7 +798,8 @@ const TripForm: React.FC = () => {
               <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 3 }}>
                 Définissez le cadre organisationnel du voyage
               </Typography>
-              <Grid container spacing={3}>
+              {/* FIX 2: Added rowSpacing for more vertical space between fields */}
+              <Grid container spacing={3} rowSpacing={4}>
                 <Grid xs={12} sm={6}>
                   <StyledTextField
                     fullWidth
@@ -835,6 +850,7 @@ const TripForm: React.FC = () => {
                   />
                 </Grid>
                 <Grid xs={12} sm={6}>
+                  {/* FIX 1: No spinner arrows via StyledTextField */}
                   <StyledTextField
                     fullWidth
                     label="Nombre maximum de places"
@@ -842,6 +858,7 @@ const TripForm: React.FC = () => {
                     type="number"
                     value={formData.max_places}
                     onChange={handleChange}
+                    inputProps={{ min: 1 }}
                   />
                 </Grid>
                 <Grid xs={12}>
@@ -855,7 +872,7 @@ const TripForm: React.FC = () => {
                     </OutlineButton>
                   </Box>
                   {formData.program.map((day, index) => (
-                    <Card key={index} sx={{ mb: 2, p: 2, borderRadius: 12, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+                    <Card key={index} sx={{ mb: 2, p: 2, borderRadius: 2, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                         <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.teal }}>
                           Jour {day.day}
@@ -902,57 +919,53 @@ const TripForm: React.FC = () => {
               <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 3 }}>
                 Définissez clairement votre offre financière
               </Typography>
-              <Grid container spacing={3}>
+              {/* FIX 2: Added rowSpacing for more vertical space between fields */}
+              <Grid container spacing={3} rowSpacing={4}>
                 <Grid xs={12} sm={6}>
+                  {/* FIX 1: No spinner arrows via StyledTextField */}
                   <StyledTextField
                     fullWidth
-                    label="Prix par personne (TND)"
+                    label="Prix par personne (EUR)"
                     name="base_price"
                     type="number"
                     value={formData.base_price}
                     onChange={handleChange}
                     required
+                    inputProps={{ min: 0 }}
                   />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel sx={{ '&.Mui-focused': { color: COLORS.teal } }}>Devise</InputLabel>
-                    <Select
-                      name="currency"
-                      value={formData.currency}
-                      onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
-                      label="Devise"
-                      sx={{ borderRadius: 2 }}
-                    >
-                      <MenuItem value="TND">TND (Dinars tunisiens)</MenuItem>
-                      <MenuItem value="EUR">EUR (Euros)</MenuItem>
-                      <MenuItem value="USD">USD (Dollars)</MenuItem>
-                    </Select>
-                  </FormControl>
+                  <Paper sx={{ p: 2, borderRadius: 2, bgcolor: alpha(COLORS.teal, 0.04), border: `1px solid ${alpha(COLORS.teal, 0.15)}`, height: '56px', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Devise plateforme :</Typography>
+                    <Typography variant="body1" fontWeight={700} sx={{ color: COLORS.teal }}>EUR €</Typography>
+                  </Paper>
                 </Grid>
                 {formData.base_price && (
                   <Grid xs={12}>
-                    <Paper sx={{ p: 2, borderRadius: 12, bgcolor: alpha(COLORS.teal, 0.03), border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+                    <Paper sx={{ p: 2, borderRadius: 2, bgcolor: alpha(COLORS.teal, 0.03), border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
                       <Typography variant="subtitle2" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
                         Estimation des revenus
                       </Typography>
                       <Grid container spacing={2}>
                         <Grid xs={4}>
-                          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Revenu brut</Typography>
+                          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Prix / réservation</Typography>
                           <Typography variant="h6" sx={{ color: COLORS.teal }}>
-                            {parseFloat(formData.base_price) * (parseInt(formData.max_places) || 10)} TND
+                            {parseFloat(formData.base_price).toFixed(2)} EUR
                           </Typography>
                         </Grid>
                         <Grid xs={4}>
-                          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Commission (10%)</Typography>
+                          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Commission plateforme (10%)</Typography>
                           <Typography variant="h6" sx={{ color: COLORS.amber }}>
-                            {parseFloat(formData.base_price) * (parseInt(formData.max_places) || 10) * 0.1} TND
+                            {(parseFloat(formData.base_price) * 0.1).toFixed(2)} EUR
                           </Typography>
                         </Grid>
                         <Grid xs={4}>
-                          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Revenu net</Typography>
+                          <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Votre revenu net</Typography>
                           <Typography variant="h6" sx={{ color: COLORS.teal }}>
-                            {parseFloat(formData.base_price) * (parseInt(formData.max_places) || 10) * 0.9} TND
+                            {(parseFloat(formData.base_price) * 0.9).toFixed(2)} EUR
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.45), display: 'block' }}>
+                            * par réservation confirmée
                           </Typography>
                         </Grid>
                       </Grid>
@@ -1069,7 +1082,7 @@ const TripForm: React.FC = () => {
               <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 3 }}>
                 Valorisez visuellement votre voyage
               </Typography>
-              <Grid container spacing={3}>
+              <Grid container spacing={3} rowSpacing={4}>
                 <Grid xs={12}>
                   <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
                     Image de couverture (obligatoire)
@@ -1084,7 +1097,7 @@ const TripForm: React.FC = () => {
                   <Box
                     sx={{
                       border: `2px dashed ${alpha(COLORS.teal, 0.3)}`,
-                      borderRadius: 12,
+                      borderRadius: 2,
                       p: 4,
                       textAlign: 'center',
                       cursor: 'pointer',
@@ -1118,7 +1131,7 @@ const TripForm: React.FC = () => {
                   </Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                     {formData.gallery.map((img, index) => (
-                      <Card key={index} sx={{ width: 150, position: 'relative', borderRadius: 12, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+                      <Card key={index} sx={{ width: 150, position: 'relative', borderRadius: 2, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
                         <CardMedia
                           component="img"
                           height={100}
@@ -1139,7 +1152,7 @@ const TripForm: React.FC = () => {
                         width: 150,
                         height: 100,
                         border: `2px dashed ${alpha(COLORS.teal, 0.3)}`,
-                        borderRadius: 12,
+                        borderRadius: 2,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1177,7 +1190,7 @@ const TripForm: React.FC = () => {
               <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6), mb: 3 }}>
                 Notre IA analyse votre voyage pour vous donner des recommandations
               </Typography>
-              <Paper sx={{ p: 3, mb: 3, borderRadius: 12, bgcolor: alpha(COLORS.teal, 0.02), border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+              <Paper sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: alpha(COLORS.teal, 0.02), border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
                 <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy, mb: 2 }}>
                    Vérification de cohérence
                 </Typography>
@@ -1191,12 +1204,12 @@ const TripForm: React.FC = () => {
                     ))}
                   </List>
                 ) : (
-                  <Alert severity="success" sx={{ borderRadius: 10, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }}>
+                  <Alert severity="success" sx={{ borderRadius: 1, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }}>
                     Votre voyage semble cohérent !
                   </Alert>
                 )}
               </Paper>
-              <Paper sx={{ p: 3, mb: 3, borderRadius: 12, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+              <Paper sx={{ p: 3, mb: 3, borderRadius: 2, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
                 <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy, mb: 2 }}>
                   Score de visibilité
                 </Typography>
@@ -1221,7 +1234,7 @@ const TripForm: React.FC = () => {
                   </Typography>
                 </Box>
                 {aiSuggestions.length > 0 && (
-                  <Alert severity="info" icon={<TipsAndUpdates />} sx={{ borderRadius: 10, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }}>
+                  <Alert severity="info" icon={<TipsAndUpdates />} sx={{ borderRadius: 1, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }}>
                     <Typography variant="subtitle2" fontWeight={700} sx={{ color: COLORS.navy, mb: 1 }}>
                       Conseils pour améliorer :
                     </Typography>
@@ -1258,7 +1271,7 @@ const TripForm: React.FC = () => {
       <Container maxWidth={false} disableGutters sx={{ px: { xs: 2, sm: 3, md: 4, lg: 6 }, width: '100%', maxWidth: '100% !important' }}>
         
         {/* Header */}
-        <GradientHeader elevation={0} sx={{ width: '100%', borderRadius: 16 }}>
+        <GradientHeader elevation={0} sx={{ width: '100%', borderRadius: 1 }}>
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 800, color: COLORS.white }}>
             {isEdit ? 'Modifier le voyage' : 'Créer un nouveau voyage'}
           </Typography>
@@ -1272,7 +1285,7 @@ const TripForm: React.FC = () => {
           <Fade in>
             <Alert 
               severity="error" 
-              sx={{ mb: 3, borderRadius: 12, borderLeft: `4px solid ${COLORS.amber}` }}
+              sx={{ mb: 3, borderRadius: 2, borderLeft: `4px solid ${COLORS.amber}` }}
             >
               {error}
             </Alert>
@@ -1283,7 +1296,7 @@ const TripForm: React.FC = () => {
         <Paper sx={{ 
           p: 2, 
           mb: 3, 
-          borderRadius: 12, 
+          borderRadius: 2, 
           border: `1px solid ${alpha(COLORS.teal, 0.15)}`,
           backgroundColor: COLORS.white,
           overflowX: 'auto',
@@ -1345,15 +1358,6 @@ const TripForm: React.FC = () => {
             </OutlineButton>
 
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <OutlineButton
-                startIcon={<Save />}
-                onClick={handleSaveDraft}
-                disabled={saving}
-                sx={{ minWidth: { xs: '140px', sm: 'auto' } }}
-              >
-                Sauvegarder brouillon
-              </OutlineButton>
-
               {activeStep < steps.length - 1 ? (
                 <GradientButton
                   onClick={() => setActiveStep(prev => prev + 1)}

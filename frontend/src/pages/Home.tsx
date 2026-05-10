@@ -44,7 +44,7 @@ const shimmer = keyframes`
   100% { background-position: 1000px 0; }
 `;
 
-// ── Hero images ───────────────────────────────────────────────────
+// ─── Hero images ───────────────────────────────────────────────────
 const HERO_IMAGES = [
   {
     url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=90',
@@ -72,7 +72,7 @@ const HERO_IMAGES = [
   },
 ];
 
-// ── Styled ────────────────────────────────────────────────────────
+// ─── Styled ────────────────────────────────────────────────────────
 const HorizontalScroll = styled(Box)(({ theme }) => ({
   display: 'flex',
   overflowX: 'auto',
@@ -87,7 +87,7 @@ const HorizontalScroll = styled(Box)(({ theme }) => ({
   },
 }));
 
-// ── Types ─────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────
 interface Destination {
   id: number; name: string; country: string;
   image: string; price: number; trips_count: number; min_price?: number;
@@ -103,6 +103,14 @@ interface Trip {
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const { user, token } = useSelector((state: RootState) => state.auth);
+
+  // Vérification des rôles
+  const isAdmin = user?.roles?.includes('ROLE_ADMIN');
+  const isOrganizer = user?.roles?.includes('ROLE_ORGANIZER');
+  const isUser = token && !isAdmin && !isOrganizer;
+  const isConnectedUser = isUser; // ROLE_USER connecté
+  const isNonConnected = !token;
+  const showOrganizerCard = isNonConnected || isUser; // Carte organisateur pour non connecté et ROLE_USER
 
   const [featuredTrips, setFeaturedTrips]   = useState<Trip[]>([]);
   const [recommendations, setRecommendations] = useState<Trip[]>([]);
@@ -332,7 +340,7 @@ const Home: React.FC = () => {
         <Box sx={{
           position: 'absolute', bottom: -65, left: '50%',
           transform: 'translateX(-50%)',
-          width: { xs: '90%', md: '85%' }, // Occupe plus d'espace sur l'écran
+          width: { xs: '90%', md: '85%' },
           maxWidth: 1100,  zIndex: 10,
         }}>
           <Paper component="form" onSubmit={e => { e.preventDefault(); handleSearch(); }}
@@ -549,7 +557,7 @@ const Home: React.FC = () => {
 
 
      {/* ════════════════════════════════════════════════
-          RECOMMENDATIONS — Style "Nouveaux Voyages" comme l'image
+          RECOMMENDATIONS — 
       ════════════════════════════════════════════════ */}
       {recommendations.length > 0 && (
         <Box sx={{
@@ -573,16 +581,17 @@ const Home: React.FC = () => {
 
           <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
 
-            {/* Header row */}
+            {/* Header row - Texte dynamique selon le rôle */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <AutoAwesomeIcon sx={{ color: '#0F2D5C', fontSize: 55 }} />
-                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                    <Typography sx={{ fontSize: { xs: '1.5rem', md: '1.9rem' }, fontWeight: 800, color: '#0F2D5C', letterSpacing: '0.05em' }}>
-                      {token ? 'Recommandations pour vous' : 'Tendances du moment qui inspirent nos voyageurs'}
-                    </Typography>
-                   
-                  </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AutoAwesomeIcon sx={{ color: '#0F2D5C', fontSize: 55 }} />
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <Typography sx={{ fontSize: { xs: '1.5rem', md: '1.9rem' }, fontWeight: 800, color: '#0F2D5C', letterSpacing: '0.05em' }}>
+                    {/* Condition: "Recommandations pour vous" uniquement pour ROLE_USER connecté */}
+                    {/* Sinon: "Tendances du moment qui inspirent nos voyageurs" */}
+                    {isUser ? 'Recommandations pour vous' : 'Tendances du moment qui inspirent nos voyageurs'}
+                  </Typography>
+                </Box>
               </Box>
               
               <Typography
@@ -613,7 +622,7 @@ const Home: React.FC = () => {
                       '&:hover .trip-img': { transform: 'scale(1.04)' },
                     }}
                   >
-                    {/* Image — pas de border-radius bas */}
+                    {/* Image */}
                     <Box sx={{
                       height: 210,
                       borderRadius: '8px',
@@ -672,7 +681,7 @@ const Home: React.FC = () => {
                       {trip.destinations?.map((d: any) => d.name).join(', ') || trip.destination || ''}
                     </Typography>
 
-                    {/* Prix — style "From $5,100  $4,900" */}
+                    {/* Prix */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Typography sx={{ fontSize: '0.82rem', color: '#999' }}>"À partir de</Typography>
                       {trip.original_price && trip.original_price > trip.base_price && (
@@ -737,7 +746,7 @@ const Home: React.FC = () => {
             </Box>
           ) : (
             <HorizontalScroll>
-            <Box sx={{ display: 'flex', gap: 3 }}> {/* gap: 3 correspond à 24px (8px * 3) */}
+            <Box sx={{ display: 'flex', gap: 3 }}>
               {(Array.isArray(featuredTrips) ? featuredTrips : []).map((trip: any) => (
                 <Grow key={trip.id} in={true} timeout={1000}>
                   <Box sx={{ minWidth: 280, maxWidth: 320 }}>
@@ -823,56 +832,48 @@ const Home: React.FC = () => {
 
             {/* Left — Stats plateforme */}
             <Grid item xs={12} md={6}>
-            <Box sx={{ mb: { xs: 4, md: 6 } }}>
-    
-    {/* Subtitle script */}
-    <Fade in={heroVisible} timeout={800}>
-      <Typography sx={{
-        fontFamily: '"Dancing Script", "Brush Script MT", cursive',
-        fontSize: { xs: '1.6rem', md: '2.4rem' },
-        color: '#0EA5A0',
-        letterSpacing: 1,
-        mb: 1,
-        animation: `${fadeInUp} 0.8s ease`,
-      }}>
-        Voyagez autrement
-      </Typography>
-    </Fade>
+              <Box sx={{ mb: { xs: 4, md: 6 } }}>
+                <Fade in timeout={800}>
+                  <Typography sx={{
+                    fontFamily: '"Dancing Script", "Brush Script MT", cursive',
+                    fontSize: { xs: '1.6rem', md: '2.4rem' },
+                    color: '#0EA5A0',
+                    letterSpacing: 1,
+                    mb: 1,
+                  }}>
+                    Voyagez autrement
+                  </Typography>
+                </Fade>
 
-    {/* Big title */}
-    <Fade in={heroVisible} timeout={1000}>
-      <Typography 
-        sx={{ 
-          fontSize: { xs: '2rem', md: '3.5rem' }, 
-          fontWeight: 800,
-          color: '#0F2D5C', 
-          lineHeight: 1.1,
-          mb: 2,
-          animation: `${fadeInUp} 0.9s ease`,
-        }}
-      >
-        L'excellence du voyage en <br />
-        <Box component="span" sx={{ color: '#0EA5A0' }}>Afrique du Nord.</Box>
-      </Typography>
-    </Fade>
+                <Fade in timeout={1000}>
+                  <Typography 
+                    sx={{ 
+                      fontSize: { xs: '2rem', md: '3.5rem' }, 
+                      fontWeight: 800,
+                      color: '#0F2D5C', 
+                      lineHeight: 1.1,
+                      mb: 2,
+                    }}
+                  >
+                    L'excellence du voyage en <br />
+                    <Box component="span" sx={{ color: '#0EA5A0' }}>Afrique du Nord.</Box>
+                  </Typography>
+                </Fade>
 
-    <Fade in={heroVisible} timeout={1200}>
-      <Typography 
-        sx={{ 
-          color: '#64748B', 
-          fontSize: '1.1rem', 
-          fontWeight: 500, 
-          maxWidth: '500px',
-          mb: 4,
-          animation: `${fadeInUp} 1s ease`,
-        }}
-      >
-        Découvrez des expériences authentiques via notre écosystème complet.
-      </Typography>
-    </Fade>
-
-  </Box>
-             
+                <Fade in timeout={1200}>
+                  <Typography 
+                    sx={{ 
+                      color: '#64748B', 
+                      fontSize: '1.1rem', 
+                      fontWeight: 500, 
+                      maxWidth: '500px',
+                      mb: 4,
+                    }}
+                  >
+                    Découvrez des expériences authentiques via notre écosystème complet.
+                  </Typography>
+                </Fade>
+              </Box>
 
               {/* Stats */}
               <Grid container spacing={2}>
@@ -905,7 +906,7 @@ const Home: React.FC = () => {
             <Grid item xs={12} md={6}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
 
-                {/* Card voyageur */}
+                {/* Card voyageur - s'affiche uniquement pour les non connectés */}
                 {!token && (
                   <Box sx={{
                     p: 3.5, borderRadius: '20px',
@@ -949,57 +950,59 @@ const Home: React.FC = () => {
                   </Box>
                 )}
 
-                {/* Card organisateur */}
-                <Box sx={{
-                  p: 3.5, borderRadius: '20px',
-                  background: 'linear-gradient(135deg, #0F2D5C 0%, #0EA5A0 100%)',
-                  border: '1px solid rgba(14,165,160,0.3)',
-                  boxShadow: '0 20px 48px rgba(0,0,0,0.12)',
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <Box sx={{ width: 48, height: 48, borderRadius: '14px',
-                      bgcolor: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', color: '#fff' }}>
-                      <BusinessCenterIcon sx={{ fontSize: 24 }} />
-                    </Box>
-                    <Box>
-                      <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>
-                        Je suis un organisateur
-                      </Typography>
-                      <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
-                        Développez votre activité
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Typography sx={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', mb: 2.5, lineHeight: 1.6 }}>
-                    Publiez vos voyages, gérez vos réservations et accédez à un tableau de bord 
-                    complet pour développer votre agence de voyage.
-                  </Typography>
-
-                  {/* Étapes devenir organisateur */}
-                  {[
-                    { step: '1', text: 'Inscrivez-vous et créez votre profil' },
-                    { step: '2', text: 'Soumettez une demande d\'organisateur' },
-                    { step: '3', text: 'Publiez vos voyages après validation' },
-                  ].map(s => (
-                    <Box key={s.step} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                      <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: '#fff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, color: '#0EA5A0' }}>{s.step}</Typography>
+                {/* Card organisateur - s'affiche uniquement pour les non connectés ET les ROLE_USER */}
+                {showOrganizerCard && (
+                  <Box sx={{
+                    p: 3.5, borderRadius: '20px',
+                    background: 'linear-gradient(135deg, #0F2D5C 0%, #0EA5A0 100%)',
+                    border: '1px solid rgba(14,165,160,0.3)',
+                    boxShadow: '0 20px 48px rgba(0,0,0,0.12)',
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Box sx={{ width: 48, height: 48, borderRadius: '14px',
+                        bgcolor: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', color: '#fff' }}>
+                        <BusinessCenterIcon sx={{ fontSize: 24 }} />
                       </Box>
-                      <Typography sx={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.85)' }}>{s.text}</Typography>
+                      <Box>
+                        <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>
+                          Je suis un organisateur
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                          Développez votre activité
+                        </Typography>
+                      </Box>
                     </Box>
-                  ))}
+                    <Typography sx={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', mb: 2.5, lineHeight: 1.6 }}>
+                      Publiez vos voyages, gérez vos réservations et accédez à un tableau de bord 
+                      complet pour développer votre agence de voyage.
+                    </Typography>
 
-                  <Button fullWidth variant="contained" onClick={() => navigate(token ? '/organizer-request' : '/register')}
-                    sx={{
-                      mt: 2.5, borderRadius: '12px', py: 1.2, textTransform: 'none', fontWeight: 700,
-                      bgcolor: '#fff', color: '#0F2D5C',
-                      '&:hover': { bgcolor: '#f8fafc', transform: 'translateY(-2px)' },
-                    }}>
-                    Devenir organisateur
-                  </Button>
-                </Box>
+                    {/* Étapes devenir organisateur */}
+                    {[
+                      { step: '1', text: 'Inscrivez-vous et créez votre profil' },
+                      { step: '2', text: 'Soumettez une demande d\'organisateur' },
+                      { step: '3', text: 'Publiez vos voyages après validation' },
+                    ].map(s => (
+                      <Box key={s.step} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                        <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: '#fff',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, color: '#0EA5A0' }}>{s.step}</Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.85)' }}>{s.text}</Typography>
+                      </Box>
+                    ))}
+
+                    <Button fullWidth variant="contained" onClick={() => navigate(token ? '/organizer-request' : '/register')}
+                      sx={{
+                        mt: 2.5, borderRadius: '12px', py: 1.2, textTransform: 'none', fontWeight: 700,
+                        bgcolor: '#fff', color: '#0F2D5C',
+                        '&:hover': { bgcolor: '#f8fafc', transform: 'translateY(-2px)' },
+                      }}>
+                      Devenir organisateur
+                    </Button>
+                  </Box>
+                )}
 
               </Box>
             </Grid>

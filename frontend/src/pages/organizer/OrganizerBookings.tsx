@@ -16,6 +16,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  Divider,
   CircularProgress,
   IconButton,
   Stack,
@@ -48,6 +52,8 @@ import {
   ArrowBack,
   TrendingUp,
   TrendingDown,
+  MoreVert,
+  KeyboardArrowDown,
 } from '@mui/icons-material';
 import { styled, alpha, keyframes } from '@mui/material/styles';
 import { jsPDF } from 'jspdf';
@@ -184,6 +190,19 @@ const OrganizerBookings: React.FC = () => {
     open: false,
     bookingId: null,
   });
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>, id: number) => {
+    e.stopPropagation();
+    setMenuAnchor(e.currentTarget);
+    setOpenMenuId(id);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setOpenMenuId(null);
+  };
 
   useEffect(() => {
     loadBookings();
@@ -209,6 +228,18 @@ const OrganizerBookings: React.FC = () => {
       loadBookings();
     } catch (error) {
       console.error('Error deleting booking:', error);
+    }
+  };
+
+  const handleConfirmCash = async (booking: any) => {
+    try {
+      setLoading(true);
+      await api.post(`/organizer/bookings/${booking.id}/confirm-cash`);
+      loadBookings();
+    } catch (error) {
+      console.error('Error confirming cash payment:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -515,34 +546,72 @@ const OrganizerBookings: React.FC = () => {
                           <StatusChip status={booking.status} />
                         </TableCell>
                         <TableCell align="center">
-                          <Stack direction="row" spacing={0.5} justifyContent="center">
-                            <Tooltip title="Exporter PDF">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleExportPdf(booking)}
-                                sx={{
-                                  color: COLORS.teal,
-                                  borderRadius: 8,
-                                  '&:hover': { bgcolor: alpha(COLORS.teal, 0.1) },
-                                }}
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            endIcon={<KeyboardArrowDown sx={{ fontSize: 14 }} />}
+                            onClick={(e) => handleMenuOpen(e, booking.id)}
+                            sx={{
+                              borderRadius: 2,
+                              textTransform: 'none',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              borderColor: alpha(COLORS.navy, 0.2),
+                              color: COLORS.navy,
+                              px: 1.5, py: 0.5,
+                              '&:hover': { borderColor: COLORS.teal, color: COLORS.teal, bgcolor: alpha(COLORS.teal, 0.04) },
+                            }}
+                          >
+                            Actions
+                          </Button>
+                          <Menu
+                            anchorEl={openMenuId === booking.id ? menuAnchor : null}
+                            open={openMenuId === booking.id}
+                            onClose={handleMenuClose}
+                            elevation={2}
+                            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                            PaperProps={{
+                              sx: {
+                                borderRadius: 2,
+                                border: `0.5px solid ${alpha(COLORS.navy, 0.1)}`,
+                                boxShadow: `0 8px 24px ${alpha(COLORS.navy, 0.1)}`,
+                                minWidth: 175,
+                                mt: 0.5,
+                              }
+                            }}
+                          >
+                            {booking.status === 'PENDING' && (
+                              <MenuItem
+                                onClick={() => { handleConfirmCash(booking); handleMenuClose(); }}
+                                sx={{ fontSize: 13, color: COLORS.teal, py: 1, '&:hover': { bgcolor: alpha(COLORS.teal, 0.06) } }}
                               >
-                                <PictureAsPdf fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Supprimer">
-                              <IconButton
-                                size="small"
-                                onClick={() => setDeleteDialog({ open: true, bookingId: booking.id })}
-                                sx={{ 
-                                  color: COLORS.amber,
-                                  borderRadius: 8,
-                                  '&:hover': { bgcolor: alpha(COLORS.amber, 0.1) },
-                                }}
-                              >
-                                <Delete fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Stack>
+                                <ListItemIcon sx={{ minWidth: 28 }}>
+                                  <CheckCircle sx={{ fontSize: 16, color: COLORS.teal }} />
+                                </ListItemIcon>
+                                <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Confirmer paiement</ListItemText>
+                              </MenuItem>
+                            )}
+                            <MenuItem
+                              onClick={() => { handleExportPdf(booking); handleMenuClose(); }}
+                              sx={{ fontSize: 13, py: 1, '&:hover': { bgcolor: alpha(COLORS.navy, 0.04) } }}
+                            >
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <PictureAsPdf sx={{ fontSize: 16, color: alpha(COLORS.navy, 0.5) }} />
+                              </ListItemIcon>
+                              <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Exporter PDF</ListItemText>
+                            </MenuItem>
+                            <Divider sx={{ my: 0.5 }} />
+                            <MenuItem
+                              onClick={() => { setDeleteDialog({ open: true, bookingId: booking.id }); handleMenuClose(); }}
+                              sx={{ fontSize: 13, color: COLORS.amber, py: 1, '&:hover': { bgcolor: alpha(COLORS.amber, 0.06) } }}
+                            >
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <Delete sx={{ fontSize: 16, color: COLORS.amber }} />
+                              </ListItemIcon>
+                              <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Supprimer</ListItemText>
+                            </MenuItem>
+                          </Menu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -584,7 +653,7 @@ const OrganizerBookings: React.FC = () => {
           onClose={() => setDeleteDialog({ open: false, bookingId: null })}
           PaperProps={{ 
             sx: { 
-              borderRadius: 16, 
+              borderRadius: 2, 
               boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}`,
               border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
             } 

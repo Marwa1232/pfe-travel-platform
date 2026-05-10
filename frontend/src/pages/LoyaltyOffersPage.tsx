@@ -302,7 +302,7 @@ const LoyaltyOffersPage: React.FC = () => {
                                 <Typography sx={{ fontSize: 44, fontWeight: 900, color: COLORS.amber, lineHeight: 1 }}>
                                   {offer.discount_type === 'percentage_discount'
                                     ? `-${offer.discount_value}%`
-                                    : `-${offer.discount_value}€`}
+                                    : `-${offer.discount_value} EUR`}
                                 </Typography>
                               </Box>
 
@@ -406,7 +406,7 @@ const LoyaltyOffersPage: React.FC = () => {
                                   <Typography sx={{ fontSize: 44, fontWeight: 900, color: alpha(COLORS.navy, 0.4), lineHeight: 1 }}>
                                     {offer.discount_type === 'percentage_discount'
                                       ? `-${offer.discount_value}%`
-                                      : `-${offer.discount_value}€`}
+                                      : `-${offer.discount_value} EUR`}
                                   </Typography>
                                 </Box>
 

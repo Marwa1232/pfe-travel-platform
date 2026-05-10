@@ -34,6 +34,11 @@ import {
   Pagination,
   Fade,
   Zoom,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 import { styled, alpha, keyframes } from '@mui/material/styles';
@@ -49,6 +54,7 @@ import {
   ArrowBack,
   TrendingUp,
   TrendingDown,
+  KeyboardArrowDown,
 } from '@mui/icons-material';
 import { organizerReviewAPI } from '../../services/api';
 import { RootState } from '../../store';
@@ -201,6 +207,19 @@ const OrganizerReviews: React.FC = () => {
   const [responseDialogOpen, setResponseDialogOpen] = useState(false);
   const [responseText, setResponseText] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Menu dropdown state
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>, id: number) => {
+    setMenuAnchor(e.currentTarget);
+    setOpenMenuId(id);
+  };
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setOpenMenuId(null);
+  };
 
   useEffect(() => {
     if (!token) { navigate('/login'); return; }
@@ -639,53 +658,79 @@ const OrganizerReviews: React.FC = () => {
                         </TableCell>
 
                         <TableCell align="center">
-                          <Stack direction="row" spacing={0.5} justifyContent="center">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            endIcon={<KeyboardArrowDown sx={{ fontSize: 14 }} />}
+                            onClick={(e) => handleMenuOpen(e, review.id)}
+                            sx={{
+                              borderRadius: 2,
+                              textTransform: 'none',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              borderColor: alpha(COLORS.navy, 0.2),
+                              color: COLORS.navy,
+                              px: 1.5, py: 0.5,
+                              '&:hover': { borderColor: COLORS.teal, color: COLORS.teal, bgcolor: alpha(COLORS.teal, 0.04) },
+                            }}
+                          >
+                            Actions
+                          </Button>
+                          <Menu
+                            anchorEl={openMenuId === review.id ? menuAnchor : null}
+                            open={openMenuId === review.id}
+                            onClose={handleMenuClose}
+                            elevation={2}
+                            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                            PaperProps={{
+                              sx: {
+                                borderRadius: 2,
+                                border: `0.5px solid ${alpha(COLORS.navy, 0.1)}`,
+                                boxShadow: `0 8px 24px ${alpha(COLORS.navy, 0.1)}`,
+                                minWidth: 175,
+                                mt: 0.5,
+                              }
+                            }}
+                          >
+                            <MenuItem
+                              onClick={() => { handleOpenResponse(review); handleMenuClose(); }}
+                              sx={{ fontSize: 13, py: 1, '&:hover': { bgcolor: alpha(COLORS.navy, 0.04) } }}
+                            >
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <Reply sx={{ fontSize: 16, color: alpha(COLORS.navy, 0.5) }} />
+                              </ListItemIcon>
+                              <ListItemText primaryTypographyProps={{ fontSize: 13 }}>
+                                {review.organizer_response ? 'Modifier réponse' : 'Répondre'}
+                              </ListItemText>
+                            </MenuItem>
+
                             {review.status === 'pending' && (
                               <>
-                                <Tooltip title="Approuver">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => handleApprove(review.id)}
-                                    disabled={actionLoading}
-                                    sx={{ 
-                                      color: COLORS.teal, 
-                                      borderRadius: 8,
-                                      '&:hover': { bgcolor: alpha(COLORS.teal, 0.1) } 
-                                    }}
-                                  >
-                                    <CheckCircle fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Rejeter">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => handleReject(review.id)}
-                                    disabled={actionLoading}
-                                    sx={{ 
-                                      color: COLORS.amber, 
-                                      borderRadius: 8,
-                                      '&:hover': { bgcolor: alpha(COLORS.amber, 0.1) } 
-                                    }}
-                                  >
-                                    <Cancel fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
+                                <Divider sx={{ my: 0.5 }} />
+                                <MenuItem
+                                  onClick={() => { handleApprove(review.id); handleMenuClose(); }}
+                                  disabled={actionLoading}
+                                  sx={{ fontSize: 13, color: COLORS.teal, py: 1, '&:hover': { bgcolor: alpha(COLORS.teal, 0.06) } }}
+                                >
+                                  <ListItemIcon sx={{ minWidth: 28 }}>
+                                    <CheckCircle sx={{ fontSize: 16, color: COLORS.teal }} />
+                                  </ListItemIcon>
+                                  <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Approuver</ListItemText>
+                                </MenuItem>
+                                <MenuItem
+                                  onClick={() => { handleReject(review.id); handleMenuClose(); }}
+                                  disabled={actionLoading}
+                                  sx={{ fontSize: 13, color: COLORS.amber, py: 1, '&:hover': { bgcolor: alpha(COLORS.amber, 0.06) } }}
+                                >
+                                  <ListItemIcon sx={{ minWidth: 28 }}>
+                                    <Cancel sx={{ fontSize: 16, color: COLORS.amber }} />
+                                  </ListItemIcon>
+                                  <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Rejeter</ListItemText>
+                                </MenuItem>
                               </>
                             )}
-                            <Tooltip title={review.organizer_response ? 'Modifier la réponse' : 'Répondre'}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenResponse(review)}
-                                sx={{ 
-                                  color: COLORS.navy, 
-                                  borderRadius: 8,
-                                  '&:hover': { bgcolor: alpha(COLORS.navy, 0.08) } 
-                                }}
-                              >
-                                <Reply fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Stack>
+                          </Menu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -729,7 +774,7 @@ const OrganizerReviews: React.FC = () => {
           fullWidth
           PaperProps={{ 
             sx: { 
-              borderRadius: 16, 
+              borderRadius: 2, 
               boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}`,
               border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
             } 

@@ -279,6 +279,10 @@ class OrganizerApiController extends AbstractController
         $payment->setStatus('SUCCEEDED');
         $payment->setPaidAt(new \DateTime());
 
+        // Commission plateforme — persiste au moment de la confirmation (immuable)
+        $platformFee = round((float) $booking->getTotalPrice() * 0.10, 2);
+        $payment->setPlatformFee((string) $platformFee);
+
         $points = $this->loyaltyService->earnPoints($booking->getUser(), $booking);
 
         $this->em->flush();

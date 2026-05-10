@@ -189,7 +189,6 @@ const AdminDashboard: React.FC = () => {
   });
   const [detailedStats, setDetailedStats] = useState<any>(null);
   const [financialData, setFinancialData] = useState<any>(null);
-  const [systemHealth, setSystemHealth] = useState<any>(null);
   const [organizers, setOrganizers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [destinations, setDestinations] = useState<any[]>([]);
@@ -216,7 +215,6 @@ const AdminDashboard: React.FC = () => {
       adminAPI.getStats().then(r => setStats(r.data)).catch(() => {}),
       adminAPI.getDetailedStats().then(r => setDetailedStats(r.data)).catch(() => {}),
       adminAPI.getFinancialStats().then(r => setFinancialData(r.data)).catch(() => {}),
-      adminAPI.getSystemHealth().then(r => setSystemHealth(r.data)).catch(() => {}),
       adminAPI.getOrganizers().then(r => setOrganizers(r.data)).catch(() => {}),
       adminAPI.getCategories().then(r => setCategories(r.data)).catch(() => {}),
       adminAPI.getDestinations().then(r => setDestinations(r.data)).catch(() => {}),
@@ -350,7 +348,7 @@ const AdminDashboard: React.FC = () => {
             { label: 'Utilisateurs',   value: stats.totalUsers,      sub: 'Comptes inscrits',           color: COLORS.navy, icon: <People />,       trend: 8 },
             { label: 'Organisateurs',  value: stats.totalOrganizers, sub: `${stats.pendingOrganizers} en attente`, color: COLORS.amber, icon: <Business />,    trend: 5 },
             { label: 'Voyages actifs', value: stats.totalTrips,      sub: 'Sur la plateforme',          color: COLORS.teal, icon: <FlightTakeoff />, trend: 12 },
-            { label: 'Revenus',        value: `${(stats.totalRevenue || 0).toLocaleString('fr-TN')} TND`, sub: 'Total cumulé', color: COLORS.teal, icon: <AttachMoney />, trend: -2 },
+            { label: 'Revenus',        value: `${(stats.totalRevenue || 0).toLocaleString('fr-FR')} EUR`, sub: 'Total cumulé', color: COLORS.teal, icon: <AttachMoney />, trend: -2 },
           ].map((item, i) => (
             <Grid xs={12} sm={6} lg={3} key={i}>
               <GlowCard color={item.color} sx={{ animation: `${fadeUp} 0.4s ease ${i * 0.08}s both` }}>
@@ -411,7 +409,7 @@ const AdminDashboard: React.FC = () => {
                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: alpha(COLORS.navy, 0.6) }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: alpha(COLORS.navy, 0.6) }} tickFormatter={v => `${v/1000}k`} />
                     <RTooltip content={<CTooltip />} />
-                    <Area type="monotone" dataKey="revenue" name="Revenus (TND)" stroke={COLORS.teal} strokeWidth={2.5} fill="url(#gT)" dot={{ fill: COLORS.teal, r: 3.5 }} activeDot={{ r: 5.5 }} />
+                    <Area type="monotone" dataKey="revenue" name="Revenus (EUR)" stroke={COLORS.teal} strokeWidth={2.5} fill="url(#gT)" dot={{ fill: COLORS.teal, r: 3.5 }} activeDot={{ r: 5.5 }} />
                     <Area type="monotone" dataKey="bookings" name="Réservations" stroke={COLORS.navy} strokeWidth={1.8} strokeDasharray="4 4" fill="url(#gN)" dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -555,7 +553,6 @@ const AdminDashboard: React.FC = () => {
             <StyledTab icon={<Insights sx={{ fontSize: 15 }} />} iconPosition="start" label="Insights" />
             <StyledTab icon={<AccountBalance sx={{ fontSize: 15 }} />} iconPosition="start" label="Financier" />
             <StyledTab icon={<Category sx={{ fontSize: 15 }} />} iconPosition="start" label="Contenu" />
-            <StyledTab icon={<Speed sx={{ fontSize: 15 }} />} iconPosition="start" label="Système" />
           </Tabs>
         </SCard>
 
@@ -738,7 +735,7 @@ const AdminDashboard: React.FC = () => {
                             <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.6) }}>{o.bookings} réservations</Typography>
                           </Box>
                         </Box>
-                        <Typography sx={{ fontSize: 14, fontWeight: 800, color: COLORS.teal }}>{o.revenue.toFixed(0)} TND</Typography>
+                        <Typography sx={{ fontSize: 14, fontWeight: 800, color: COLORS.teal }}>{o.revenue.toFixed(0)} EUR</Typography>
                       </Box>
                     ))
                   ) : (
@@ -754,9 +751,9 @@ const AdminDashboard: React.FC = () => {
         {tabValue === 2 && (
           <Grid container spacing={2}>
             {[
-              { label: 'Revenu total', value: `${(financialData?.totalRevenue || 0).toFixed(0)} TND`, color: COLORS.teal, icon: <AttachMoney /> },
-              { label: 'Commission plateforme', value: `${(financialData?.totalCommission || 0).toFixed(0)} TND`, color: COLORS.navy, icon: <AccountBalance /> },
-              { label: 'Payouts organisateurs', value: `${(financialData?.organizerPayouts || 0).toFixed(0)} TND`, color: COLORS.amber, icon: <Business /> },
+              { label: 'Revenu total', value: `${(financialData?.totalRevenue || 0).toFixed(0)} EUR`, color: COLORS.teal, icon: <AttachMoney /> },
+              { label: 'Commission plateforme', value: `${(financialData?.totalCommission || 0).toFixed(0)} EUR`, color: COLORS.navy, icon: <AccountBalance /> },
+              { label: 'Payouts organisateurs', value: `${(financialData?.organizerPayouts || 0).toFixed(0)} EUR`, color: COLORS.amber, icon: <Business /> },
               { label: 'Payouts en attente', value: financialData?.pendingPayouts || 0, color: COLORS.amber, icon: <HourglassEmpty /> },
             ].map((item, i) => (
               <Grid xs={12} sm={6} md={3} key={i}>
@@ -781,7 +778,7 @@ const AdminDashboard: React.FC = () => {
                       <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: alpha(COLORS.navy, 0.6) }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: alpha(COLORS.navy, 0.6) }} tickFormatter={v => `${v/1000}k`} />
                       <RTooltip content={<CTooltip />} cursor={{ fill: alpha(COLORS.teal, 0.05) }} />
-                      <Bar dataKey="revenue" name="Revenus (TND)" fill={COLORS.teal} radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="revenue" name="Revenus (EUR)" fill={COLORS.teal} radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -870,78 +867,10 @@ const AdminDashboard: React.FC = () => {
           </Grid>
         )}
 
-        {/* TAB 4 — SYSTÈME */}
-        {tabValue === 4 && (
-          <Grid container spacing={2}>
-            <Grid xs={12} md={4}>
-              <SCard>
-                <CardContent sx={{ p: '22px 24px !important', textAlign: 'center' }}>
-                  <Box sx={{ width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 2, bgcolor: systemHealth?.status === 'operational' ? alpha(COLORS.teal, 0.1) : alpha(COLORS.amber, 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {systemHealth?.status === 'operational' 
-                      ? <CheckCircle sx={{ fontSize: 36, color: COLORS.teal }} /> 
-                      : <Warning sx={{ fontSize: 36, color: COLORS.amber }} />
-                    }
-                  </Box>
-                  <Typography sx={{ fontSize: 17, fontWeight: 700, color: COLORS.navy, mb: 0.5 }}>
-                    {systemHealth?.status === 'operational' ? '✅ Système OK' : '⚠️ Service dégradé'}
-                  </Typography>
-                  <Divider sx={{ my: 2, borderColor: alpha(COLORS.teal, 0.15) }} />
-                  <Grid container spacing={1}>
-                    <Grid xs={6}>
-                      <Typography sx={{ fontSize: 20, fontWeight: 800, color: COLORS.amber }}>{systemHealth?.pending?.organizers || 0}</Typography>
-                      <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.6) }}>Orgs en attente</Typography>
-                    </Grid>
-                    <Grid xs={6}>
-                      <Typography sx={{ fontSize: 20, fontWeight: 800, color: COLORS.teal }}>{systemHealth?.pending?.bookings || 0}</Typography>
-                      <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.6) }}>Réservations</Typography>
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </SCard>
-            </Grid>
-            <Grid xs={12} md={8}>
-              <SCard>
-                <CardContent sx={{ p: '22px 24px !important' }}>
-                  <Typography sx={{ fontSize: 15, fontWeight: 700, color: COLORS.navy, mb: 2 }}>État des services</Typography>
-                  {systemHealth?.services?.length > 0 ? (
-                    <Grid container spacing={1.5}>
-                      {systemHealth.services.map((s: any, i: number) => (
-                        <Grid xs={12} sm={6} key={i}>
-                          <Box sx={{ p: '12px 14px', borderRadius: 2, border: `1px solid ${alpha(COLORS.teal, 0.1)}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Box>
-                              <Typography sx={{ fontSize: 13, fontWeight: 600, color: COLORS.navy }}>{s.name}</Typography>
-                              <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.5) }}>{s.latency}ms</Typography>
-                            </Box>
-                            <Chip 
-                              label={s.status === 'operational' ? 'Opérationnel' : 'Problème'} 
-                              size="small" 
-                              sx={{ 
-                                height: 22, 
-                                fontSize: 11, 
-                                fontWeight: 700, 
-                                bgcolor: s.status === 'operational' ? alpha(COLORS.teal, 0.1) : alpha(COLORS.amber, 0.1), 
-                                color: s.status === 'operational' ? COLORS.teal : COLORS.amber,
-                                borderRadius: 6,
-                              }} 
-                            />
-                          </Box>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  ) : (
-                    <Alert severity="info" sx={{ borderRadius: 2, bgcolor: alpha(COLORS.teal, 0.05), color: COLORS.navy }}>
-                      Aucun service à surveiller configuré
-                    </Alert>
-                  )}
-                </CardContent>
-              </SCard>
-            </Grid>
-          </Grid>
-        )}
       </Box>
 
       {/* DIALOG CRÉER */}
-      <Dialog open={createDialog} onClose={() => setCreateDialog(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 16, border: `1px solid ${alpha(COLORS.teal, 0.2)}`, boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}` } }}>
+      <Dialog open={createDialog} onClose={() => setCreateDialog(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2, border: `1px solid ${alpha(COLORS.teal, 0.2)}`, boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}` } }}>
         <DialogTitle sx={{ fontWeight: 700, color: COLORS.navy, pb: 1, fontSize: '1.2rem' }}>
           {createType === 'category' ? 'Nouvelle catégorie' : 'Nouvelle destination'}
         </DialogTitle>

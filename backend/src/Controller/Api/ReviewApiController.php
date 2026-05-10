@@ -30,7 +30,11 @@ class ReviewApiController extends AbstractController
         }
         
         $token = substr($authHeader, 7);
-        $payload = $this->jwtService->decodeToken($token);
+        try {
+            $payload = $this->jwtService->decodeToken($token);
+        } catch (\Exception $e) {
+            return null;
+        }
         
         if (!$payload || !isset($payload['id'])) {
             return null;
@@ -80,8 +84,11 @@ class ReviewApiController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
+        if (json_last_error() !== JSON_ERROR_NONE || $data === null) {
+            return $this->json(['error' => 'Invalid JSON data'], Response::HTTP_BAD_REQUEST);
+        }
 
-        if (empty($data['trip_id']) || empty($data['rating'])) {
+        if (empty($data['trip_id']) || !isset($data['rating'])) {
             return $this->json(['error' => 'trip_id and rating are required'], Response::HTTP_BAD_REQUEST);
         }
 
@@ -94,7 +101,6 @@ class ReviewApiController extends AbstractController
             return $this->json(['error' => 'Trip not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Check if user has a confirmed/completed booking for this trip
         $booking = $this->em->getRepository(Booking::class)->createQueryBuilder('b')
             ->where('b.user = :userId')
             ->andWhere('b.trip = :tripId')
@@ -102,6 +108,7 @@ class ReviewApiController extends AbstractController
             ->setParameter('userId', $user->getId())
             ->setParameter('tripId', $trip->getId())
             ->setParameter('statuses', ['CONFIRMED', 'COMPLETED'])
+            ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
 
@@ -120,12 +127,17 @@ class ReviewApiController extends AbstractController
         $review = new Review();
         $review->setUser($user);
         $review->setTrip($trip);
-        $review->setRating($data['rating']);
+        $review->setRating((int)$data['rating']);
         $review->setComment($data['comment'] ?? null);
         $review->setStatus('pending');
 
         $this->em->persist($review);
-        $this->em->flush();
+
+        try {
+            $this->em->flush();
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Database error: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
 
         return $this->json([
             'message' => 'Review submitted successfully',

@@ -3,7 +3,6 @@ import axios from 'axios';
 const API_URL = 'http://localhost:8000/api';
 const BACKEND_URL = 'http://localhost:8000';
 
-// Helper to fix image URLs - prepend backend URL for relative paths
 export const fixImageUrl = (url: string | undefined | null): string => {
   if (!url) return '/placeholder.jpg';
   if (url.startsWith('http')) return url;
@@ -17,13 +16,11 @@ const api = axios.create({
   },
 });
 
-// Intercepteur pour ajouter le token JWT
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  // Remove Content-Type for FormData to let browser set multipart boundary
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type'];
   }
@@ -141,22 +138,20 @@ export const bookingAPI = {
 };
 
 export const paymentAPI = {
-  createIntent: (bookingId: number) => api.post(`/payments/create-intent/${bookingId}`),
-  confirm: (paymentIntentId: string) => api.post('/payments/confirm', { payment_intent_id: paymentIntentId }),
-  refund: (bookingId: number) => api.post(`/payments/refund/${bookingId}`),
+  // body optionnel : { offer_id? }
+  createIntent: (bookingId: number, body?: { offer_id?: number | null }) =>
+    api.post(`/payments/create-intent/${bookingId}`, body ?? {}),
+  confirm: (paymentIntentId: string) =>
+    api.post('/payments/confirm', { payment_intent_id: paymentIntentId }),
+  refund: (bookingId: number) =>
+    api.post(`/payments/refund/${bookingId}`),
 };
 
-// ── Loyalty API ───────────────────────────────────────────
 export const loyaltyAPI = {
-  // User : voir ses points et son historique
   getPoints: () =>
     api.get('/loyalty/points'),
-
-  // User : voir les offres disponibles (filtrées par trip si tripId fourni)
   getOffers: (tripId?: number) =>
     api.get('/loyalty/offers', { params: tripId ? { trip_id: tripId } : {} }),
-
-  // Organisateur : créer une offre fidélité
   createOffer: (data: {
     title: string;
     description?: string;
@@ -166,13 +161,10 @@ export const loyaltyAPI = {
     trip_id?: number;
     expires_at?: string;
   }) => api.post('/loyalty/offers', data),
-
-  // Organisateur : désactiver une offre
   deleteOffer: (id: number) =>
     api.delete(`/loyalty/offers/${id}`),
 };
 
-// Admin APIs
 export const adminAPI = {
   getStats: () => api.get('/admin/stats'),
   getDetailedStats: () => api.get('/admin/stats/detailed'),

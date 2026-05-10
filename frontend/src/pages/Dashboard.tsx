@@ -240,7 +240,7 @@ const Dashboard: React.FC = () => {
                 </Box>
                 <Box sx={{ px: 3, pb: 3, textAlign: 'center' }}>
                   <Avatar src={photoUrl || undefined}
-                    sx={{ width: 90, height: 90, mx: 'auto', mt: '-45px',
+                    sx={{ width: 110, height:110, mx: 'auto', mt: '-45px',
                       border: `4px solid ${T.white}`, bgcolor: T.teal,
                       fontSize: 30, fontWeight: 800,
                       boxShadow: '0 6px 20px rgba(15,45,92,0.18)' }}>

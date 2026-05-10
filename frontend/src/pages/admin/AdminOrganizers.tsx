@@ -28,6 +28,11 @@ import {
   Grid,
   Fade,
   Zoom,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import {
@@ -49,6 +54,7 @@ import {
   Download,
   People,
   Person,
+  KeyboardArrowDown,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
@@ -212,6 +218,19 @@ const AdminOrganizers: React.FC = () => {
     organizer: null,
     action: null,
   });
+
+  // Menu dropdown state
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>, id: number) => {
+    setMenuAnchor(e.currentTarget);
+    setOpenMenuId(id);
+  };
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setOpenMenuId(null);
+  };
 
   const organizerId = id ? parseInt(id) : null;
   const showDetailView = !!organizerId;
@@ -831,44 +850,77 @@ const AdminOrganizers: React.FC = () => {
                       </TableCell>
                       
                       <TableCell align="center">
-                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
-                          
-                          {/* Bouton Voir Détails */}
-                          <ActionButton
-                            variant="text"
-                            onClick={() => navigate(`/admin/organizers/${organizer.id}`)}
-                            startIcon={<Visibility sx={{ fontSize: 15 }} />}
-                            sx={{ color: COLORS.navy }}
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          endIcon={<KeyboardArrowDown sx={{ fontSize: 14 }} />}
+                          onClick={(e) => handleMenuOpen(e, organizer.id)}
+                          sx={{
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            borderColor: alpha(COLORS.navy, 0.2),
+                            color: COLORS.navy,
+                            px: 1.5, py: 0.5,
+                            '&:hover': { borderColor: COLORS.teal, color: COLORS.teal, bgcolor: alpha(COLORS.teal, 0.04) },
+                          }}
+                        >
+                          Actions
+                        </Button>
+                        <Menu
+                          anchorEl={openMenuId === organizer.id ? menuAnchor : null}
+                          open={openMenuId === organizer.id}
+                          onClose={handleMenuClose}
+                          elevation={2}
+                          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                          PaperProps={{
+                            sx: {
+                              borderRadius: 2,
+                              border: `0.5px solid ${alpha(COLORS.navy, 0.1)}`,
+                              boxShadow: `0 8px 24px ${alpha(COLORS.navy, 0.1)}`,
+                              minWidth: 175,
+                              mt: 0.5,
+                            }
+                          }}
+                        >
+                          <MenuItem
+                            onClick={() => { navigate(`/admin/organizers/${organizer.id}`); handleMenuClose(); }}
+                            sx={{ fontSize: 13, py: 1, '&:hover': { bgcolor: alpha(COLORS.navy, 0.04) } }}
                           >
-                            Voir
-                          </ActionButton>
-                          
-                          {/* Bouton Approuver - pour statut PENDING */}
+                            <ListItemIcon sx={{ minWidth: 28 }}>
+                              <Visibility sx={{ fontSize: 16, color: alpha(COLORS.navy, 0.5) }} />
+                            </ListItemIcon>
+                            <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Voir détails</ListItemText>
+                          </MenuItem>
+
                           {organizer.status === 'PENDING' && (
-                            <ActionButton
-                              variant="contained"
-                              onClick={() => setActionDialog({ open: true, organizer, action: 'approve' })}
-                              startIcon={<CheckCircle sx={{ fontSize: 14 }} />}
-                              sx={{ bgcolor: COLORS.teal, color: COLORS.white }}
+                            <MenuItem
+                              onClick={() => { setActionDialog({ open: true, organizer, action: 'approve' }); handleMenuClose(); }}
+                              sx={{ fontSize: 13, color: COLORS.teal, py: 1, '&:hover': { bgcolor: alpha(COLORS.teal, 0.06) } }}
                             >
-                              Approuver
-                            </ActionButton>
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <CheckCircle sx={{ fontSize: 16, color: COLORS.teal }} />
+                              </ListItemIcon>
+                              <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Approuver</ListItemText>
+                            </MenuItem>
                           )}
-                          
-                          {/* Bouton Bloquer/Débloquer */}
-                          <ActionButton
-                            variant="outlined"
-                            onClick={() => setActionDialog({ open: true, organizer, action: 'block' })}
-                            startIcon={<Block sx={{ fontSize: 14 }} />}
-                            sx={{ 
-                              borderColor: organizer.status !== 'BLOCKED' ? COLORS.amber : COLORS.teal,
-                              color: organizer.status !== 'BLOCKED' ? COLORS.amber : COLORS.teal,
-                            }}
+
+                          <Divider sx={{ my: 0.5 }} />
+
+                          <MenuItem
+                            onClick={() => { setActionDialog({ open: true, organizer, action: 'block' }); handleMenuClose(); }}
+                            sx={{ fontSize: 13, color: COLORS.amber, py: 1, '&:hover': { bgcolor: alpha(COLORS.amber, 0.06) } }}
                           >
-                            {organizer.status !== 'BLOCKED' ? 'Bloquer' : 'Débloquer'}
-                          </ActionButton>
-                          
-                        </Box>
+                            <ListItemIcon sx={{ minWidth: 28 }}>
+                              <Block sx={{ fontSize: 16, color: COLORS.amber }} />
+                            </ListItemIcon>
+                            <ListItemText primaryTypographyProps={{ fontSize: 13 }}>
+                              {organizer.status !== 'BLOCKED' ? 'Bloquer' : 'Débloquer'}
+                            </ListItemText>
+                          </MenuItem>
+                        </Menu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -882,7 +934,7 @@ const AdminOrganizers: React.FC = () => {
         <Dialog
           open={actionDialog.open}
           onClose={() => setActionDialog({ open: false, organizer: null, action: null })}
-          PaperProps={{ sx: { borderRadius: 16, minWidth: 400 } }}
+          PaperProps={{ sx: { borderRadius: 2, minWidth: 400 } }}
         >
           <DialogTitle sx={{ 
             background: actionDialog.action === 'approve' ? COLORS.teal : COLORS.amber,
