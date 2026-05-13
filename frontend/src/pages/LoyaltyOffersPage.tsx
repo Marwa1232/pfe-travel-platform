@@ -1,27 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
   Box, Typography, Grid, Card, CardContent, CardActions,
   Button, Chip, CircularProgress, Alert, LinearProgress,
-  Avatar, Divider, Fade, Zoom,
+  Divider, Fade, Zoom, Paper,
 } from '@mui/material';
 import { alpha, styled, keyframes } from '@mui/material/styles';
 import {
   EmojiEvents, LocalOffer, FlightTakeoff, Lock,
-  CheckCircle, ArrowForward, Stars, CreditCard,
-  GpsFixed, WorkspacePremium, LightbulbOutlined,
-  TrendingUp, TrendingDown,
+  ArrowForward, Stars, CreditCard, GpsFixed,
+  WorkspacePremium, LightbulbOutlined,
 } from '@mui/icons-material';
-import { loyaltyAPI, tripAPI } from '../services/api';
+import { loyaltyAPI } from '../services/api';
 import { RootState } from '../store';
 
-// ─── 4 COULEURS UNIQUEMENT ──────────────────────────────────────
+// ─── COULEURS ──────────────────────────────────────────────
 const COLORS = {
   teal: '#0EA5A0',
   navy: '#0F2D5C',
   amber: '#D97706',
   white: '#FFFFFF',
+  border: '#E2E8F0',
 };
 
 const fadeUp = keyframes`
@@ -70,9 +70,20 @@ const getPointsLevel = (points: number) => {
   return                    { name: 'Débutant', color: COLORS.navy, next: 50 };
 };
 
+// ─── Regrouper les offres par organisateur ────────────────────
+interface GroupedOffers {
+  organizer_id: number;
+  agency_name: string;
+  available: number;
+  offers: any[];
+}
+
 const LoyaltyOffersPage: React.FC = () => {
   const navigate                    = useNavigate();
   const { token }                   = useSelector((state: RootState) => state.auth);
+  const [searchParams]              = useSearchParams();
+  const tripId                      = searchParams.get('trip_id') ? Number(searchParams.get('trip_id')) : null;
+
   const [offers, setOffers]         = useState<any[]>([]);
   const [points, setPoints]         = useState<any>(null);
   const [loading, setLoading]       = useState(true);
@@ -80,12 +91,12 @@ const LoyaltyOffersPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [token]);
+  }, [token, tripId]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const oRes = await loyaltyAPI.getOffers();
+      const oRes = await loyaltyAPI.getOffers(tripId ?? undefined);
       setOffers(oRes.data.offers || []);
 
       if (token) {
@@ -99,11 +110,36 @@ const LoyaltyOffersPage: React.FC = () => {
     }
   };
 
-  const level        = points ? getPointsLevel(points.available_points) : null;
-  const availPts     = points?.available_points || 0;
+  const level = points ? getPointsLevel(points.total_earned || 0) : null;
 
-  const usableOffers = offers.filter(o => o.can_use);
-  const lockedOffers = offers.filter(o => !o.can_use);
+  // Regrouper les offres par organisateur et recalculer can_use
+  const groupedOffers: GroupedOffers[] = offers.reduce((acc: GroupedOffers[], offer: any) => {
+    const orgId   = offer.organizer_id;
+    const orgName = offer.agency_name || (orgId ? `Organisateur #${orgId}` : 'Sans organisateur');
+    let group = acc.find((g: GroupedOffers) => Number(g.organizer_id) === Number(orgId));
+    if (!group) {
+      group = {
+        organizer_id: orgId ?? 0,
+        agency_name: orgName,
+        available: 0,
+        offers: [],
+      };
+      if (points?.by_organizer) {
+        const orgPoints = points.by_organizer.find(
+          (o: any) => Number(o.organizer_id) === Number(orgId)
+        );
+        if (orgPoints) group.available = orgPoints.available;
+      }
+      acc.push(group);
+    }
+    const updatedOffer = { ...offer, can_use: group.available >= (offer.points_required || 999999) };
+    group.offers.push(updatedOffer);
+    return acc;
+  }, []);
+
+  const mergedOffers = groupedOffers.flatMap((g) => g.offers);
+  const usableOffers = mergedOffers.filter((o: any) => o.can_use);
+  const lockedOffers = mergedOffers.filter((o: any) => !o.can_use);
 
   if (loading) return (
     <Page sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -131,14 +167,17 @@ const LoyaltyOffersPage: React.FC = () => {
               Offres Fidélité
             </Typography>
             <Typography sx={{ fontSize: 16, color: alpha(COLORS.navy, 0.6), maxWidth: 520, mx: 'auto' }}>
-              Utilisez vos points pour débloquer des réductions exclusives sur vos prochains voyages
+              {tripId
+                ? 'Offres de l\'organisateur de ce voyage'
+                : 'Utilisez vos points pour débloquer des réductions exclusives sur vos prochains voyages'
+              }
             </Typography>
           </Box>
         </Fade>
 
         {/* ── Carte points utilisateur ── */}
         {token && points ? (
-          <Zoom in timeout={600}>
+          <Fade in timeout={600}>
             <Card sx={{
               mb: 5, borderRadius: 2, border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
               boxShadow: `0 8px 32px ${alpha(COLORS.navy, 0.08)}`,
@@ -154,7 +193,7 @@ const LoyaltyOffersPage: React.FC = () => {
                       Vos points disponibles
                     </Typography>
                     <Typography sx={{ fontSize: 48, fontWeight: 800, color: COLORS.white, lineHeight: 1 }}>
-                      {availPts}
+                      {points.total_earned || 0}
                       <Typography component="span" sx={{ fontSize: 16, fontWeight: 500, color: alpha(COLORS.white, 0.7), ml: 1 }}>
                         pts
                       </Typography>
@@ -175,7 +214,7 @@ const LoyaltyOffersPage: React.FC = () => {
                       }}
                     />
                     <Typography sx={{ fontSize: 12, color: alpha(COLORS.white, 0.6), mt: 1 }}>
-                      {points.total_points} pts gagnés au total
+                      {points.total_earned || 0} pts gagnés au total
                     </Typography>
                   </Box>
                 </Box>
@@ -187,12 +226,12 @@ const LoyaltyOffersPage: React.FC = () => {
                         Progression vers le niveau suivant
                       </Typography>
                       <Typography sx={{ fontSize: 12, color: COLORS.white, fontWeight: 600 }}>
-                        {availPts} / {level.next} pts
+                        {points.total_earned || 0} / {level.next} pts
                       </Typography>
                     </Box>
                     <LinearProgress
                       variant="determinate"
-                      value={Math.min((availPts / level.next) * 100, 100)}
+                      value={Math.min(((points.total_earned || 0) / level.next) * 100, 100)}
                       sx={{
                         height: 6,
                         borderRadius: 1,
@@ -204,31 +243,47 @@ const LoyaltyOffersPage: React.FC = () => {
                 )}
               </Box>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', p: 2, gap: 0 }}>
-                {[
-                  { label: 'Disponibles', value: points.available_points, color: COLORS.teal },
-                  { label: 'Gagnés total', value: points.total_points, color: COLORS.amber },
-                  { label: 'Utilisés', value: points.used_points, color: alpha(COLORS.navy, 0.5) },
-                ].map((s, i) => (
-                  <Box key={i} sx={{
-                    textAlign: 'center',
-                    py: 1.5,
-                    borderRight: i < 2 ? `1px solid ${alpha(COLORS.teal, 0.15)}` : 'none',
-                  }}>
-                    <Typography sx={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</Typography>
-                    <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.6) }}>{s.label}</Typography>
-                  </Box>
-                ))}
+              {/* Points par agence */}
+              <Box sx={{ p: 2 }}>
+                <Typography sx={{ fontSize: 12, color: alpha(COLORS.navy, 0.5), mb: 1.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Points par agence
+                </Typography>
+                {(points.by_organizer || []).length === 0 ? (
+                  <Typography sx={{ fontSize: 13, color: alpha(COLORS.navy, 0.4), textAlign: 'center', py: 1 }}>
+                    Aucun point encore gagné
+                  </Typography>
+                ) : (
+                  (points.by_organizer || []).map((org: any) => (
+                    <Box key={org.organizer_id} sx={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      py: 1, borderBottom: `1px solid ${alpha(COLORS.teal, 0.08)}`,
+                      '&:last-child': { borderBottom: 'none' }
+                    }}>
+                      <Box>
+                        <Typography sx={{ fontSize: 13, fontWeight: 600, color: COLORS.navy }}>{org.agency_name}</Typography>
+                        <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.5) }}>{org.earned} pts gagnés</Typography>
+                      </Box>
+                      <Chip
+                        label={`${org.available} pts`}
+                        size="small"
+                        sx={{
+                          bgcolor: org.available > 0 ? alpha(COLORS.teal, 0.1) : alpha(COLORS.navy, 0.06),
+                          color: org.available > 0 ? COLORS.teal : alpha(COLORS.navy, 0.4),
+                          fontWeight: 700, fontSize: 12, borderRadius: 6,
+                        }}
+                      />
+                    </Box>
+                  ))
+                )}
               </Box>
             </Card>
-          </Zoom>
+          </Fade>
         ) : !token ? (
           <Fade in>
             <Alert
               severity="info"
               sx={{
-                mb: 4,
-                borderRadius: 2,
+                mb: 4, borderRadius: 2,
                 bgcolor: alpha(COLORS.teal, 0.05),
                 color: COLORS.navy,
                 '& .MuiAlert-icon': { color: COLORS.teal },
@@ -250,163 +305,68 @@ const LoyaltyOffersPage: React.FC = () => {
           </Alert>
         )}
 
-        {offers.length === 0 ? (
+        {mergedOffers.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 10 }}>
             <LocalOffer sx={{ fontSize: 64, color: alpha(COLORS.navy, 0.2), mb: 2 }} />
             <Typography sx={{ fontSize: 20, fontWeight: 700, color: COLORS.navy, mb: 1 }}>
-              Aucune offre disponible pour le moment
+              {tripId ? 'Aucune offre pour ce voyage' : 'Aucune offre disponible pour le moment'}
             </Typography>
             <Typography sx={{ fontSize: 14, color: alpha(COLORS.navy, 0.6), mb: 4 }}>
-              Les organisateurs n'ont pas encore créé d'offres fidélité
+              {tripId
+                ? 'Cet organisateur n\'a pas encore créé d\'offre fidélité pour ce voyage'
+                : 'Les organisateurs n\'ont pas encore créé d\'offres fidélité'}
             </Typography>
-            <GradientButton onClick={() => navigate('/trips')}>
-              Découvrir les voyages
-            </GradientButton>
+            {!tripId && <GradientButton onClick={() => navigate('/trips')}>Découvrir les voyages</GradientButton>}
           </Box>
         ) : (
           <>
-            {/* ── Offres utilisables ── */}
-            {usableOffers.length > 0 && (
-              <Fade in timeout={700}>
-                <Box sx={{ mb: 6 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-                   
-                    <Typography sx={{ fontSize: 20, fontWeight: 700, color: COLORS.navy }}>
-                      Offres disponibles pour vous
-                    </Typography>
-                   
-                   
-                  </Box>
-
-                  <Grid container spacing={3}>
-                    {usableOffers.map((offer, idx) => (
-                      <Grid item xs={12} sm={6} md={4} key={offer.id}>
-                        <Zoom in timeout={700 + idx * 100}>
-                          <Card sx={{
-                            height: '100%',
-                            borderRadius: 2,
-                            border: `2px solid ${alpha(COLORS.teal, 0.3)}`,
-                            boxShadow: `0 4px 20px ${alpha(COLORS.teal, 0.1)}`,
-                            transition: 'all 0.3s ease',
-                            cursor: 'default',
-                            '&:hover': {
-                              transform: 'translateY(-6px)',
-                              boxShadow: `0 16px 40px ${alpha(COLORS.teal, 0.2)}`,
-                              borderColor: COLORS.teal,
-                            },
-                          }}>
-                            <CardContent sx={{ p: 3 }}>
-                            
-
-                              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1 }}>
-                                <Typography sx={{ fontSize: 44, fontWeight: 900, color: COLORS.amber, lineHeight: 1 }}>
-                                  {offer.discount_type === 'percentage_discount'
-                                    ? `-${offer.discount_value}%`
-                                    : `-${offer.discount_value} EUR`}
-                                </Typography>
-                              </Box>
-
-                              <Typography sx={{ fontSize: 18, fontWeight: 700, color: COLORS.navy, mb: 1 }}>
-                                {offer.title}
-                              </Typography>
-
-                              {offer.description && (
-                                <Typography sx={{ fontSize: 13, color: alpha(COLORS.navy, 0.6), mb: 2, lineHeight: 1.5 }}>
-                                  {offer.description}
-                                </Typography>
-                              )}
-
-                              <Divider sx={{ my: 2, borderColor: alpha(COLORS.teal, 0.1) }} />
-
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Stars sx={{ fontSize: 18, color: COLORS.amber }} />
-                                <Typography sx={{ fontSize: 14, fontWeight: 700, color: COLORS.amber }}>
-                                  {offer.points_required} points requis
-                                </Typography>
-                              </Box>
-
-                              {offer.expires_at && (
-                                <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.5), mt: 1 }}>
-                                  Expire le {offer.expires_at}
-                                </Typography>
-                              )}
-                            </CardContent>
-                            <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
-                              <GradientButton
-                                fullWidth
-                                endIcon={<ArrowForward />}
-                                onClick={() => navigate('/trips')}
-                              >
-                                Réserver et utiliser
-                              </GradientButton>
-                            </CardActions>
-                          </Card>
-                        </Zoom>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              </Fade>
-            )}
-
-            {/* ── Offres verrouillées ── */}
-            {lockedOffers.length > 0 && (
-              <Fade in timeout={800}>
-                <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-                    <Lock sx={{ color: alpha(COLORS.navy, 0.5), fontSize: 22 }} />
-                    <Typography sx={{ fontSize: 20, fontWeight: 700, color: COLORS.navy }}>
-                      Encore quelques points…
+            {/* ── Offres par organisateur ── */}
+            {groupedOffers.map((group: GroupedOffers) => (
+              <Fade in timeout={500} key={group.organizer_id}>
+                <Paper sx={{ mb: 4, p: 3, borderRadius: 3, border: `1px solid ${alpha(COLORS.border, 0.3)}` }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    <WorkspacePremium sx={{ color: COLORS.teal }} />
+                    <Typography sx={{ fontSize: 16, fontWeight: 700, color: COLORS.navy }}>
+                      {group.agency_name}
                     </Typography>
                     <Chip
-                      label={lockedOffers.length}
+                      label={`${group.available} pts disponibles`}
                       size="small"
                       sx={{
-                        bgcolor: alpha(COLORS.navy, 0.08),
-                        color: COLORS.navy,
-                        fontWeight: 700,
-                        borderRadius: 2,
+                        ml: 'auto',
+                        bgcolor: group.available > 0 ? alpha(COLORS.teal, 0.1) : alpha(COLORS.navy, 0.06),
+                        color: group.available > 0 ? COLORS.teal : alpha(COLORS.navy, 0.4),
+                        fontWeight: 600, fontSize: 11, borderRadius: 6,
                       }}
                     />
                   </Box>
 
-                  <Grid container spacing={3}>
-                    {lockedOffers.map((offer, idx) => {
-                      const missing = offer.points_required - availPts;
-                      const prog    = token ? Math.min((availPts / offer.points_required) * 100, 100) : 0;
-                      return (
+                  {/* Offres utilisables */}
+                  <Grid container spacing={2}>
+                    {group.offers
+                      .filter((o: any) => o.can_use)
+                      .map((offer: any, idx: number) => (
                         <Grid item xs={12} sm={6} md={4} key={offer.id}>
-                          <Zoom in timeout={800 + idx * 100}>
+                          <Zoom in timeout={500 + idx * 100}>
                             <Card sx={{
                               height: '100%',
-                              borderRadius: 16,
-                              border: `1px solid ${alpha(COLORS.navy, 0.1)}`,
-                              boxShadow: 'none',
-                              opacity: 0.85,
+                              borderRadius: 2,
+                              border: `2px solid ${alpha(COLORS.teal, 0.3)}`,
+                              boxShadow: `0 4px 20px ${alpha(COLORS.teal, 0.1)}`,
                               transition: 'all 0.3s ease',
-                              '&:hover': { opacity: 1, transform: 'translateY(-4px)', boxShadow: `0 8px 24px ${alpha(COLORS.navy, 0.1)}` },
+                              cursor: 'default',
+                              '&:hover': {
+                                transform: 'translateY(-6px)',
+                                boxShadow: `0 16px 40px ${alpha(COLORS.teal, 0.2)}`,
+                                borderColor: COLORS.teal,
+                              },
                             }}>
                               <CardContent sx={{ p: 3 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                  <Lock sx={{ fontSize: 16, color: alpha(COLORS.navy, 0.4) }} />
-                                  <Chip
-                                    label={`Il vous manque ${missing} pts`}
-                                    size="small"
-                                    sx={{
-                                      bgcolor: alpha(COLORS.amber, 0.1),
-                                      color: COLORS.amber,
-                                      fontWeight: 600,
-                                      fontSize: 10,
-                                      borderRadius: 6,
-                                    }}
-                                  />
-                                </Box>
-
                                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1 }}>
-                                  <Typography sx={{ fontSize: 44, fontWeight: 900, color: alpha(COLORS.navy, 0.4), lineHeight: 1 }}>
+                                  <Typography sx={{ fontSize: 44, fontWeight: 900, color: COLORS.amber, lineHeight: 1 }}>
                                     {offer.discount_type === 'percentage_discount'
                                       ? `-${offer.discount_value}%`
-                                      : `-${offer.discount_value} EUR`}
+                                      : `-${offer.discount_value}€`}
                                   </Typography>
                                 </Box>
 
@@ -420,57 +380,138 @@ const LoyaltyOffersPage: React.FC = () => {
                                   </Typography>
                                 )}
 
-                                <Divider sx={{ my: 2, borderColor: alpha(COLORS.navy, 0.1) }} />
+                                <Divider sx={{ my: 2, borderColor: alpha(COLORS.teal, 0.1) }} />
 
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                                  <Stars sx={{ fontSize: 18, color: alpha(COLORS.navy, 0.5) }} />
-                                  <Typography sx={{ fontSize: 14, fontWeight: 700, color: alpha(COLORS.navy, 0.6) }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Stars sx={{ fontSize: 18, color: COLORS.amber }} />
+                                  <Typography sx={{ fontSize: 14, fontWeight: 700, color: COLORS.amber }}>
                                     {offer.points_required} points requis
                                   </Typography>
                                 </Box>
 
-                                {token && (
-                                  <Box>
-                                    <LinearProgress
-                                      variant="determinate"
-                                      value={prog}
-                                      sx={{
-                                        height: 6,
-                                        borderRadius: 3,
-                                        bgcolor: alpha(COLORS.navy, 0.08),
-                                        '& .MuiLinearProgress-bar': { bgcolor: COLORS.amber, borderRadius: 3 },
-                                      }}
-                                    />
-                                    <Typography sx={{ fontSize: 10, color: alpha(COLORS.navy, 0.5), mt: 0.5 }}>
-                                      {availPts} / {offer.points_required} pts
-                                    </Typography>
-                                  </Box>
-                                )}
-
                                 {offer.expires_at && (
                                   <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.5), mt: 1 }}>
-                                     Expire le {offer.expires_at}
+                                    Expire le {offer.expires_at}
                                   </Typography>
                                 )}
                               </CardContent>
                               <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
-                                <OutlineButton
+                                <GradientButton
                                   fullWidth
-                                  endIcon={<FlightTakeoff />}
+                                  endIcon={<ArrowForward />}
                                   onClick={() => navigate('/trips')}
                                 >
-                                  Gagner des points
-                                </OutlineButton>
+                                  Réserver et utiliser
+                                </GradientButton>
                               </CardActions>
                             </Card>
                           </Zoom>
                         </Grid>
-                      );
-                    })}
+                      ))}
+
+                    {/* Offres verrouillées */}
+                    {group.offers
+                      .filter((o: any) => !o.can_use)
+                      .map((offer: any, idx: number) => {
+                        const missing = offer.points_required - group.available;
+                        const prog = token ? Math.min((group.available / offer.points_required) * 100, 100) : 0;
+                        return (
+                          <Grid item xs={12} sm={6} md={4} key={offer.id}>
+                            <Zoom in timeout={800 + idx * 100}>
+                              <Card sx={{
+                                height: '100%',
+                                borderRadius: 2,
+                                border: `1px solid ${alpha(COLORS.navy, 0.1)}`,
+                                boxShadow: 'none',
+                                opacity: 0.85,
+                                transition: 'all 0.3s ease',
+                                '&:hover': { opacity: 1, transform: 'translateY(-4px)', boxShadow: `0 8px 24px ${alpha(COLORS.navy, 0.1)}` },
+                              }}>
+                                <CardContent sx={{ p: 3 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                    <Lock sx={{ fontSize: 16, color: alpha(COLORS.navy, 0.4) }} />
+                                    <Chip
+                                      label={missing > 0 ? `Il vous manque ${missing} pts` : `${Math.abs(missing)} pts en trop !`}
+                                      size="small"
+                                      sx={{
+                                        bgcolor: alpha(COLORS.amber, 0.1),
+                                        color: COLORS.amber,
+                                        fontWeight: 600,
+                                        fontSize: 10,
+                                        borderRadius: 6,
+                                      }}
+                                    />
+                                  </Box>
+
+                                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1 }}>
+                                    <Typography sx={{ fontSize: 44, fontWeight: 900, color: alpha(COLORS.navy, 0.4), lineHeight: 1 }}>
+                                      {offer.discount_type === 'percentage_discount'
+                                        ? `-${offer.discount_value}%`
+                                        : `-${offer.discount_value}€`}
+                                    </Typography>
+                                  </Box>
+
+                                  <Typography sx={{ fontSize: 18, fontWeight: 700, color: COLORS.navy, mb: 1 }}>
+                                    {offer.title}
+                                  </Typography>
+
+                                  {offer.description && (
+                                    <Typography sx={{ fontSize: 13, color: alpha(COLORS.navy, 0.6), mb: 2, lineHeight: 1.5 }}>
+                                      {offer.description}
+                                    </Typography>
+                                  )}
+
+                                  <Divider sx={{ my: 2, borderColor: alpha(COLORS.navy, 0.1) }} />
+
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                                    <Stars sx={{ fontSize: 18, color: alpha(COLORS.navy, 0.5) }} />
+                                    <Typography sx={{ fontSize: 14, fontWeight: 700, color: alpha(COLORS.navy, 0.6) }}>
+                                      {offer.points_required} points requis
+                                    </Typography>
+                                  </Box>
+
+                                  {token && (
+                                    <Box>
+                                      <LinearProgress
+                                        variant="determinate"
+                                        value={prog}
+                                        sx={{
+                                          height: 6,
+                                          borderRadius: 3,
+                                          bgcolor: alpha(COLORS.navy, 0.08),
+                                          '& .MuiLinearProgress-bar': { bgcolor: COLORS.amber, borderRadius: 3 },
+                                        }}
+                                      />
+                                      <Typography sx={{ fontSize: 10, color: alpha(COLORS.navy, 0.5), mt: 0.5 }}>
+                                        {group.available} / {offer.points_required} pts
+                                      </Typography>
+                                    </Box>
+                                  )}
+
+                                  {offer.expires_at && (
+                                    <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.5), mt: 1 }}>
+                                      Expire le {offer.expires_at}
+                                    </Typography>
+                                  )}
+                                </CardContent>
+                                <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+                                  <OutlineButton
+                                    fullWidth
+                                    endIcon={<FlightTakeoff />}
+                                    onClick={() => navigate('/trips')}
+                                  >
+                                    Gagner des points
+                                  </OutlineButton>
+                                </CardActions>
+                              </Card>
+                            </Zoom>
+                          </Grid>
+                        );
+                      })}
                   </Grid>
-                </Box>
+                </Paper>
               </Fade>
-            )}
+            ))}
           </>
         )}
 

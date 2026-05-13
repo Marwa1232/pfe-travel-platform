@@ -17,10 +17,17 @@ class LoyaltyTransaction
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
+    // Organizer auquel les points appartiennent
+    // Points gagnés chez Agence A ne peuvent être utilisés que chez Agence A
+    #[ORM\ManyToOne(targetEntity: OrganizerProfile::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?OrganizerProfile $organizer = null;
+
     // earn | redeem
     #[ORM\Column(length: 20)]
     private string $type = 'earn';
 
+    // positif pour earn, négatif pour redeem
     #[ORM\Column(type: 'integer')]
     private int $points = 0;
 
@@ -40,15 +47,24 @@ class LoyaltyTransaction
     }
 
     public function getId(): ?int { return $this->id; }
+
     public function getUser(): ?User { return $this->user; }
     public function setUser(User $user): static { $this->user = $user; return $this; }
+
+    public function getOrganizer(): ?OrganizerProfile { return $this->organizer; }
+    public function setOrganizer(OrganizerProfile $organizer): static { $this->organizer = $organizer; return $this; }
+
     public function getType(): string { return $this->type; }
     public function setType(string $v): static { $this->type = $v; return $this; }
+
     public function getPoints(): int { return $this->points; }
     public function setPoints(int $v): static { $this->points = $v; return $this; }
+
     public function getDescription(): ?string { return $this->description; }
     public function setDescription(?string $v): static { $this->description = $v; return $this; }
+
     public function getBooking(): ?Booking { return $this->booking; }
     public function setBooking(?Booking $v): static { $this->booking = $v; return $this; }
+
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 }

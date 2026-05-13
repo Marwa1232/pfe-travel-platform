@@ -90,15 +90,18 @@ class PaymentController extends AbstractController
     //  1. Créer PaymentIntent
     //     POST /api/payments/create-intent/{bookingId}
     // ════════════════════════════════════════════════════════
-    #[Route('/create-intent/{bookingId}', methods: ['POST'])]
-    public function createIntent(int $bookingId, Request $request): JsonResponse
-    {
-        $user = $this->getAuthUser($request);
-        if (!$user) return $this->json(['error' => 'Unauthorized'], 401);
+#[Route('/create-intent/{bookingId}', methods: ['POST'])]
+     public function createIntent(int $bookingId, Request $request): JsonResponse
+     {
+         $user = $this->getAuthUser($request);
+         if (!$user) return $this->json(['error' => 'Unauthorized'], 401);
 
-        $booking = $this->bookingRepo->find($bookingId);
-        if (!$booking) return $this->json(['error' => 'Booking not found'], 404);
-        if ($booking->getUser()->getId() !== $user->getId()) return $this->json(['error' => 'Forbidden'], 403);
+         $body      = json_decode($request->getContent(), true) ?? [];
+         $offerId   = $body['offer_id'] ?? null;
+
+         $booking = $this->bookingRepo->find($bookingId);
+         if (!$booking) return $this->json(['error' => 'Booking not found'], 404);
+         if ($booking->getUser()->getId() !== $user->getId()) return $this->json(['error' => 'Forbidden'], 403);
 
         // 1. Vérifier si déjà payé
         $existingPaid = $this->paymentRepo->findOneBy([
@@ -124,17 +127,22 @@ class PaymentController extends AbstractController
         // 3. Créer un nouveau PaymentIntent
         $amountCents = (int) round((float) $booking->getTotalPrice() * 100);
 
-        $intent = $this->stripe->paymentIntents->create([
-            'amount'                    => $amountCents,
-            'currency'                  => 'eur',
-            'description'               => 'TripBooking - ' . $booking->getTrip()?->getTitle(),
-            'automatic_payment_methods' => ['enabled' => true],
-            'metadata'                  => [
-                'booking_id' => $booking->getId(),
-                'user_id'    => $user->getId(),
-                'trip_id'    => $booking->getTrip()?->getId(),
-            ],
-        ]);
+$metadata = [
+             'booking_id' => $booking->getId(),
+             'user_id'    => $user->getId(),
+             'trip_id'    => $booking->getTrip()?->getId(),
+         ];
+         if ($offerId) {
+             $metadata['offer_id'] = $offerId;
+         }
+
+         $intent = $this->stripe->paymentIntents->create([
+             'amount'                    => $amountCents,
+             'currency'                  => 'eur',
+             'description'               => 'TripBooking - ' . $booking->getTrip()?->getTitle(),
+             'automatic_payment_methods' => ['enabled' => true],
+             'metadata'                  => $metadata,
+         ]);
 
         // Créer ou mettre à jour le Payment en base
         $payment = $this->paymentRepo->findOneBy(['booking' => $booking]) ?? new Payment();
@@ -247,7 +255,7 @@ class PaymentController extends AbstractController
             if ($pointsEarned > 0) {
                 $this->notificationService->create(
                     $user,
-                    'Points fidélité gagnés 🎯',
+                    'Points fidélité gagnés ',
                     sprintf('Vous avez gagné %d points pour "%s".', $pointsEarned, $booking->getTrip()?->getTitle()),
                     'loyalty'
                 );

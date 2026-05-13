@@ -15,7 +15,7 @@ class LlmService
     private EntityManagerInterface $em;
 
     private const CACHE_TTL = 3600;
-    private const MODEL     = 'llama-3.1-8b-instant'; // ✅ Groq - gratuit et rapide
+    private const MODEL     = 'llama-3.1-8b-instant'; 
     private const API_URL   = 'https://api.groq.com/openai/v1/chat/completions';
 
     public function __construct(
@@ -176,7 +176,7 @@ EOT;
         try {
             $response = $this->client->request(
                 'POST',
-                self::API_URL, // ✅ Groq endpoint
+                self::API_URL,
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $this->apiKey,
@@ -184,7 +184,7 @@ EOT;
                     ],
                     'json' => [
                         'model' => self::MODEL,
-                        'messages' => [ // ✅ correct key (not "input")
+                        'messages' => [ 
                             [
                                 'role' => 'system',
                                 'content' => $systemPrompt

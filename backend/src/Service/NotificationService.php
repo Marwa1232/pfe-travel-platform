@@ -371,7 +371,7 @@ class NotificationService
             $this->create(
                 $organizer->getUser(),
                 'Nouvel avis en attente',
-                "Un nouvel avis pour \"{$trip->getTitle()}\" est en attente d'approbation.",
+                "Un nouvel avis pour \"{$trip->getTitle()}\" ",
                 'new_review'
             );
         }

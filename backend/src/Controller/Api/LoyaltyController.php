@@ -32,76 +32,106 @@ class LoyaltyController extends AbstractController
         return $this->em->getRepository(User::class)->find($payload['id']);
     }
 
+    // ────────────────────────────────────────────────────────
     // GET /api/loyalty/points
+    // Retourne les points du user groupés par organizer
+    // ────────────────────────────────────────────────────────
     #[Route('/points', methods: ['GET'])]
     public function getPoints(Request $request): JsonResponse
     {
         $user = $this->getAuthUser($request);
         if (!$user) return $this->json(['error' => 'Unauthorized'], 401);
 
-        $lp      = $this->loyaltyService->getOrCreate($user);
-        $history = $this->loyaltyService->getHistory($user);
+        $byOrganizer = $this->loyaltyService->getPointsByOrganizer($user);
+        $history     = $this->loyaltyService->getHistory($user);
+
+        // Total global (informatif uniquement)
+        $totalEarned = $this->loyaltyService->getTotalPointsEarned($user);
 
         return $this->json([
-            'total_points'     => $lp->getTotalPoints(),
-            'used_points'      => $lp->getUsedPoints(),
-            'available_points' => $lp->getAvailablePoints(),
-            'history'          => array_map(fn($tx) => [
-                'id'          => $tx->getId(),
-                'type'        => $tx->getType(),
-                'points'      => $tx->getPoints(),
-                'description' => $tx->getDescription(),
-                'created_at'  => $tx->getCreatedAt()->format('Y-m-d H:i'),
+            'total_earned'    => $totalEarned,
+            'by_organizer'    => $byOrganizer,
+            'history'         => array_map(fn($tx) => [
+                'id'           => $tx->getId(),
+                'type'         => $tx->getType(),
+                'points'       => $tx->getPoints(),
+                'description'  => $tx->getDescription(),
+                'agency_name'  => $tx->getOrganizer()?->getAgencyName(),
+                'organizer_id' => $tx->getOrganizer()?->getId(),
+                'created_at'   => $tx->getCreatedAt()->format('Y-m-d H:i'),
             ], $history),
         ]);
     }
 
+    // ────────────────────────────────────────────────────────
     // GET /api/loyalty/offers?trip_id=X
+    // Retourne les offres de l'organizer du trip
+    // + les points disponibles du user CHEZ CET ORGANIZER
+    // ────────────────────────────────────────────────────────
     #[Route('/offers', methods: ['GET'])]
     public function getOffers(Request $request): JsonResponse
     {
-        $user = $this->getAuthUser($request);
+        $user   = $this->getAuthUser($request);
         if (!$user) return $this->json(['error' => 'Unauthorized'], 401);
 
-        $lp      = $this->loyaltyService->getOrCreate($user);
-        $tripId  = $request->query->get('trip_id');
+        $tripId = $request->query->get('trip_id');
 
+        // Trouver l'organizer du trip pour filtrer les points et les offres
+        $organizer    = null;
+        $availablePoints = 0;
+
+        if ($tripId) {
+            $trip = $this->em->getRepository(Trip::class)->find($tripId);
+            if ($trip?->getOrganizer()) {
+                $organizer       = $trip->getOrganizer();
+                $availablePoints = $this->loyaltyService->getAvailablePoints($user, $organizer);
+            }
+        }
+
+        // Construire la requête des offres
         $qb = $this->em->getRepository(LoyaltyOffer::class)->createQueryBuilder('o')
             ->where('o.isActive = true')
             ->andWhere('o.expiresAt IS NULL OR o.expiresAt > :now')
             ->setParameter('now', new \DateTimeImmutable())
             ->orderBy('o.pointsRequired', 'ASC');
 
-        if ($tripId) {
-            $trip = $this->em->getRepository(Trip::class)->find($tripId);
-            if ($trip) {
+        if ($organizer) {
+            // Uniquement les offres de cet organizer
+            $qb->andWhere('o.organizer = :org')
+               ->setParameter('org', $organizer);
+
+            // Optionnel: filtrer par trip spécifique ou offres globales de l'organizer
+            if (isset($trip)) {
                 $qb->andWhere('o.trip IS NULL OR o.trip = :trip')
                    ->setParameter('trip', $trip);
-                if ($trip->getOrganizer()) {
-                    $qb->andWhere('o.organizer = :org')
-                       ->setParameter('org', $trip->getOrganizer());
-                }
             }
         }
 
         $offers = $qb->getQuery()->getResult();
 
         return $this->json([
-            'available_points' => $lp->getAvailablePoints(),
-            'offers'           => array_map(fn(LoyaltyOffer $o) => [
-                'id'              => $o->getId(),
-                'title'           => $o->getTitle(),
-                'description'     => $o->getDescription(),
-                'discount_type'   => $o->getDiscountType(),
-                'discount_value'  => $o->getDiscountValue(),
-                'points_required' => $o->getPointsRequired(),
-                'can_use'         => $lp->getAvailablePoints() >= $o->getPointsRequired(),
-                'expires_at'      => $o->getExpiresAt()?->format('Y-m-d'),
-            ], $offers),
+            'available_points' => $availablePoints,
+            'organizer_id'     => $organizer?->getId(),
+            'agency_name'      => $organizer?->getAgencyName(),
+'offers'           => array_map(fn(LoyaltyOffer $o) => [
+                 'id'              => $o->getId(),
+                 'title'           => $o->getTitle(),
+                 'description'     => $o->getDescription(),
+                 'discount_type'   => $o->getDiscountType(),
+                 'discount_value'  => $o->getDiscountValue(),
+                 'points_required' => $o->getPointsRequired(),
+                 'organizer_id'    => $o->getOrganizer()?->getId(),
+                 'agency_name'     => $o->getOrganizer()?->getAgencyName(),
+                 // can_use = l'user a assez de points CHEZ CET ORGANIZER
+                 'can_use'         => $availablePoints >= $o->getPointsRequired(),
+                 'expires_at'      => $o->getExpiresAt()?->format('Y-m-d'),
+             ], $offers),
         ]);
     }
 
-    // POST /api/loyalty/offers (organisateur crée une offre)
+    // ────────────────────────────────────────────────────────
+    // POST /api/loyalty/offers — Organizer crée une offre
+    // ────────────────────────────────────────────────────────
     #[Route('/offers', methods: ['POST'])]
     public function createOffer(Request $request): JsonResponse
     {
@@ -136,7 +166,9 @@ class LoyaltyController extends AbstractController
         return $this->json(['message' => 'Offre créée', 'id' => $offer->getId()], 201);
     }
 
+    // ────────────────────────────────────────────────────────
     // DELETE /api/loyalty/offers/{id}
+    // ────────────────────────────────────────────────────────
     #[Route('/offers/{id}', methods: ['DELETE'])]
     public function deleteOffer(int $id, Request $request): JsonResponse
     {

@@ -12,7 +12,7 @@ import {
 import { alpha } from '@mui/material/styles';
 import {
   Lock, CheckCircle, CreditCard, FlightTakeoff, ArrowBack,
-  EmojiEvents, CheckCircleOutline, Star, MilitaryTech, 
+  EmojiEvents, CheckCircleOutline, Star, MilitaryTech,
   WorkspacePremium, Celebration, RocketLaunch
 } from '@mui/icons-material';
 import api, { bookingAPI, paymentAPI, loyaltyAPI } from '../services/api';
@@ -21,20 +21,20 @@ import { RootState } from '../store';
 const stripePromise = loadStripe('pk_test_51TP0JYFOyBxjmoiQzrrt5PIp2IZ2TQcmaNXUKcBOVaqj3NnmNbXlOwdxihKocqWhXQvZXr6yZbh32ip8QK6sxXXu00OijvduD5');
 
 const T = {
-  teal: '#0EA5A0', 
-  navy: '#0F2D5C', 
+  teal: '#0EA5A0',
+  navy: '#0F2D5C',
   slate: '#64748B',
-  ink: '#0F172A', 
-  paper: '#F8FAFC', 
+  ink: '#0F172A',
+  paper: '#F8FAFC',
   white: '#FFFFFF',
-  border: '#E2E8F0', 
+  border: '#E2E8F0',
   green: '#16A34A',
   amber: '#D97706',
   red: '#DC2626',
 };
 
 // ── Stripe Form ──────────────────────────────────────────
-const StripeForm: React.FC<{ booking: any; selectedOffer: any; onSuccess: () => void }> = ({ booking, selectedOffer, onSuccess }) => {
+const StripeForm: React.FC<{ booking: any; onSuccess: () => void }> = ({ booking, onSuccess }) => {
   const stripe   = useStripe();
   const elements = useElements();
   const [ready, setReady]     = useState(false);
@@ -63,16 +63,6 @@ const StripeForm: React.FC<{ booking: any; selectedOffer: any; onSuccess: () => 
     }
 
     if (paymentIntent?.status === 'succeeded') {
-      // Confirmer côté backend — applique commission + offer + points
-      try {
-        await api.post('/payments/confirm', {
-          payment_intent_id: paymentIntent.id,
-          offer_id: selectedOffer?.id ?? null,
-        });
-      } catch (err) {
-        console.error('[Confirm] Backend error:', err);
-        // On laisse quand même passer — le paiement Stripe est OK
-      }
       onSuccess();
       return;
     }
@@ -112,11 +102,12 @@ const CheckoutPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [initLoading, setInitLoading] = useState(false);
 
   // Loyalty
-  const [offers, setOffers]               = useState<any[]>([]);
-  const [userPoints, setUserPoints]       = useState(0);
-  const [selectedOffer, setSelectedOffer] = useState<any>(null);
+  const [offers, setOffers]                 = useState<any[]>([]);
+  const [userPoints, setUserPoints]         = useState(0);
+  const [selectedOffer, setSelectedOffer]   = useState<any>(null);
   const [discountAmount, setDiscountAmount] = useState(0);
 
   useEffect(() => {
@@ -131,16 +122,14 @@ const CheckoutPage: React.FC = () => {
         // Charger les offres fidélité
         try {
           const tripId = bRes.data?.trip?.id;
-          const oRes = await loyaltyAPI.getOffers(tripId);
-          if (!cancelled) {
-            setOffers(oRes.data.offers || []);
-            setUserPoints(oRes.data.available_points || 0);
+          if (tripId) {
+            const oRes = await loyaltyAPI.getOffers(tripId);
+            if (!cancelled) {
+              setOffers(oRes.data.offers || []);
+              setUserPoints(oRes.data.available_points ?? 0);
+            }
           }
         } catch (_) {}
-
-        const iRes = await paymentAPI.createIntent(Number(bookingId));
-        if (cancelled) return;
-        setCS(iRes.data.client_secret);
       } catch (err: any) {
         if (cancelled) return;
         setError(err.response?.data?.error ?? 'Impossible de charger le paiement');
@@ -164,6 +153,22 @@ const CheckoutPage: React.FC = () => {
       ? price * (parseFloat(offer.discount_value) / 100)
       : Math.min(parseFloat(offer.discount_value), price);
     setDiscountAmount(Math.round(disc * 100) / 100);
+  };
+
+  // ── Créer le PaymentIntent avec l'offre sélectionnée ──
+  const handleInitPayment = async () => {
+    setInitLoading(true);
+    setError(null);
+    try {
+      const iRes = await paymentAPI.createIntent(Number(bookingId), {
+        offer_id: selectedOffer?.id ?? null,
+      });
+      setCS(iRes.data.client_secret);
+    } catch (err: any) {
+      setError(err.response?.data?.error ?? 'Erreur lors de la création du paiement');
+    } finally {
+      setInitLoading(false);
+    }
   };
 
   const finalPrice = Math.max(0, parseFloat(booking?.total_price || 0) - discountAmount);
@@ -213,17 +218,19 @@ const CheckoutPage: React.FC = () => {
           {/* ── Left: paiement ── */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
 
-            {/* Section points fidélité */}
-            {userPoints > 0 && (
+            {/* Section points fidélité — afficher si offers existent */}
+            {offers.length > 0 && (
               <Paper sx={{ p: 3, borderRadius: 3, border: `1px solid ${T.border}`, boxShadow: 'none' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                   <EmojiEvents sx={{ color: T.amber }} />
                   <Box>
                     <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.ink }}>
-                      Vos points fidélité
+                      Offres fidélité disponibles
                     </Typography>
                     <Typography sx={{ fontSize: 12, color: T.slate }}>
-                      {userPoints} points disponibles
+                      {userPoints > 0
+                        ? `${userPoints} points disponibles chez cet organisateur`
+                        : 'Réservez pour gagner des points et débloquer ces offres'}
                     </Typography>
                   </Box>
                 </Box>
@@ -289,14 +296,37 @@ const CheckoutPage: React.FC = () => {
                 <CreditCard sx={{ color: T.teal }} />
                 <Typography sx={{ fontSize: 16, fontWeight: 700, color: T.ink }}>Informations de paiement</Typography>
               </Box>
+
               {clientSecret && (
                 <Elements stripe={stripePromise} options={{
                   clientSecret,
                   appearance: { theme: 'stripe', variables: { colorPrimary: T.teal, colorText: T.ink, borderRadius: '8px' } },
                 }}>
-                  <StripeForm booking={booking} selectedOffer={selectedOffer} onSuccess={() => setSuccess(true)} />
+                  <StripeForm booking={booking} onSuccess={() => setSuccess(true)} />
                 </Elements>
               )}
+
+              {!clientSecret && (
+                <Button
+                  fullWidth
+                  onClick={handleInitPayment}
+                  disabled={initLoading}
+                  sx={{
+                    py: 1.5, borderRadius: 2, bgcolor: T.navy, color: T.white,
+                    fontWeight: 700, fontSize: 15, textTransform: 'none',
+                    '&:hover': { bgcolor: '#1A3F7A' },
+                    '&:disabled': { bgcolor: alpha(T.navy, 0.4), color: T.white },
+                  }}>
+                  {initLoading
+                    ? <CircularProgress size={20} sx={{ color: T.white }} />
+                    : <><Lock sx={{ fontSize: 16, mr: 1 }} />Payer {finalPrice.toFixed(2)} EUR</>
+                  }
+                </Button>
+              )}
+
+              <Typography sx={{ textAlign: 'center', fontSize: 11, color: T.slate, mt: 1.5 }}>
+                <Lock sx={{ fontSize: 10, mr: 0.5 }} /> Paiement sécurisé Stripe — données jamais stockées sur nos serveurs
+              </Typography>
             </Paper>
           </Box>
 
@@ -342,7 +372,7 @@ const CheckoutPage: React.FC = () => {
                 <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: alpha(T.amber, 0.07) }}>
                   <Typography sx={{ fontSize: 11, color: T.amber, fontWeight: 600 }}>
                     <Star sx={{ fontSize: 11, mr: 0.5, verticalAlign: 'middle' }} />
-                    Ce paiement vous rapportera ~{Math.floor(finalPrice * 0.1)} points fidélité
+                    Ce paiement vous rapportera ~{Math.floor(finalPrice * 0.1)} points fidélité chez cet organisateur
                   </Typography>
                 </Box>
               )}

@@ -174,9 +174,17 @@ const Dashboard: React.FC = () => {
       const res = await fetch('http://localhost:8000/api/loyalty/points', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) setLoyaltyData(await res.json());
-    } catch (_) {}
-    finally { setLoyaltyLoading(false); }
+      if (res.ok) {
+        setLoyaltyData(await res.json());
+      } else {
+        const err = await res.json().catch(() => ({}));
+        console.error('[Loyalty] Error:', res.status, err);
+      }
+    } catch (e) {
+      console.error('[Loyalty] Fetch error:', e);
+    } finally {
+      setLoyaltyLoading(false);
+    }
   };
 
   const toggleInterest = (value: string) => {
@@ -399,17 +407,17 @@ const Dashboard: React.FC = () => {
                     <Chip
                       label={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          {getPointsLevel(loyaltyData.available_points).icon}
+                          {getPointsLevel(loyaltyData.total_earned || 0).icon}
                           <Typography sx={{ fontSize: 11, fontWeight: 700 }}>
-                            {getPointsLevel(loyaltyData.available_points).name}
+                            {getPointsLevel(loyaltyData.total_earned || 0).name}
                           </Typography>
                         </Box>
                       }
                       size="small"
-                      sx={{ bgcolor: alpha(getPointsLevel(loyaltyData.available_points).color, 0.1),
-                        color: getPointsLevel(loyaltyData.available_points).color,
+                      sx={{ bgcolor: alpha(getPointsLevel(loyaltyData.total_earned || 0).color, 0.1),
+                        color: getPointsLevel(loyaltyData.total_earned || 0).color,
                         fontWeight: 700, fontSize: 11, height: 26, borderRadius: '8px',
-                        border: `1px solid ${alpha(getPointsLevel(loyaltyData.available_points).color, 0.25)}` }}
+                        border: `1px solid ${alpha(getPointsLevel(loyaltyData.total_earned || 0).color, 0.25)}` }}
                     />
                   )}
                 </Box>
@@ -420,29 +428,57 @@ const Dashboard: React.FC = () => {
                   </Box>
                 ) : loyaltyData ? (
                   <>
-                    {/* Stats grid */}
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1.5, mb: 3 }}>
-                      {[
-                        { label: 'Disponibles', value: loyaltyData.available_points, color: T.teal,  bg: `linear-gradient(135deg, ${alpha(T.teal, 0.08)}, ${alpha(T.teal, 0.04)})` },
-                        { label: 'Gagnés total', value: loyaltyData.total_points,    color: T.amber, bg: `linear-gradient(135deg, ${alpha(T.amber, 0.08)}, ${alpha(T.amber, 0.04)})` },
-                        { label: 'Utilisés',     value: loyaltyData.used_points,     color: T.slate, bg: `linear-gradient(135deg, ${alpha(T.slate, 0.07)}, ${alpha(T.slate, 0.03)})` },
-                      ].map(stat => (
-                        <Box key={stat.label} sx={{ p: 2.5, borderRadius: '14px',
-                          background: stat.bg, border: `1px solid ${alpha(stat.color, 0.12)}`,
-                          textAlign: 'center' }}>
-                          <Typography sx={{ fontSize: 28, fontWeight: 900, color: stat.color, lineHeight: 1 }}>
-                            {stat.value ?? 0}
-                          </Typography>
-                          <Typography sx={{ fontSize: 11, color: T.slate, mt: 0.6, fontWeight: 500 }}>
-                            {stat.label}
-                          </Typography>
-                        </Box>
-                      ))}
+                    {/* Total gagné */}
+                    <Box sx={{ p: 2.5, borderRadius: '14px', mb: 2,
+                      background: `linear-gradient(135deg, ${alpha(T.amber, 0.08)}, ${alpha(T.amber, 0.04)})`,
+                      border: `1px solid ${alpha(T.amber, 0.12)}`, textAlign: 'center' }}>
+                      <Typography sx={{ fontSize: 32, fontWeight: 900, color: T.amber, lineHeight: 1 }}>
+                        {loyaltyData.total_earned ?? 0}
+                      </Typography>
+                      <Typography sx={{ fontSize: 11, color: T.slate, mt: 0.6, fontWeight: 500 }}>
+                        Points gagnés au total
+                      </Typography>
                     </Box>
+
+                    {/* Points par agence */}
+                    {(loyaltyData.by_organizer || []).length > 0 && (
+                      <Box sx={{ mb: 3 }}>
+                        <Typography sx={{ fontSize: 11, fontWeight: 800, color: T.navy,
+                          letterSpacing: '0.06em', textTransform: 'uppercase', mb: 1.2 }}>
+                          Points disponibles par agence
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
+                          {(loyaltyData.by_organizer || []).map((org: any) => (
+                            <Box key={org.organizer_id} sx={{
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                              py: 1.2, px: 1.8, borderRadius: '10px',
+                              bgcolor: alpha(T.teal, 0.04), border: `1px solid ${alpha(T.teal, 0.1)}` }}>
+                              <Box>
+                                <Typography sx={{ fontSize: 12, fontWeight: 600, color: T.ink }}>
+                                  {org.agency_name || 'Agence'}
+                                </Typography>
+                                <Typography sx={{ fontSize: 10, color: T.slate }}>
+                                  {org.earned} pts gagnés
+                                </Typography>
+                              </Box>
+                              <Chip
+                                label={`${org.available} pts`}
+                                size="small"
+                                sx={{
+                                  bgcolor: org.available > 0 ? alpha(T.teal, 0.12) : alpha(T.slate, 0.08),
+                                  color: org.available > 0 ? T.teal : T.slate,
+                                  fontWeight: 700, fontSize: 11, height: 24, borderRadius: '8px',
+                                }}
+                              />
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
 
                     {/* Progress bar */}
                     {(() => {
-                      const pts = loyaltyData.available_points;
+                      const pts = loyaltyData.total_earned || 0;
                       const nextThresholds = [50, 100, 200, 500];
                       const nextTarget  = nextThresholds.find(t => t > pts);
                       const prevTarget  = nextThresholds.filter(t => t <= pts).pop() || 0;
@@ -521,7 +557,7 @@ const Dashboard: React.FC = () => {
                     )}
 
                     {/* CTA si 0 points */}
-                    {loyaltyData.total_points === 0 && (
+                    {loyaltyData.total_earned === 0 && (
                       <Box sx={{ textAlign: 'center', py: 3, px: 3,
                         border: `2px dashed ${T.border}`, borderRadius: '14px' }}>
                         <EmojiEvents sx={{ fontSize: 40, color: T.border, mb: 1.5 }} />
