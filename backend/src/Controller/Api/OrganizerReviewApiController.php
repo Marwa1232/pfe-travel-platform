@@ -6,6 +6,7 @@ use App\Entity\Review;
 use App\Entity\OrganizerProfile;
 use App\Entity\User;
 use App\Service\JwtService;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,7 +19,8 @@ class OrganizerReviewApiController extends AbstractController
 {
     public function __construct(
         private EntityManagerInterface $em,
-        private JwtService $jwtService
+        private JwtService $jwtService,
+        private NotificationService $notificationService,
     ) {}
 
     private function getOrganizer(Request $request): ?OrganizerProfile
@@ -48,7 +50,7 @@ class OrganizerReviewApiController extends AbstractController
     {
         $organizer = $this->getOrganizer($request);
         if (!$organizer) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['reviews' => [], 'total' => 0, 'pending_count' => 0]);
         }
 
         $status = $request->query->get('status');
@@ -200,6 +202,61 @@ class OrganizerReviewApiController extends AbstractController
                 'response_date' => $review->getResponseDate()->format('Y-m-d H:i:s'),
                 'status' => $review->getStatus(),
             ]
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // PUT /api/organizer/reviews/{id}/flag
+    // Signaler un avis à l'administrateur
+    // ─────────────────────────────────────────────────────────────
+    #[Route('/{id}/flag', name: 'api_organizer_reviews_flag', methods: ['PUT'])]
+    public function flagReview(int $id, Request $request): JsonResponse
+    {
+        $organizer = $this->getOrganizer($request);
+        if (!$organizer) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $review = $this->em->getRepository(Review::class)->find($id);
+        if (!$review) {
+            return $this->json(['error' => 'Review not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Vérifier que l'avis appartient à un voyage de cet organisateur
+        $trip = $review->getTrip();
+        if (!$trip || $trip->getOrganizer()->getId() !== $organizer->getId()) {
+            return $this->json(['error' => 'Access denied'], Response::HTTP_FORBIDDEN);
+        }
+
+        // Ne pas re-signaler un avis déjà signalé
+        if ($review->isFlagged()) {
+            return $this->json(['error' => 'Cet avis est déjà signalé.'], Response::HTTP_CONFLICT);
+        }
+
+        // Récupérer la raison du signalement
+        $data   = json_decode($request->getContent(), true);
+        $reason = trim($data['reason'] ?? 'Contenu inapproprié');
+
+        // Marquer l'avis comme signalé
+        $review->setFlagged(true);
+        $review->setFlagReason($reason);
+        $this->em->flush();
+
+        // Notifier tous les administrateurs
+        $organizerName = $organizer->getUser()->getFirstName() . ' ' . $organizer->getUser()->getLastName();
+        $this->notificationService->notifyAdminReviewFlagged(
+            $review,
+            $organizerName,
+            $reason
+        );
+
+        return $this->json([
+            'message' => 'Avis signalé à l\'administration.',
+            'review'  => [
+                'id'          => $review->getId(),
+                'flagged'     => $review->isFlagged(),
+                'flag_reason' => $review->getFlagReason(),
+            ],
         ]);
     }
 }
