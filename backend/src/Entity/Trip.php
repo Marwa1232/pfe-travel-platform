@@ -58,8 +58,6 @@ class Trip
     #[Groups(['trip:read'])]
     private ?bool $is_active = true;
 
-    #[ORM\Column(length: 200, unique: true, nullable: true)]
-    private ?string $slug = null;
 
     #[ORM\Column(length: 20, options: ['default' => 'draft'])]
     #[Groups(['trip:read', 'trip:list'])]
@@ -81,21 +79,9 @@ class Trip
     #[Groups(['trip:read'])]
     private ?array $exclusions = [];
 
-    #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['trip:read'])]
-    private ?string $meeting_point = null;
-
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     #[Groups(['trip:read'])]
     private ?string $meeting_address = null;
-
-    #[ORM\Column(length: 100, nullable: true)]
-    #[Groups(['trip:read'])]
-    private ?string $meeting_latitude = null;
-
-    #[ORM\Column(length: 100, nullable: true)]
-    #[Groups(['trip:read'])]
-    private ?string $meeting_longitude = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $created_at = null;
@@ -326,16 +312,6 @@ class Trip
         return $this;
     }
 
-    public function getMeetingPoint(): ?string
-    {
-        return $this->meeting_point;
-    }
-
-    public function setMeetingPoint(?string $meeting_point): static
-    {
-        $this->meeting_point = $meeting_point;
-        return $this;
-    }
 
     public function getMeetingAddress(): ?string
     {

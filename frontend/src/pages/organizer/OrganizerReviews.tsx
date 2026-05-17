@@ -39,22 +39,20 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Snackbar,
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 import { styled, alpha, keyframes } from '@mui/material/styles';
 import {
   StarBorder,
   CheckCircle,
-  Cancel,
   Reply,
   Search,
-  MoreHoriz,
   HourglassEmpty,
   Star,
   ArrowBack,
-  TrendingUp,
-  TrendingDown,
   KeyboardArrowDown,
+  Flag,
 } from '@mui/icons-material';
 import { organizerReviewAPI } from '../../services/api';
 import { RootState } from '../../store';
@@ -143,6 +141,7 @@ interface Review {
   rating: number;
   comment: string | null;
   status: string;
+  flagged?: boolean;
   organizer_response: string | null;
   response_date: string | null;
   created_at: string;
@@ -150,17 +149,20 @@ interface Review {
   user: { id: number; first_name: string; last_name: string };
 }
 
-const getStatusMeta = (status: string) => {
+const getStatusMeta = (status: string, flagged?: boolean) => {
+  if (flagged) {
+    return { label: 'Signalé', color: '#DC2626', bg: alpha('#DC2626', 0.1), icon: <Flag sx={{ fontSize: 11 }} /> };
+  }
   const map: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
     pending:  { label: 'En attente', color: COLORS.amber, bg: alpha(COLORS.amber, 0.1), icon: <HourglassEmpty sx={{ fontSize: 11 }} /> },
-    approved: { label: 'Approuvé',   color: COLORS.teal,   bg: alpha(COLORS.teal, 0.1),   icon: <CheckCircle sx={{ fontSize: 11 }} /> },
-    rejected: { label: 'Rejeté',     color: COLORS.amber,  bg: alpha(COLORS.amber, 0.1), icon: <Cancel sx={{ fontSize: 11 }} /> },
+    approved: { label: 'Approuvé',   color: COLORS.teal,  bg: alpha(COLORS.teal, 0.1),  icon: <CheckCircle sx={{ fontSize: 11 }} /> },
+    rejected: { label: 'Rejeté',     color: COLORS.amber, bg: alpha(COLORS.amber, 0.1), icon: null },
   };
   return map[status] || { label: status, color: COLORS.navy, bg: alpha(COLORS.navy, 0.08), icon: null };
 };
 
-const StatusChip = ({ status }: { status: string }) => {
-  const meta = getStatusMeta(status);
+const StatusChip = ({ status, flagged }: { status: string; flagged?: boolean }) => {
+  const meta = getStatusMeta(status, flagged);
   return (
     <Chip
       size="small"
@@ -200,13 +202,17 @@ const OrganizerReviews: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [tabValue, setTabValue] = useState('all');
-  const [pendingCount, setPendingCount] = useState(0);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [responseDialogOpen, setResponseDialogOpen] = useState(false);
+  const [flagDialogOpen, setFlagDialogOpen] = useState(false);
+  const [flagReason, setFlagReason] = useState('');
   const [responseText, setResponseText] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false, message: '', severity: 'success',
+  });
 
   // Menu dropdown state
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -233,7 +239,6 @@ const OrganizerReviews: React.FC = () => {
       const status = tabValue === 'all' ? undefined : tabValue;
       const response = await organizerReviewAPI.getAll(status);
       setReviews(response.data.reviews);
-      setPendingCount(response.data.pending_count);
     } catch (error) {
       console.error('Error loading reviews:', error);
     } finally {
@@ -241,24 +246,8 @@ const OrganizerReviews: React.FC = () => {
     }
   };
 
-  const handleApprove = async (reviewId: number) => {
-    try {
-      setActionLoading(true);
-      await organizerReviewAPI.approve(reviewId);
-      loadReviews();
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleReject = async (reviewId: number) => {
-    try {
-      setActionLoading(true);
-      await organizerReviewAPI.reject(reviewId);
-      loadReviews();
-    } finally {
-      setActionLoading(false);
-    }
+  const showSnackbar = (message: string, severity: 'success' | 'error' = 'success') => {
+    setSnackbar({ open: true, message, severity });
   };
 
   const handleOpenResponse = (review: Review) => {
@@ -276,6 +265,32 @@ const OrganizerReviews: React.FC = () => {
       setResponseText('');
       setSelectedReview(null);
       loadReviews();
+      showSnackbar('Réponse envoyée avec succès');
+    } catch {
+      showSnackbar('Erreur lors de l\'envoi de la réponse', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenFlag = (review: Review) => {
+    setSelectedReview(review);
+    setFlagReason('');
+    setFlagDialogOpen(true);
+  };
+
+  const handleSubmitFlag = async () => {
+    if (!selectedReview) return;
+    try {
+      setActionLoading(true);
+      await organizerReviewAPI.flag(selectedReview.id, flagReason || 'Contenu inapproprié');
+      setFlagDialogOpen(false);
+      setFlagReason('');
+      setSelectedReview(null);
+      loadReviews();
+      showSnackbar('Avis signalé à l\'administration');
+    } catch {
+      showSnackbar('Erreur lors du signalement', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -302,10 +317,9 @@ const OrganizerReviews: React.FC = () => {
     `${f?.[0] || ''}${l?.[0] || ''}`.toUpperCase();
 
   const counts = {
-    all: reviews.length,
-    pending: reviews.filter(r => r.status === 'pending').length,
+    all:      reviews.length,
     approved: reviews.filter(r => r.status === 'approved').length,
-    rejected: reviews.filter(r => r.status === 'rejected').length,
+    flagged:  reviews.filter(r => r.flagged).length,
   };
 
   const avgRating = reviews.length
@@ -316,16 +330,16 @@ const OrganizerReviews: React.FC = () => {
     <Box sx={{ minHeight: '100vh', bgcolor: alpha(COLORS.navy, 0.02), py: 4 }}>
       <Container maxWidth="xl">
 
-        {/* Header avec bouton retour */}
+        {/* Header */}
         <Fade in timeout={500}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-            <IconButton 
+            <IconButton
               onClick={() => navigate('/organizer/dashboard')}
-              sx={{ 
-                bgcolor: COLORS.white, 
+              sx={{
+                bgcolor: COLORS.white,
                 borderRadius: 10,
                 border: `1px solid ${alpha(COLORS.teal, 0.2)}`,
-                '&:hover': { bgcolor: alpha(COLORS.teal, 0.05), borderColor: COLORS.teal }
+                '&:hover': { bgcolor: alpha(COLORS.teal, 0.05), borderColor: COLORS.teal },
               }}
             >
               <ArrowBack sx={{ color: COLORS.navy }} />
@@ -335,125 +349,59 @@ const OrganizerReviews: React.FC = () => {
                 Avis clients
               </Typography>
               <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
-                Modérez les avis et répondez à vos clients
+                Répondez aux avis et signalez les contenus inappropriés à l'administration
               </Typography>
             </Box>
-            <Box sx={{
-              display: 'flex', alignItems: 'center', gap: 1.5,
-              px: 2.5, py: 1.2, borderRadius: 12,
-              bgcolor: alpha(COLORS.amber, 0.1),
-              border: `1px solid ${alpha(COLORS.amber, 0.25)}`,
-              ml: 'auto',
-            }}>
-              <Star sx={{ color: COLORS.amber, fontSize: 20 }} />
-              <Box>
-                <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, lineHeight: 1 }}>{avgRating}</Typography>
-                <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.6) }}>Note moyenne</Typography>
-              </Box>
-            </Box>
+
           </Box>
         </Fade>
 
-        {/* Alert pour avis en attente */}
-        {pendingCount > 0 && (
+        {/* Alert avis signalés */}
+        {counts.flagged > 0 && (
           <Fade in>
             <Alert
-              severity="warning"
-              icon={<HourglassEmpty />}
-              sx={{ 
-                mb: 3, 
+              severity="error"
+              icon={<Flag />}
+              sx={{
+                mb: 3,
                 borderRadius: 10,
-                bgcolor: alpha(COLORS.amber, 0.08),
-                color: COLORS.amber,
-                '& .MuiAlert-icon': { color: COLORS.amber },
+                bgcolor: alpha('#DC2626', 0.06),
+                color: '#DC2626',
+                '& .MuiAlert-icon': { color: '#DC2626' },
               }}
             >
-              {pendingCount} avis en attente de modération
+              {counts.flagged} avis signalé{counts.flagged > 1 ? 's' : ''} — en attente de traitement par l'administration
             </Alert>
           </Fade>
         )}
 
-        {/* Cartes statistiques - Utilisation de Grid from @mui/material/Unstable_Grid2 */}
+        {/* Cartes statistiques */}
         <Grid container spacing={2} sx={{ mb: 4 }}>
-          <Grid xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={6}>
             <Zoom in timeout={300}>
               <StatsCard>
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
-                  <Box sx={{
-                    width: 48, height: 48, borderRadius: 10,
-                    bgcolor: alpha(COLORS.navy, 0.1), color: COLORS.navy,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
+                  <Box sx={{ width: 48, height: 48, borderRadius: 10, bgcolor: alpha(COLORS.navy, 0.1), color: COLORS.navy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <StarBorder />
                   </Box>
                   <Box>
-                    <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.navy, lineHeight: 1 }}>
-                      {counts.all}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Tous</Typography>
+                    <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.navy, lineHeight: 1 }}>{counts.all}</Typography>
+                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Tous les avis</Typography>
                   </Box>
                 </CardContent>
               </StatsCard>
             </Zoom>
           </Grid>
-          <Grid xs={12} sm={6} md={3}>
-            <Zoom in timeout={400}>
-              <StatsCard>
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
-                  <Box sx={{
-                    width: 48, height: 48, borderRadius: 10,
-                    bgcolor: alpha(COLORS.amber, 0.1), color: COLORS.amber,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <HourglassEmpty />
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.amber, lineHeight: 1 }}>
-                      {counts.pending}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>En attente</Typography>
-                  </Box>
-                </CardContent>
-              </StatsCard>
-            </Zoom>
-          </Grid>
-          <Grid xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={6}>
             <Zoom in timeout={500}>
               <StatsCard>
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
-                  <Box sx={{
-                    width: 48, height: 48, borderRadius: 10,
-                    bgcolor: alpha(COLORS.teal, 0.1), color: COLORS.teal,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <CheckCircle />
+                  <Box sx={{ width: 48, height: 48, borderRadius: 10, bgcolor: alpha('#DC2626', 0.1), color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Flag />
                   </Box>
                   <Box>
-                    <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.teal, lineHeight: 1 }}>
-                      {counts.approved}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Approuvés</Typography>
-                  </Box>
-                </CardContent>
-              </StatsCard>
-            </Zoom>
-          </Grid>
-          <Grid xs={12} sm={6} md={3}>
-            <Zoom in timeout={600}>
-              <StatsCard>
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
-                  <Box sx={{
-                    width: 48, height: 48, borderRadius: 10,
-                    bgcolor: alpha(COLORS.amber, 0.1), color: COLORS.amber,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <Cancel />
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" fontWeight={800} sx={{ color: COLORS.amber, lineHeight: 1 }}>
-                      {counts.rejected}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Rejetés</Typography>
+                    <Typography variant="h4" fontWeight={800} sx={{ color: '#DC2626', lineHeight: 1 }}>{counts.flagged}</Typography>
+                    <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Signalés</Typography>
                   </Box>
                 </CardContent>
               </StatsCard>
@@ -461,71 +409,21 @@ const OrganizerReviews: React.FC = () => {
           </Grid>
         </Grid>
 
-        {/* Tabs + Search */}
-        <Paper sx={{ 
-          borderRadius: 12, 
-          mb: 2.5, 
-          overflow: 'hidden', 
-          boxShadow: `0 2px 8px ${alpha(COLORS.navy, 0.04)}`,
-          border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
-        }}>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            px: 2, 
-            borderBottom: `1px solid ${alpha(COLORS.teal, 0.1)}` 
-          }}>
-            <Tabs
-              value={tabValue}
-              onChange={(_, v) => { setTabValue(v); setPage(1); }}
-              sx={{
-                '& .MuiTabs-indicator': { bgcolor: COLORS.teal, height: 3 },
-                '& .Mui-selected': { color: `${COLORS.teal} !important`, fontWeight: 700 },
-                '& .MuiTab-root': { textTransform: 'none', fontWeight: 500, fontSize: 13, color: alpha(COLORS.navy, 0.6) },
-              }}
-            >
-              <Tab label="Tous" value="all" />
-              <Tab
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-                    En attente
-                    {counts.pending > 0 && (
-                      <Box sx={{ 
-                        width: 18, height: 18, 
-                        borderRadius: '50%', 
-                        bgcolor: COLORS.amber, 
-                        color: COLORS.white, 
-                        fontSize: 10, 
-                        fontWeight: 700, 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center' 
-                      }}>
-                        {counts.pending}
-                      </Box>
-                    )}
-                  </Box>
-                }
-                value="pending"
-              />
-              <Tab label="Approuvés" value="approved" />
-              <Tab label="Rejetés" value="rejected" />
-            </Tabs>
-
+        {/* Search */}
+        <Paper sx={{ borderRadius: 12, mb: 2.5, overflow: 'hidden', boxShadow: `0 2px 8px ${alpha(COLORS.navy, 0.04)}`, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 2, py: 1.5 }}>
             <TextField
               placeholder="Rechercher..."
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
               size="small"
-              sx={{ 
-                width: 250, 
-                '& .MuiOutlinedInput-root': { 
-                  borderRadius: 2, 
-                  fontSize: 13,
+              sx={{
+                width: 280,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2, fontSize: 13,
                   '&:hover fieldset': { borderColor: COLORS.teal },
                   '&.Mui-focused fieldset': { borderColor: COLORS.teal },
-                } 
+                },
               }}
               InputProps={{
                 startAdornment: (
@@ -538,7 +436,7 @@ const OrganizerReviews: React.FC = () => {
           </Box>
         </Paper>
 
-        {/* Tableau des avis */}
+        {/* Tableau */}
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
             <CircularProgress size={40} sx={{ color: COLORS.teal }} />
@@ -561,29 +459,22 @@ const OrganizerReviews: React.FC = () => {
                       <TableCell>Voyage</TableCell>
                       <TableCell>Note</TableCell>
                       <TableCell>Commentaire</TableCell>
-                      <TableCell>Statut</TableCell>
                       <TableCell>Date</TableCell>
                       <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {paginated.map((review, idx) => (
-                      <TableRow 
+                      <TableRow
                         key={review.id}
                         sx={{
                           animation: `${fadeUp} 0.3s ease ${idx * 0.03}s both`,
+                          bgcolor: review.flagged ? alpha('#DC2626', 0.02) : 'transparent',
                         }}
                       >
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-                            <Avatar 
-                              sx={{ 
-                                width: 32, height: 32, 
-                                bgcolor: COLORS.navy, 
-                                fontSize: 11, 
-                                color: COLORS.white,
-                              }}
-                            >
+                            <Avatar sx={{ width: 32, height: 32, bgcolor: COLORS.navy, fontSize: 11, color: COLORS.white }}>
                               {getInitials(review.user.first_name, review.user.last_name)}
                             </Avatar>
                             <Typography variant="body2" fontWeight={600} sx={{ color: COLORS.navy }}>
@@ -593,17 +484,7 @@ const OrganizerReviews: React.FC = () => {
                         </TableCell>
 
                         <TableCell>
-                          <Typography
-                            variant="body2"
-                            sx={{ 
-                              color: COLORS.teal, 
-                              fontWeight: 600, 
-                              maxWidth: 180,
-                              overflow: 'hidden', 
-                              textOverflow: 'ellipsis', 
-                              whiteSpace: 'nowrap' 
-                            }}
-                          >
+                          <Typography variant="body2" sx={{ color: COLORS.teal, fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {review.trip.title}
                           </Typography>
                         </TableCell>
@@ -611,44 +492,30 @@ const OrganizerReviews: React.FC = () => {
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <StarRating value={review.rating} />
-                            <Typography variant="caption" fontWeight={700} sx={{ color: COLORS.amber }}>
-                              {review.rating}
-                            </Typography>
+                            <Typography variant="caption" fontWeight={700} sx={{ color: COLORS.amber }}>{review.rating}</Typography>
                           </Box>
                         </TableCell>
 
                         <TableCell sx={{ maxWidth: 280 }}>
                           {review.comment ? (
-                            <>
-                              <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.7), lineHeight: 1.5 }}>
-                                {review.comment.length > 80 ? `${review.comment.substring(0, 80)}...` : review.comment}
-                              </Typography>
-                            </>
+                            <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.7), lineHeight: 1.5 }}>
+                              {review.comment.length > 80 ? `${review.comment.substring(0, 80)}...` : review.comment}
+                            </Typography>
                           ) : (
                             <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.4), fontStyle: 'italic' }}>
                               Aucun commentaire
                             </Typography>
                           )}
                           {review.organizer_response && (
-                            <Box sx={{ 
-                              mt: 1, 
-                              p: 1, 
-                              borderRadius: 8, 
-                              bgcolor: alpha(COLORS.teal, 0.05), 
-                              borderLeft: `3px solid ${COLORS.teal}` 
-                            }}>
+                            <Box sx={{ mt: 1, p: 1, borderRadius: 8, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `3px solid ${COLORS.teal}` }}>
                               <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.6) }}>
                                 <strong style={{ color: COLORS.teal }}>Votre réponse: </strong>
-                                {review.organizer_response.length > 60 
-                                  ? `${review.organizer_response.substring(0, 60)}...` 
+                                {review.organizer_response.length > 60
+                                  ? `${review.organizer_response.substring(0, 60)}...`
                                   : review.organizer_response}
                               </Typography>
                             </Box>
                           )}
-                        </TableCell>
-
-                        <TableCell>
-                          <StatusChip status={review.status} />
                         </TableCell>
 
                         <TableCell>
@@ -664,12 +531,8 @@ const OrganizerReviews: React.FC = () => {
                             endIcon={<KeyboardArrowDown sx={{ fontSize: 14 }} />}
                             onClick={(e) => handleMenuOpen(e, review.id)}
                             sx={{
-                              borderRadius: 2,
-                              textTransform: 'none',
-                              fontSize: 12,
-                              fontWeight: 500,
-                              borderColor: alpha(COLORS.navy, 0.2),
-                              color: COLORS.navy,
+                              borderRadius: 2, textTransform: 'none', fontSize: 12, fontWeight: 500,
+                              borderColor: alpha(COLORS.navy, 0.2), color: COLORS.navy,
                               px: 1.5, py: 0.5,
                               '&:hover': { borderColor: COLORS.teal, color: COLORS.teal, bgcolor: alpha(COLORS.teal, 0.04) },
                             }}
@@ -684,15 +547,10 @@ const OrganizerReviews: React.FC = () => {
                             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                             PaperProps={{
-                              sx: {
-                                borderRadius: 2,
-                                border: `0.5px solid ${alpha(COLORS.navy, 0.1)}`,
-                                boxShadow: `0 8px 24px ${alpha(COLORS.navy, 0.1)}`,
-                                minWidth: 175,
-                                mt: 0.5,
-                              }
+                              sx: { borderRadius: 2, border: `0.5px solid ${alpha(COLORS.navy, 0.1)}`, boxShadow: `0 8px 24px ${alpha(COLORS.navy, 0.1)}`, minWidth: 180, mt: 0.5 }
                             }}
                           >
+                            {/* ── RÉPONDRE (seule action de modération) */}
                             <MenuItem
                               onClick={() => { handleOpenResponse(review); handleMenuClose(); }}
                               sx={{ fontSize: 13, py: 1, '&:hover': { bgcolor: alpha(COLORS.navy, 0.04) } }}
@@ -705,30 +563,32 @@ const OrganizerReviews: React.FC = () => {
                               </ListItemText>
                             </MenuItem>
 
-                            {review.status === 'pending' && (
+                            {/* ── SIGNALER À L'ADMIN */}
+                            {!review.flagged && (
                               <>
                                 <Divider sx={{ my: 0.5 }} />
                                 <MenuItem
-                                  onClick={() => { handleApprove(review.id); handleMenuClose(); }}
+                                  onClick={() => { handleOpenFlag(review); handleMenuClose(); }}
                                   disabled={actionLoading}
-                                  sx={{ fontSize: 13, color: COLORS.teal, py: 1, '&:hover': { bgcolor: alpha(COLORS.teal, 0.06) } }}
+                                  sx={{ fontSize: 13, color: '#DC2626', py: 1, '&:hover': { bgcolor: alpha('#DC2626', 0.06) } }}
                                 >
                                   <ListItemIcon sx={{ minWidth: 28 }}>
-                                    <CheckCircle sx={{ fontSize: 16, color: COLORS.teal }} />
+                                    <Flag sx={{ fontSize: 16, color: '#DC2626' }} />
                                   </ListItemIcon>
-                                  <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Approuver</ListItemText>
-                                </MenuItem>
-                                <MenuItem
-                                  onClick={() => { handleReject(review.id); handleMenuClose(); }}
-                                  disabled={actionLoading}
-                                  sx={{ fontSize: 13, color: COLORS.amber, py: 1, '&:hover': { bgcolor: alpha(COLORS.amber, 0.06) } }}
-                                >
-                                  <ListItemIcon sx={{ minWidth: 28 }}>
-                                    <Cancel sx={{ fontSize: 16, color: COLORS.amber }} />
-                                  </ListItemIcon>
-                                  <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Rejeter</ListItemText>
+                                  <ListItemText primaryTypographyProps={{ fontSize: 13 }}>Signaler à l'admin</ListItemText>
                                 </MenuItem>
                               </>
+                            )}
+
+                            {review.flagged && (
+                              <MenuItem disabled sx={{ fontSize: 13, py: 1 }}>
+                                <ListItemIcon sx={{ minWidth: 28 }}>
+                                  <Flag sx={{ fontSize: 16, color: '#DC2626' }} />
+                                </ListItemIcon>
+                                <ListItemText primaryTypographyProps={{ fontSize: 12, color: '#DC2626' }}>
+                                  Déjà signalé
+                                </ListItemText>
+                              </MenuItem>
                             )}
                           </Menu>
                         </TableCell>
@@ -738,7 +598,6 @@ const OrganizerReviews: React.FC = () => {
                 </Table>
               </StyledTableContainer>
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
                   <Pagination
@@ -749,14 +608,8 @@ const OrganizerReviews: React.FC = () => {
                     sx={{
                       '& .MuiPaginationItem-root': {
                         borderRadius: 8,
-                        '&.Mui-selected': {
-                          bgcolor: COLORS.teal,
-                          color: COLORS.white,
-                          '&:hover': { bgcolor: alpha(COLORS.teal, 0.85) },
-                        },
-                        '&:hover': {
-                          bgcolor: alpha(COLORS.teal, 0.1),
-                        },
+                        '&.Mui-selected': { bgcolor: COLORS.teal, color: COLORS.white, '&:hover': { bgcolor: alpha(COLORS.teal, 0.85) } },
+                        '&:hover': { bgcolor: alpha(COLORS.teal, 0.1) },
                       },
                     }}
                   />
@@ -766,40 +619,22 @@ const OrganizerReviews: React.FC = () => {
           </Fade>
         )}
 
-        {/* Response Dialog */}
-        <Dialog 
-          open={responseDialogOpen} 
-          onClose={() => setResponseDialogOpen(false)} 
-          maxWidth="sm" 
+        {/* ── Dialog Répondre */}
+        <Dialog
+          open={responseDialogOpen}
+          onClose={() => setResponseDialogOpen(false)}
+          maxWidth="sm"
           fullWidth
-          PaperProps={{ 
-            sx: { 
-              borderRadius: 2, 
-              boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}`,
-              border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
-            } 
-          }}
+          PaperProps={{ sx: { borderRadius: 2, boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}`, border: `1px solid ${alpha(COLORS.teal, 0.1)}` } }}
         >
-          <DialogTitle sx={{ 
-            fontWeight: 700, 
-            color: COLORS.navy,
-            borderBottom: `1px solid ${alpha(COLORS.teal, 0.1)}`,
-            pb: 2,
-          }}>
+          <DialogTitle sx={{ fontWeight: 700, color: COLORS.navy, borderBottom: `1px solid ${alpha(COLORS.teal, 0.1)}`, pb: 2 }}>
             {selectedReview?.organizer_response ? 'Modifier la réponse' : 'Répondre à l\'avis'}
           </DialogTitle>
           <DialogContent sx={{ pt: 3 }}>
             {selectedReview && (
               <Box sx={{ mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                  <Avatar 
-                    sx={{ 
-                      width: 40, height: 40, 
-                      bgcolor: COLORS.navy, 
-                      fontSize: 14, 
-                      color: COLORS.white,
-                    }}
-                  >
+                  <Avatar sx={{ width: 40, height: 40, bgcolor: COLORS.navy, fontSize: 14, color: COLORS.white }}>
                     {getInitials(selectedReview.user.first_name, selectedReview.user.last_name)}
                   </Avatar>
                   <Box>
@@ -810,12 +645,7 @@ const OrganizerReviews: React.FC = () => {
                   </Box>
                 </Box>
                 {selectedReview.comment && (
-                  <Paper sx={{ 
-                    p: 2, 
-                    bgcolor: alpha(COLORS.teal, 0.03), 
-                    borderRadius: 10,
-                    border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
-                  }}>
+                  <Paper sx={{ p: 2, bgcolor: alpha(COLORS.teal, 0.03), borderRadius: 10, border: `1px solid ${alpha(COLORS.teal, 0.1)}` }}>
                     <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.7), fontStyle: 'italic' }}>
                       "{selectedReview.comment}"
                     </Typography>
@@ -830,28 +660,90 @@ const OrganizerReviews: React.FC = () => {
               label="Votre réponse"
               value={responseText}
               onChange={(e) => setResponseText(e.target.value)}
-              placeholder="Merci pour votre retour! Nous sommes ravis que..."
-              sx={{ 
-                '& .MuiOutlinedInput-root': { 
+              placeholder="Merci pour votre retour ! Nous sommes ravis que..."
+              sx={{
+                '& .MuiOutlinedInput-root': {
                   borderRadius: 2,
                   '&:hover fieldset': { borderColor: COLORS.teal },
                   '&.Mui-focused fieldset': { borderColor: COLORS.teal },
-                } 
+                },
               }}
             />
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>
-            <OutlineButton onClick={() => setResponseDialogOpen(false)}>
-              Annuler
-            </OutlineButton>
-            <GradientButton
-              onClick={handleSubmitResponse}
-              disabled={!responseText.trim() || actionLoading}
-            >
+            <OutlineButton onClick={() => setResponseDialogOpen(false)}>Annuler</OutlineButton>
+            <GradientButton onClick={handleSubmitResponse} disabled={!responseText.trim() || actionLoading}>
               {actionLoading ? 'Envoi...' : 'Envoyer'}
             </GradientButton>
           </DialogActions>
         </Dialog>
+
+        {/* ── Dialog Signalement */}
+        <Dialog
+          open={flagDialogOpen}
+          onClose={() => setFlagDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 2, boxShadow: `0 20px 60px ${alpha(COLORS.navy, 0.15)}`, border: `1px solid ${alpha('#DC2626', 0.2)}` } }}
+        >
+          <DialogTitle sx={{ fontWeight: 700, color: '#DC2626', borderBottom: `1px solid ${alpha('#DC2626', 0.1)}`, pb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Flag sx={{ fontSize: 20 }} /> Signaler cet avis à l'administration
+          </DialogTitle>
+          <DialogContent sx={{ pt: 3 }}>
+            <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+              L'admin recevra une notification et pourra supprimer l'avis s'il juge le signalement valide.
+            </Alert>
+            {selectedReview?.comment && (
+              <Paper sx={{ p: 2, mb: 2, bgcolor: alpha('#DC2626', 0.03), borderRadius: 2, border: `1px solid ${alpha('#DC2626', 0.1)}` }}>
+                <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.5) }}>Avis concerné :</Typography>
+                <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.7), fontStyle: 'italic', mt: 0.5 }}>
+                  "{selectedReview.comment}"
+                </Typography>
+              </Paper>
+            )}
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              label="Raison du signalement"
+              value={flagReason}
+              onChange={(e) => setFlagReason(e.target.value)}
+              placeholder="Ex: Contenu offensant, faux avis, propos inappropriés..."
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  '&:hover fieldset': { borderColor: '#DC2626' },
+                  '&.Mui-focused fieldset': { borderColor: '#DC2626' },
+                },
+              }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ p: 3, gap: 2 }}>
+            <OutlineButton onClick={() => setFlagDialogOpen(false)}>Annuler</OutlineButton>
+            <Button
+              variant="contained"
+              onClick={handleSubmitFlag}
+              disabled={actionLoading}
+              sx={{ bgcolor: '#DC2626', borderRadius: 10, textTransform: 'none', fontWeight: 600, '&:hover': { bgcolor: '#B91C1C' } }}
+              startIcon={<Flag sx={{ fontSize: 16 }} />}
+            >
+              {actionLoading ? 'Envoi...' : 'Signaler'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert severity={snackbar.severity} sx={{ borderRadius: 2 }} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+
       </Container>
     </Box>
   );

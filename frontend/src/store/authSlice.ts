@@ -12,7 +12,7 @@ interface User {
   profile_photo_url?: string | null;
 }
 
-interface AuthState {
+export interface AuthState {
   user: User | null;
   token: string | null;
   loading: boolean;

@@ -113,6 +113,8 @@ export const reviewAPI = {
     api.get(`/reviews/trip/${tripId}`),
   createReview: (data: { trip_id: number; rating: number; comment?: string }) =>
     api.post('/reviews', data),
+  canReview: (tripId: number) =>
+    api.get(`/reviews/can-review/${tripId}`),
   deleteReview: (id: number) =>
     api.delete(`/reviews/${id}`),
 };
@@ -126,12 +128,15 @@ export const organizerReviewAPI = {
     api.put(`/organizer/reviews/${id}/reject`),
   respond: (id: number, response: string) =>
     api.put(`/organizer/reviews/${id}/respond`, { response }),
+  flag: (id: number, reason: string) =>
+    api.put(`/organizer/reviews/${id}/flag`, { reason }),
 };
 
 export const bookingAPI = {
   create: (data: any) => api.post('/bookings', data),
   get: (id: number) => api.get(`/bookings/${id}`),
   myBookings: () => api.get('/bookings/me'),
+  getByTrip: (tripId: number) => api.get(`/bookings/trip/${tripId}`),
   delete: (id: number) => api.delete(`/bookings/${id}`),
   getCancelOptions: (id: number) => api.get(`/bookings/${id}/cancel-options`),
   cancel: (id: number, choice: string) => api.post(`/bookings/${id}/cancel`, { choice }),
@@ -141,8 +146,8 @@ export const paymentAPI = {
   // body optionnel : { offer_id? }
   createIntent: (bookingId: number, body?: { offer_id?: number | null }) =>
     api.post(`/payments/create-intent/${bookingId}`, body ?? {}),
-  confirm: (paymentIntentId: string) =>
-    api.post('/payments/confirm', { payment_intent_id: paymentIntentId }),
+confirm: (paymentIntentId: string, offerId?: number | null) =>
+    api.post('/payments/confirm', { payment_intent_id: paymentIntentId, ...(offerId ? { offer_id: offerId } : {}) }),
   refund: (bookingId: number) =>
     api.post(`/payments/refund/${bookingId}`),
 };
@@ -150,8 +155,13 @@ export const paymentAPI = {
 export const loyaltyAPI = {
   getPoints: () =>
     api.get('/loyalty/points'),
-  getOffers: (tripId?: number) =>
-    api.get('/loyalty/offers', { params: tripId ? { trip_id: tripId } : {} }),
+  getOffers: (tripId?: number, includeInactive?: boolean) =>
+    api.get('/loyalty/offers', {
+      params: {
+        ...(tripId ? { trip_id: tripId } : {}),
+        ...(includeInactive ? { include_inactive: '1' } : {}),
+      },
+    }),
   createOffer: (data: {
     title: string;
     description?: string;
@@ -163,6 +173,8 @@ export const loyaltyAPI = {
   }) => api.post('/loyalty/offers', data),
   deleteOffer: (id: number) =>
     api.delete(`/loyalty/offers/${id}`),
+  activateOffer: (id: number) =>
+    api.patch(`/loyalty/offers/${id}/activate`),
 };
 
 export const adminAPI = {
@@ -188,6 +200,10 @@ export const adminAPI = {
   createDestination: (data: any) => api.post('/admin/destinations', data),
   updateDestination: (id: number, data: any) => api.put(`/admin/destinations/${id}`, data),
   deleteDestination: (id: number) => api.delete(`/admin/destinations/${id}`),
+  getReviews: (params?: { status?: string; flagged?: '1' }) =>
+    api.get('/admin/reviews', { params }),
+  deleteReview: (id: number) => api.delete(`/admin/reviews/${id}`),
+  unflagReview: (id: number) => api.patch(`/admin/reviews/${id}/unflag`),
 };
 
 export const momentAPI = {

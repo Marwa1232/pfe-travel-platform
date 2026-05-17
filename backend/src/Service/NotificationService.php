@@ -33,8 +33,9 @@ class NotificationService
     public function notifyAdmins(string $title, string $message, string $type): void
     {
         $admins = $this->em->getRepository(User::class)->createQueryBuilder('u')
-            ->andWhere('u.roles LIKE :role')
-            ->setParameter('role', '%ROLE_ADMIN%')
+            ->join('u.userRoles', 'r')
+            ->andWhere('r.name = :role')
+            ->setParameter('role', 'ROLE_ADMIN')
             ->getQuery()
             ->getResult();
 
@@ -46,8 +47,9 @@ class NotificationService
     public function notifyOrganizer(string $title, string $message, string $type): void
     {
         $organizers = $this->em->getRepository(User::class)->createQueryBuilder('u')
-            ->andWhere('u.roles LIKE :role')
-            ->setParameter('role', '%ROLE_ORGANIZER%')
+            ->join('u.userRoles', 'r')
+            ->andWhere('r.name = :role')
+            ->setParameter('role', 'ROLE_ORGANIZER')
             ->getQuery()
             ->getResult();
 
@@ -405,6 +407,30 @@ class NotificationService
                 'low_availability'
             );
         }
+    }
+
+    // ============================================================
+    // CAS 20 : Avis signalé par l'organisateur (vers admin)
+    // ============================================================
+    public function notifyAdminReviewFlagged(\App\Entity\Review $review, string $organizerName, string $reason): void
+    {
+        $tripTitle = $review->getTrip()?->getTitle() ?? '—';
+        $reviewer  = $review->getUser();
+        $reviewerName = $reviewer
+            ? $reviewer->getFirstName() . ' ' . $reviewer->getLastName()
+            : 'Utilisateur inconnu';
+
+        $this->notifyAdmins(
+            'Avis signalé par un organisateur',
+            sprintf(
+                'L\'organisateur %s a signalé l\'avis de %s sur le voyage "%s". Raison : %s',
+                $organizerName,
+                $reviewerName,
+                $tripTitle,
+                $reason
+            ),
+            'review_flagged'
+        );
     }
 
     public function markAsRead(int $notificationId): ?Notification

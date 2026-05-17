@@ -537,7 +537,6 @@ class AdminApiController extends AbstractController
             
             $category = new Category();
             $category->setName($data['name']);
-            $category->setDescription($data['description'] ?? '');
             $category->setCreatedAt(new \DateTimeImmutable());
             
             $this->em->persist($category);
@@ -552,7 +551,6 @@ class AdminApiController extends AbstractController
             $result[] = [
                 'id' => $category->getId(),
                 'name' => $category->getName(),
-                'description' => $category->getDescription(),
             ];
         }
 
@@ -584,9 +582,6 @@ class AdminApiController extends AbstractController
             if (isset($data['name'])) {
                 $category->setName($data['name']);
             }
-            if (isset($data['description'])) {
-                $category->setDescription($data['description']);
-            }
             
             $this->em->flush();
             return $this->json(['message' => 'Category updated', 'id' => $category->getId()]);
@@ -596,7 +591,6 @@ class AdminApiController extends AbstractController
         return $this->json([
             'id' => $category->getId(),
             'name' => $category->getName(),
-            'description' => $category->getDescription(),
         ]);
     }
 
@@ -772,5 +766,139 @@ class AdminApiController extends AbstractController
         }
 
         return $this->json($result);
+    }
+    
+
+
+    #[Route('/reviews', name: 'api_admin_reviews_list', methods: ['GET'])]
+    public function listAllReviews(Request $request): JsonResponse
+    {
+        $authCheck = $this->requireAdmin($request);
+        if ($authCheck instanceof JsonResponse) {
+            return $authCheck;
+        }
+
+        $qb = $this->em->getRepository(\App\Entity\Review::class)->createQueryBuilder('r')
+            ->leftJoin('r.user', 'u')
+            ->leftJoin('r.trip', 't')
+            ->orderBy('r.createdAt', 'DESC');
+
+        $status  = $request->query->get('status');
+        $flagged = $request->query->get('flagged');
+
+        if ($status) {
+            $qb->andWhere('r.status = :status')->setParameter('status', $status);
+        }
+
+        if ($flagged === '1') {
+            $qb->andWhere('r.flagged = true');
+        }
+
+        $reviews = $qb->getQuery()->getResult();
+
+        $data = array_map(function (\App\Entity\Review $r) {
+            $user = $r->getUser();
+            $trip = $r->getTrip();
+            return [
+                'id'                 => $r->getId(),
+                'rating'             => $r->getRating(),
+                'comment'            => $r->getComment(),
+                'status'             => $r->getStatus(),
+                'flagged'            => method_exists($r, 'isFlagged') ? $r->isFlagged() : false,
+                'flag_reason'        => method_exists($r, 'getFlagReason') ? $r->getFlagReason() : null,
+                'organizer_response' => $r->getOrganizerResponse(),
+                'response_date'      => $r->getResponseDate()?->format('Y-m-d H:i:s'),
+                'created_at'         => $r->getCreatedAt()->format('Y-m-d H:i:s'),
+                'user' => $user ? [
+                    'id'         => $user->getId(),
+                    'first_name' => $user->getFirstName(),
+                    'last_name'  => $user->getLastName(),
+                    'email'      => $user->getEmail(),
+                ] : null,
+                'trip' => $trip ? [
+                    'id'    => $trip->getId(),
+                    'title' => $trip->getTitle(),
+                ] : null,
+            ];
+        }, $reviews);
+
+        return $this->json([
+            'reviews' => $data,
+            'total'   => count($data),
+        ]);
+    }
+
+    /**
+     * DELETE /api/admin/reviews/{id}
+     * Suppression d'un avis par l'admin
+     */
+    #[Route('/reviews/{id}', name: 'api_admin_reviews_delete', methods: ['DELETE'])]
+    public function deleteReviewAdmin(Request $request, int $id): JsonResponse
+    {
+        $authCheck = $this->requireAdmin($request);
+        if ($authCheck instanceof JsonResponse) {
+            return $authCheck;
+        }
+
+        $review = $this->em->getRepository(\App\Entity\Review::class)->find($id);
+        if (!$review) {
+            return $this->json(['error' => 'Review not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $tripTitle  = $review->getTrip()?->getTitle() ?? '—';
+        $reviewUser = $review->getUser();
+        $trip       = $review->getTrip();
+
+        $this->em->remove($review);
+        $this->em->flush();
+
+        // 1. Notifier l'auteur de l'avis supprimé
+        if ($reviewUser) {
+            $this->notificationService->create(
+                $reviewUser,
+                'Votre avis a été supprimé',
+                sprintf('Votre avis sur le voyage "%s" a été supprimé par l\'administration.', $tripTitle),
+                'review'
+            );
+        }
+
+        // 2. Notifier l'organisateur que son signalement a été traité
+        if ($trip && $trip->getOrganizer() && $trip->getOrganizer()->getUser()) {
+            $this->notificationService->create(
+                $trip->getOrganizer()->getUser(),
+                'Signalement traité',
+                sprintf('L\'administration a supprimé l\'avis signalé sur le voyage "%s".', $tripTitle),
+                'review_flagged'
+            );
+        }
+
+        return $this->json(['message' => 'Review deleted by admin']);
+    }
+
+    /**
+     * PATCH /api/admin/reviews/{id}/unflag
+     * Retirer le signalement d'un avis (après vérification admin)
+     */
+    #[Route('/reviews/{id}/unflag', name: 'api_admin_reviews_unflag', methods: ['PATCH'])]
+    public function unflagReview(Request $request, int $id): JsonResponse
+    {
+        $authCheck = $this->requireAdmin($request);
+        if ($authCheck instanceof JsonResponse) {
+            return $authCheck;
+        }
+
+        $review = $this->em->getRepository(\App\Entity\Review::class)->find($id);
+        if (!$review) {
+            return $this->json(['error' => 'Review not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (method_exists($review, 'setFlagged')) {
+            $review->setFlagged(false);
+            $review->setFlagReason(null);
+        }
+
+        $this->em->flush();
+
+        return $this->json(['message' => 'Signalement retiré']);
     }
 }

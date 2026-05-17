@@ -134,6 +134,31 @@ class BookingController extends AbstractController
         return $this->json($bookings, Response::HTTP_OK, [], ['groups' => 'booking:read']);
     }
 
+    #[Route('/trip/{tripId}', name: 'api_bookings_by_trip', methods: ['GET'])]
+    public function findByTrip(int $tripId, Request $request): JsonResponse
+    {
+        $user = $this->getCurrentUser($request);
+        
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+        
+        $booking = $this->bookingRepo->createQueryBuilder('b')
+            ->where('b.user = :userId')
+            ->andWhere('b.trip = :tripId')
+            ->setParameter('userId', $user->getId())
+            ->setParameter('tripId', $tripId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if (!$booking) {
+            return $this->json(['booking' => null, 'found' => false], Response::HTTP_OK);
+        }
+
+        return $this->json(['booking' => $booking, 'found' => true], Response::HTTP_OK, [], ['groups' => 'booking:read']);
+    }
+
     #[Route('/{id}', name: 'api_bookings_show', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function show(int $id, Request $request): JsonResponse
     {

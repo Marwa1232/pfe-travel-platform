@@ -64,68 +64,114 @@ class LoyaltyController extends AbstractController
     }
 
     // ────────────────────────────────────────────────────────
-    // GET /api/loyalty/offers?trip_id=X
-    // Retourne les offres de l'organizer du trip
+    // GET /api/loyalty/offers?trip_id=X&include_inactive=1
+    // Retourne les offres de l'organizer du trip (ou de l'user connecté)
     // + les points disponibles du user CHEZ CET ORGANIZER
     // ────────────────────────────────────────────────────────
     #[Route('/offers', methods: ['GET'])]
     public function getOffers(Request $request): JsonResponse
     {
-        $user   = $this->getAuthUser($request);
+        $user = $this->getAuthUser($request);
         if (!$user) return $this->json(['error' => 'Unauthorized'], 401);
 
-        $tripId = $request->query->get('trip_id');
+        $tripId          = $request->query->get('trip_id');
+        $includeInactive = $request->query->get('include_inactive') === '1';
 
-        // Trouver l'organizer du trip pour filtrer les points et les offres
-        $organizer    = null;
+        $organizer       = null;
         $availablePoints = 0;
 
         if ($tripId) {
+            // ── Cas 1 : trip_id fourni → organizer du trip ──────────
             $trip = $this->em->getRepository(Trip::class)->find($tripId);
             if ($trip?->getOrganizer()) {
                 $organizer       = $trip->getOrganizer();
                 $availablePoints = $this->loyaltyService->getAvailablePoints($user, $organizer);
             }
-        }
+        } else {
+            // ── Cas 2 : pas de trip_id ───────────────────────────────
+            // Si l'user connecté EST un organizer → ses propres offres
+            $organizerProfile = $this->em->getRepository(OrganizerProfile::class)->findOneBy(['user' => $user]);
 
-        // Construire la requête des offres
-        $qb = $this->em->getRepository(LoyaltyOffer::class)->createQueryBuilder('o')
-            ->where('o.isActive = true')
-            ->andWhere('o.expiresAt IS NULL OR o.expiresAt > :now')
-            ->setParameter('now', new \DateTimeImmutable())
-            ->orderBy('o.pointsRequired', 'ASC');
-
-        if ($organizer) {
-            // Uniquement les offres de cet organizer
-            $qb->andWhere('o.organizer = :org')
-               ->setParameter('org', $organizer);
-
-            // Optionnel: filtrer par trip spécifique ou offres globales de l'organizer
-            if (isset($trip)) {
-                $qb->andWhere('o.trip IS NULL OR o.trip = :trip')
-                   ->setParameter('trip', $trip);
+            if ($organizerProfile && $includeInactive) {
+                // include_inactive=1 → appel depuis dashboard organizer → ses offres uniquement
+                $organizer       = $organizerProfile;
+                $availablePoints = $this->loyaltyService->getAvailablePoints($user, $organizer);
+            } else {
+                // Appel depuis page client → toutes les offres actives tous organizers
+                // (même si l'user est aussi organizer, on l'ignore ici)
+                $byOrg           = $this->loyaltyService->getPointsByOrganizer($user);
+                $availablePoints = array_sum(array_column($byOrg, 'available'));
+                // $organizer reste null → la query renverra TOUTES les offres actives
             }
         }
 
+        // ── Construction de la query des offres ─────────────────
+        $qb = $this->em->getRepository(LoyaltyOffer::class)->createQueryBuilder('o')
+            ->orderBy('o.pointsRequired', 'ASC');
+
+        if ($organizer) {
+            $qb->andWhere('o.organizer = :org')
+               ->setParameter('org', $organizer);
+
+            if (!$includeInactive) {
+                $qb->andWhere('o.isActive = true');
+            }
+
+            if ($tripId && isset($trip)) {
+                $qb->andWhere('o.trip IS NULL OR o.trip = :trip')
+                   ->setParameter('trip', $trip);
+            }
+        } else {
+            // Pas d'organizer ciblé → toutes les offres actives non expirées
+            $qb->andWhere('o.isActive = true');
+        }
+
+        if (!$includeInactive) {
+            $qb->andWhere('o.expiresAt IS NULL OR o.expiresAt > :now')
+               ->setParameter('now', new \DateTimeImmutable());
+        }
+
         $offers = $qb->getQuery()->getResult();
+
+        // ✅ FIX 3 — Pour chaque offre, calculer can_use avec les points
+        // disponibles de l'user CHEZ CET ORGANIZER SPÉCIFIQUE (et non le global)
+        $pointsByOrg = [];
+        if (!$organizer) {
+            // Charger les points par organizer une seule fois pour tout calculer
+            foreach ($this->loyaltyService->getPointsByOrganizer($user) as $orgData) {
+                $pointsByOrg[$orgData['organizer_id']] = $orgData['available'] ?? 0;
+            }
+        }
 
         return $this->json([
             'available_points' => $availablePoints,
             'organizer_id'     => $organizer?->getId(),
             'agency_name'      => $organizer?->getAgencyName(),
-'offers'           => array_map(fn(LoyaltyOffer $o) => [
-                 'id'              => $o->getId(),
-                 'title'           => $o->getTitle(),
-                 'description'     => $o->getDescription(),
-                 'discount_type'   => $o->getDiscountType(),
-                 'discount_value'  => $o->getDiscountValue(),
-                 'points_required' => $o->getPointsRequired(),
-                 'organizer_id'    => $o->getOrganizer()?->getId(),
-                 'agency_name'     => $o->getOrganizer()?->getAgencyName(),
-                 // can_use = l'user a assez de points CHEZ CET ORGANIZER
-                 'can_use'         => $availablePoints >= $o->getPointsRequired(),
-                 'expires_at'      => $o->getExpiresAt()?->format('Y-m-d'),
-             ], $offers),
+            'offers'           => array_map(function (LoyaltyOffer $o) use ($organizer, $availablePoints, $pointsByOrg) {
+                $orgId = $o->getOrganizer()?->getId();
+
+                // can_use : basé sur les points disponibles CHEZ l'organizer de l'offre
+                if ($organizer) {
+                    $pts = $availablePoints;
+                } else {
+                    $pts = $pointsByOrg[$orgId] ?? 0;
+                }
+
+                return [
+                    'id'              => $o->getId(),
+                    'title'           => $o->getTitle(),
+                    'description'     => $o->getDescription(),
+                    'discount_type'   => $o->getDiscountType(),
+                    'discount_value'  => $o->getDiscountValue(),
+                    'points_required' => $o->getPointsRequired(),
+                    'organizer_id'    => $orgId,
+                    'agency_name'     => $o->getOrganizer()?->getAgencyName(),
+                    'is_active'       => $o->isActive(),
+                    'can_use'         => $pts >= $o->getPointsRequired(),
+                    'expires_at'      => $o->getExpiresAt()?->format('Y-m-d'),
+                    'created_at'      => $o->getCreatedAt()->format('Y-m-d'),
+                ];
+            }, $offers),
         ]);
     }
 
@@ -186,5 +232,27 @@ class LoyaltyController extends AbstractController
         $this->em->flush();
 
         return $this->json(['message' => 'Offre désactivée']);
+    }
+
+    // ────────────────────────────────────────────────────────
+    // PATCH /api/loyalty/offers/{id}/activate — Réactiver une offre
+    // ────────────────────────────────────────────────────────
+    #[Route('/offers/{id}/activate', methods: ['PATCH'])]
+    public function activateOffer(int $id, Request $request): JsonResponse
+    {
+        $user = $this->getAuthUser($request);
+        if (!$user) return $this->json(['error' => 'Unauthorized'], 401);
+
+        $offer     = $this->em->getRepository(LoyaltyOffer::class)->find($id);
+        $organizer = $this->em->getRepository(OrganizerProfile::class)->findOneBy(['user' => $user]);
+
+        if (!$offer || $offer->getOrganizer() !== $organizer) {
+            return $this->json(['error' => 'Not found'], 404);
+        }
+
+        $offer->setIsActive(true);
+        $this->em->flush();
+
+        return $this->json(['message' => 'Offre réactivée']);
     }
 }

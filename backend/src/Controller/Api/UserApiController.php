@@ -88,13 +88,11 @@ class UserApiController extends AbstractController
             'last_name' => $user->getLastName(),
             'phone' => $user->getPhone(),
             'country' => $user->getCountry(),
-            'preferred_language' => $user->getPreferredLanguage(),
-            'preferred_currency' => $user->getPreferredCurrency(),
             'roles' => $user->getRoles(),
-'status_organizer' => $user->getStatusOrganizer(),
-                'interests' => $user->getInterests() ?? [],
-                'created_at' => $user->getCreatedAt()?->format('Y-m-d H:i:s'),
-            ]);
+            'status_organizer' => $user->getStatusOrganizer(),
+            'interests' => $user->getInterests() ?? [],
+            'created_at' => $user->getCreatedAt()?->format('Y-m-d H:i:s'),
+        ]);
     }
 
     #[Route('/profile-photo', name: 'api_user_profile_photo', methods: ['POST'])]
@@ -323,12 +321,6 @@ class UserApiController extends AbstractController
         if (isset($data['country'])) {
             $user->setCountry($data['country']);
         }
-        if (isset($data['preferred_language'])) {
-            $user->setPreferredLanguage($data['preferred_language']);
-        }
-        if (isset($data['preferred_currency'])) {
-            $user->setPreferredCurrency($data['preferred_currency']);
-        }
             if (isset($data['profile_photo_url'])) {
                         $user->setProfilePhotoUrl($data['profile_photo_url']);
                     }
@@ -345,8 +337,6 @@ class UserApiController extends AbstractController
                         'last_name' => $user->getLastName(),
                         'phone' => $user->getPhone(),
                         'country' => $user->getCountry(),
-                        'preferred_language' => $user->getPreferredLanguage(),
-                        'preferred_currency' => $user->getPreferredCurrency(),
                         'profile_photo_url' => $user->getProfilePhotoUrl(),
                         'interests' => $user->getInterests(),
                     ]);

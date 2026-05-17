@@ -19,8 +19,6 @@ import {
   Stepper,
   Step,
   StepLabel,
-  Card,
-  CardContent,
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 import { styled, alpha, keyframes } from '@mui/material/styles';
@@ -30,15 +28,16 @@ import {
   Email,
   Lock,
   Person,
-  CheckCircle,
   ArrowForward,
   ArrowBack,
   FlightTakeoff,
+  Public as PublicIcon,
 } from '@mui/icons-material';
+import { countries as countriesData, Country } from 'countries-list';
 import { register } from '../store/authSlice';
 import PhoneNumberInput from '../components/PhoneNumberInput';
 
-// ─── 3 COULEURS UNIQUEMENT ──────────────────────────────────────
+// ─── COLORS ─────────────────────────────────────────────────────
 const COLORS = {
   teal: '#0EA5A0',
   navy: '#0F2D5C',
@@ -174,7 +173,7 @@ const FloatingIcon = styled(Box)({
   animation: `${float} 25s ease-in-out infinite`,
 });
 
-const StepIcon = styled(Box)(({ theme }) => ({
+const StepIcon = styled(Box)({
   width: 36,
   height: 36,
   borderRadius: 10,
@@ -185,8 +184,19 @@ const StepIcon = styled(Box)(({ theme }) => ({
   color: COLORS.teal,
   fontWeight: 700,
   fontSize: 14,
-}));
+});
 
+// ─── Countries list ──────────────────────────────────────────────
+const countries = (Object.entries(countriesData) as [string, Country][])
+  .map(([code, data]) => ({
+    code,
+    value: data.name,
+    label: data.name,
+    emoji: data.emoji ?? '',
+  }))
+  .sort((a, b) => a.label.localeCompare(b.label));
+
+// ─── Component ──────────────────────────────────────────────────
 const Register: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -196,16 +206,16 @@ const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    first_name: '',
-    last_name: '',
-    phone: '',
-    country: 'Tunisia',
-    preferred_language: 'fr',
-  });
+const [formData, setFormData] = useState({
+     email: '',
+     password: '',
+     confirmPassword: '',
+     first_name: '',
+     last_name: '',
+     phone: '',
+     country: 'Tunisia',
+     countryCode: 'TN',
+   });
 
   const [fieldErrors, setFieldErrors] = useState({
     email: '',
@@ -253,34 +263,20 @@ const Register: React.FC = () => {
     return '';
   };
 
-  const countries = ['Tunisia', 'Algeria', 'Morocco', 'Libya', 'Egypt'];
   const steps = ['Informations personnelles', 'Sécurité'];
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setFormData({ ...formData, [name]: value });
     setError(null);
 
-    if (name === 'email') {
-      setFieldErrors(prev => ({ ...prev, email: validateEmail(value) }));
-    }
-    if (name === 'password') {
-      setFieldErrors(prev => ({ ...prev, password: validatePassword(value) }));
-    }
-    if (name === 'phone') {
-      setFieldErrors(prev => ({ ...prev, phone: validatePhone(value) }));
-    }
-    if (name === 'first_name') {
-      setFieldErrors(prev => ({ ...prev, first_name: validateName(value) }));
-    }
-    if (name === 'last_name') {
-      setFieldErrors(prev => ({ ...prev, last_name: validateName(value) }));
-    }
+    if (name === 'email') setFieldErrors(prev => ({ ...prev, email: validateEmail(value) }));
+    if (name === 'password') setFieldErrors(prev => ({ ...prev, password: validatePassword(value) }));
+    if (name === 'phone') setFieldErrors(prev => ({ ...prev, phone: validatePhone(value) }));
+    if (name === 'first_name') setFieldErrors(prev => ({ ...prev, first_name: validateName(value) }));
+    if (name === 'last_name') setFieldErrors(prev => ({ ...prev, last_name: validateName(value) }));
   };
 
   const handleNext = () => {
@@ -290,20 +286,11 @@ const Register: React.FC = () => {
         return;
       }
       const firstNameErr = validateName(formData.first_name);
-      if (firstNameErr) {
-        setFieldErrors(prev => ({ ...prev, first_name: firstNameErr }));
-        return;
-      }
+      if (firstNameErr) { setFieldErrors(prev => ({ ...prev, first_name: firstNameErr })); return; }
       const lastNameErr = validateName(formData.last_name);
-      if (lastNameErr) {
-        setFieldErrors(prev => ({ ...prev, last_name: lastNameErr }));
-        return;
-      }
+      if (lastNameErr) { setFieldErrors(prev => ({ ...prev, last_name: lastNameErr })); return; }
       const phoneErr = validatePhone(formData.phone);
-      if (phoneErr) {
-        setFieldErrors(prev => ({ ...prev, phone: phoneErr }));
-        return;
-      }
+      if (phoneErr) { setFieldErrors(prev => ({ ...prev, phone: phoneErr })); return; }
     }
     if (activeStep === 1) {
       if (formData.password !== formData.confirmPassword) {
@@ -315,23 +302,20 @@ const Register: React.FC = () => {
         return;
       }
       const passErr = validatePassword(formData.password);
-      if (passErr) {
-        setFieldErrors(prev => ({ ...prev, password: passErr }));
-        return;
-      }
+      if (passErr) { setFieldErrors(prev => ({ ...prev, password: passErr })); return; }
     }
-    setActiveStep((prev) => prev + 1);
+    setActiveStep(prev => prev + 1);
     setError(null);
   };
 
   const handleBack = () => {
-    setActiveStep((prev) => prev - 1);
+    setActiveStep(prev => prev - 1);
     setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (activeStep < steps.length - 1) {
       handleNext();
       return;
@@ -343,21 +327,16 @@ const Register: React.FC = () => {
       setError('Les mots de passe ne correspondent pas');
       return;
     }
-
     if (formData.password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
-
     const passErr = validatePassword(formData.password);
-    if (passErr) {
-      setFieldErrors(prev => ({ ...prev, password: passErr }));
-      return;
-    }
+    if (passErr) { setFieldErrors(prev => ({ ...prev, password: passErr })); return; }
 
     try {
       setLoading(true);
-      const { confirmPassword, ...registerData } = formData;
+      const { confirmPassword, countryCode, ...registerData } = formData;
       const result = await dispatch(register(registerData) as any);
 
       if (register.fulfilled.match(result)) {
@@ -381,6 +360,7 @@ const Register: React.FC = () => {
           <Fade in timeout={500}>
             <Box>
               <Grid container spacing={2.5}>
+                {/* Prénom */}
                 <Grid xs={12} sm={6}>
                   <StyledTextField
                     fullWidth
@@ -401,6 +381,7 @@ const Register: React.FC = () => {
                   />
                 </Grid>
 
+                {/* Nom */}
                 <Grid xs={12} sm={6}>
                   <StyledTextField
                     fullWidth
@@ -421,6 +402,7 @@ const Register: React.FC = () => {
                   />
                 </Grid>
 
+                {/* Email */}
                 <Grid xs={12}>
                   <StyledTextField
                     fullWidth
@@ -443,16 +425,60 @@ const Register: React.FC = () => {
                   />
                 </Grid>
 
+              
                 <Grid xs={12} sm={6}>
                   <PhoneNumberInput
                     value={formData.phone}
-                    onChange={(value) => setFormData(prev => ({ ...prev, phone: value || '' }))}
-                    label="Téléphone"
+                    onChange={(value) =>
+                      setFormData(prev => ({ ...prev, phone: value || '' }))
+                    }
                     error={!!fieldErrors.phone}
                     helperText={fieldErrors.phone}
                     required
-                    defaultCountry={formData.country || 'Tunisia'}
+                    defaultCountry={formData.countryCode || 'TN'}
                   />
+                </Grid>
+
+                {/* Pays */}
+                <Grid xs={12} sm={6}>
+                  <StyledTextField
+                    select
+                    fullWidth
+                    label="Pays"
+                    name="country"
+                    value={formData.country}
+                    onChange={(e) => {
+                      const selected = countries.find(c => c.value === e.target.value);
+                      setFormData(prev => ({
+                        ...prev,
+                        country: e.target.value,
+                        countryCode: selected?.code ?? 'TN',
+                      }));
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PublicIcon sx={{ color: COLORS.teal, fontSize: 20 }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    SelectProps={{
+                      MenuProps: {
+                        PaperProps: {
+                          style: { maxHeight: 300 },
+                        },
+                      },
+                    }}
+                  >
+                    {countries.map((c) => (
+                      <MenuItem key={c.value} value={c.value}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>{c.emoji}</span>
+                          <span>{c.label}</span>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </StyledTextField>
                 </Grid>
               </Grid>
             </Box>
@@ -464,6 +490,7 @@ const Register: React.FC = () => {
           <Fade in timeout={500}>
             <Box>
               <Grid container spacing={2.5}>
+                {/* Mot de passe */}
                 <Grid xs={12}>
                   <StyledTextField
                     fullWidth
@@ -497,6 +524,7 @@ const Register: React.FC = () => {
                   />
                 </Grid>
 
+                {/* Confirmer mot de passe */}
                 <Grid xs={12}>
                   <StyledTextField
                     fullWidth
@@ -527,6 +555,7 @@ const Register: React.FC = () => {
                   />
                 </Grid>
 
+                {/* Password strength */}
                 <Grid xs={12}>
                   <Box sx={{ mt: 1 }}>
                     <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.6), fontWeight: 600 }}>
@@ -544,8 +573,6 @@ const Register: React.FC = () => {
                               (formData.password?.length || 0) >= level * 2
                                 ? level === 1
                                   ? '#f44336'
-                                  : level === 2
-                                  ? COLORS.teal
                                   : COLORS.teal
                                 : alpha(COLORS.navy, 0.1),
                           }}
@@ -554,8 +581,6 @@ const Register: React.FC = () => {
                     </Box>
                   </Box>
                 </Grid>
-
-               
               </Grid>
             </Box>
           </Fade>
@@ -582,26 +607,7 @@ const Register: React.FC = () => {
       <Container maxWidth="md" sx={{ position: 'relative', zIndex: 2, py: 4 }}>
         <Zoom in timeout={800}>
           <Box>
-            {/* Logo/Brand */}
-            <Box sx={{ textAlign: 'center', mb: 4 }}>
-              <Typography
-                variant="h2"
-                sx={{
-                  fontWeight: 800,
-                  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  mb: 1,
-                  letterSpacing: '-0.02em',
-                  fontSize: { xs: '2rem', md: '3rem' },
-                }}
-              >
-                TripBooking
-              </Typography>
-              <Typography variant="body1" sx={{ color: alpha(COLORS.navy, 0.6) }}>
-                Rejoignez notre communauté de voyageurs
-              </Typography>
-            </Box>
+           
 
             <Fade in timeout={1000}>
               <StyledPaper elevation={0}>
@@ -621,8 +627,8 @@ const Register: React.FC = () => {
                     Créer un compte
                   </Typography>
                   <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
-                    {activeStep === 0 && "Parlez-nous un peu de vous"}
-                    {activeStep === 1 && "Finalisons votre inscription"}
+                    {activeStep === 0 && 'Parlez-nous un peu de vous'}
+                    {activeStep === 1 && 'Finalisons votre inscription'}
                   </Typography>
                 </Box>
 
@@ -632,9 +638,7 @@ const Register: React.FC = () => {
                     <Step key={label}>
                       <StepLabel
                         StepIconComponent={() => (
-                          <StepIcon>
-                            {index + 1}
-                          </StepIcon>
+                          <StepIcon>{index + 1}</StepIcon>
                         )}
                         sx={{
                           '& .MuiStepLabel-label': {
@@ -651,10 +655,10 @@ const Register: React.FC = () => {
 
                 {error && (
                   <Fade in>
-                    <Alert 
-                      severity="error" 
-                      sx={{ 
-                        mb: 3, 
+                    <Alert
+                      severity="error"
+                      sx={{
+                        mb: 3,
                         borderRadius: 12,
                         bgcolor: alpha(COLORS.teal, 0.05),
                         '& .MuiAlert-icon': { color: COLORS.teal },
@@ -690,26 +694,24 @@ const Register: React.FC = () => {
                       ) : activeStep === steps.length - 1 ? (
                         "S'inscrire"
                       ) : (
-                        "Suivant"
+                        'Suivant'
                       )}
                     </GradientButton>
                   </Box>
 
-                
-
-                  <Box textAlign="center">
+                  <Box textAlign="center" sx={{ mt: 3 }}>
                     <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>
                       Déjà un compte ?{' '}
-                      <Link 
-                        to="/login" 
-                        style={{ 
-                          textDecoration: 'none', 
+                      <Link
+                        to="/login"
+                        style={{
+                          textDecoration: 'none',
                           color: COLORS.teal,
                           fontWeight: 700,
                           transition: 'color 0.3s ease',
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = COLORS.navy}
-                        onMouseLeave={(e) => e.currentTarget.style.color = COLORS.teal}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = COLORS.navy)}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = COLORS.teal)}
                       >
                         Se connecter
                       </Link>

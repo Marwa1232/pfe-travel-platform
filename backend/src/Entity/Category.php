@@ -23,9 +23,7 @@ class Category
     #[Groups(['category:read', 'trip:read', 'trip:list'])]
     private ?string $name = null;
 
-    #[ORM\Column(type: Types::TEXT, nullable: true)]
-    #[Groups(['category:read'])]
-    private ?string $description = null;
+   
 
     #[ORM\Column]
     private ?\DateTimeImmutable $created_at = null;
@@ -55,16 +53,6 @@ class Category
         return $this;
     }
 
-    public function getDescription(): ?string
-    {
-        return $this->description;
-    }
-
-    public function setDescription(?string $description): static
-    {
-        $this->description = $description;
-        return $this;
-    }
 
     public function getCreatedAt(): ?\DateTimeImmutable
     {

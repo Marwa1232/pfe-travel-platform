@@ -223,8 +223,6 @@ class RecommendationService
     {
         return [
             'interests' => $user->getInterests() ?? [],
-            'preferred_language' => $user->getPreferredLanguage(),
-            'preferred_currency' => $user->getPreferredCurrency(),
             'country' => $user->getCountry(),
             'past_bookings' => $this->getPastBookingSummary($user),
             'status_organizer' => $user->getStatusOrganizer()

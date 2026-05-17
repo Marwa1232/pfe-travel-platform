@@ -49,14 +49,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read'])]
     private ?string $country = 'Tunisia';
 
-    #[ORM\Column(length: 5, options: ['default' => 'fr'])]
-    #[Groups(['user:read'])]
-    private ?string $preferred_language = 'fr';
-
-    #[ORM\Column(length: 5, options: ['default' => 'TND'])]
-    #[Groups(['user:read'])]
-    private ?string $preferred_currency = 'TND';
-
     #[ORM\Column(length: 20, options: ['default' => 'none'])]
     #[Groups(['user:read'])]
     private ?string $status_organizer = 'none';
@@ -203,28 +195,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setCountry(string $country): static
     {
         $this->country = $country;
-        return $this;
-    }
-
-    public function getPreferredLanguage(): ?string
-    {
-        return $this->preferred_language;
-    }
-
-    public function setPreferredLanguage(string $preferred_language): static
-    {
-        $this->preferred_language = $preferred_language;
-        return $this;
-    }
-
-    public function getPreferredCurrency(): ?string
-    {
-        return $this->preferred_currency;
-    }
-
-    public function setPreferredCurrency(string $preferred_currency): static
-    {
-        $this->preferred_currency = $preferred_currency;
         return $this;
     }
 

@@ -34,41 +34,45 @@ const T = {
 };
 
 // ── Stripe Form ──────────────────────────────────────────
-const StripeForm: React.FC<{ booking: any; onSuccess: () => void }> = ({ booking, onSuccess }) => {
+const StripeForm: React.FC<{ booking: any; onSuccess: (paymentIntentId: string) => void }> = ({ booking, onSuccess }) => {
   const stripe   = useStripe();
   const elements = useElements();
   const [ready, setReady]     = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-    setLoading(true);
-    setError(null);
+const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+     if (!stripe || !elements) return;
+     setLoading(true);
+     setError(null);
 
-    const { error: stripeErr, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      redirect: 'if_required',
-    });
+     const result = await stripe.confirmPayment({
+       elements,
+       redirect: 'if_required',
+     });
 
-    if (stripeErr) {
-      if (stripeErr.code === 'payment_intent_unexpected_state') {
-        onSuccess();
-        return;
-      }
-      setError(stripeErr.message ?? 'Paiement refusé');
-      setLoading(false);
-      return;
-    }
+     if (result.error) {
+       if (result.error.code === 'payment_intent_unexpected_state') {
+         // Payment already succeeded — retrieve intent from the result
+         const piId = (result.paymentIntent as any)?.id;
+         if (piId) {
+           onSuccess(piId);
+         }
+         return;
+       }
+       setError(result.error.message ?? 'Paiement refusé');
+       setLoading(false);
+       return;
+     }
 
-    if (paymentIntent?.status === 'succeeded') {
-      onSuccess();
-      return;
-    }
+     if (result.paymentIntent?.status === 'succeeded') {
+       onSuccess(result.paymentIntent.id);
+       return;
+     }
 
-    setLoading(false);
-  };
+     setLoading(false);
+   };
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
@@ -155,7 +159,7 @@ const CheckoutPage: React.FC = () => {
     setDiscountAmount(Math.round(disc * 100) / 100);
   };
 
-  // ── Créer le PaymentIntent avec l'offre sélectionnée ──
+// ── Créer le PaymentIntent avec l'offre sélectionnée ──
   const handleInitPayment = async () => {
     setInitLoading(true);
     setError(null);
@@ -168,6 +172,17 @@ const CheckoutPage: React.FC = () => {
       setError(err.response?.data?.error ?? 'Erreur lors de la création du paiement');
     } finally {
       setInitLoading(false);
+    }
+  };
+
+  // ── Confirmer le paiement + appliquer l'offre fidélité ──
+  const handlePaymentSuccess = async (piId: string) => {
+    try {
+      await paymentAPI.confirm(piId, selectedOffer?.id ?? null);
+      setSuccess(true);
+    } catch (err: any) {
+      console.error('Confirm payment error:', err);
+      setError(err.response?.data?.error ?? 'Erreur lors de la confirmation du paiement');
     }
   };
 
@@ -302,7 +317,7 @@ const CheckoutPage: React.FC = () => {
                   clientSecret,
                   appearance: { theme: 'stripe', variables: { colorPrimary: T.teal, colorText: T.ink, borderRadius: '8px' } },
                 }}>
-                  <StripeForm booking={booking} onSuccess={() => setSuccess(true)} />
+                  <StripeForm booking={booking} onSuccess={handlePaymentSuccess} />
                 </Elements>
               )}
 
@@ -368,11 +383,19 @@ const CheckoutPage: React.FC = () => {
                 <Typography sx={{ fontSize: 17, fontWeight: 800, color: T.teal }}>{finalPrice.toFixed(2)} EUR</Typography>
               </Box>
 
-              {userPoints > 0 && (
+              {userPoints > 0 && !selectedOffer && (
                 <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: alpha(T.amber, 0.07) }}>
                   <Typography sx={{ fontSize: 11, color: T.amber, fontWeight: 600 }}>
                     <Star sx={{ fontSize: 11, mr: 0.5, verticalAlign: 'middle' }} />
                     Ce paiement vous rapportera ~{Math.floor(finalPrice * 0.1)} points fidélité chez cet organisateur
+                  </Typography>
+                </Box>
+              )}
+              {selectedOffer && (
+                <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, bgcolor: alpha(T.slate, 0.06) }}>
+                  <Typography sx={{ fontSize: 11, color: T.slate, fontWeight: 600 }}>
+                    <EmojiEvents sx={{ fontSize: 11, mr: 0.5, verticalAlign: 'middle' }} />
+                    Points non cumulables avec une offre fidélité
                   </Typography>
                 </Box>
               )}

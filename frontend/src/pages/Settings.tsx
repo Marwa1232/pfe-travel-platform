@@ -200,55 +200,49 @@ const SettingsPage: React.FC = () => {
   const showMessage = (message: string, severity: 'success' | 'error' = 'success') => setSnackbar({ open: true, message, severity });
 
   // Personal Information
-  const [firstName, setFirstName] = React.useState<string>(userAny?.first_name ?? '');
-  const [lastName, setLastName] = React.useState<string>(userAny?.last_name ?? '');
-  const [email, setEmail] = React.useState<string>(userAny?.email ?? '');
-  const [phone, setPhone] = React.useState<string>(userAny?.phone ?? '');
-  const [country, setCountry] = React.useState<string>(userAny?.country ?? 'Tunisia');
-  const [preferredLanguage, setPreferredLanguage] = React.useState<string>(userAny?.preferred_language ?? 'fr');
-  const [preferredCurrency, setPreferredCurrency] = React.useState<string>(userAny?.preferred_currency ?? 'TND');
-  const [profilePhotoPreview, setProfilePhotoPreview] = React.useState<string | null>(null);
-  const [profilePhotoUrl, setProfilePhotoUrl] = React.useState<string | null>(userAny?.profile_photo_url ? fixImageUrl(userAny.profile_photo_url) : null);
+const [firstName, setFirstName] = React.useState<string>(userAny?.first_name ?? '');
+   const [lastName, setLastName] = React.useState<string>(userAny?.last_name ?? '');
+   const [email, setEmail] = React.useState<string>(userAny?.email ?? '');
+   const [phone, setPhone] = React.useState<string>(userAny?.phone ?? '');
+   const [country, setCountry] = React.useState<string>(userAny?.country ?? 'Tunisia');
+   const [profilePhotoPreview, setProfilePhotoPreview] = React.useState<string | null>(null);
+   const [profilePhotoUrl, setProfilePhotoUrl] = React.useState<string | null>(userAny?.profile_photo_url ? fixImageUrl(userAny.profile_photo_url) : null);
 
-  React.useEffect(() => {
-    setFirstName(userAny?.first_name ?? '');
-    setLastName(userAny?.last_name ?? '');
-    setEmail(userAny?.email ?? '');
-    setPhone(userAny?.phone ?? '');
-    setCountry(userAny?.country ?? 'Tunisia');
-    setPreferredLanguage(userAny?.preferred_language ?? 'fr');
-    setPreferredCurrency(userAny?.preferred_currency ?? 'TND');
-    setProfilePhotoUrl(userAny?.profile_photo_url ? fixImageUrl(userAny.profile_photo_url) : null);
-    setPhotoFile(null);
-  }, [userAny]);
+   React.useEffect(() => {
+     setFirstName(userAny?.first_name ?? '');
+     setLastName(userAny?.last_name ?? '');
+     setEmail(userAny?.email ?? '');
+     setPhone(userAny?.phone ?? '');
+     setCountry(userAny?.country ?? 'Tunisia');
+     setProfilePhotoUrl(userAny?.profile_photo_url ? fixImageUrl(userAny.profile_photo_url) : null);
+     setPhotoFile(null);
+   }, [userAny]);
 
-  const handleSaveProfile = async () => {
-    try {
-      setSaving(true);
-      let photoUrl = profilePhotoUrl;
-      if (photoFile) {
-        const photoRes = await userAPI.uploadProfilePhoto(photoFile);
-        photoUrl = fixImageUrl(photoRes.data.profile_photo_url);
-      }
-      await userAPI.updateProfile({
-        first_name: firstName,
-        last_name: lastName,
-        phone: phone,
-        country: country,
-        preferred_language: preferredLanguage,
-        preferred_currency: preferredCurrency,
-        ...(photoUrl && { profile_photo_url: photoUrl }),
-      });
-      setProfilePhotoPreview(null);
-      setPhotoFile(null);
-      if (photoUrl) setProfilePhotoUrl(photoUrl);
-      showMessage('Profil mis à jour avec succès!');
-    } catch (error: any) {
-      showMessage(error.response?.data?.error || 'Erreur lors de la mise à jour', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
+const handleSaveProfile = async () => {
+     try {
+       setSaving(true);
+       let photoUrl = profilePhotoUrl;
+       if (photoFile) {
+         const photoRes = await userAPI.uploadProfilePhoto(photoFile);
+         photoUrl = fixImageUrl(photoRes.data.profile_photo_url);
+       }
+       await userAPI.updateProfile({
+         first_name: firstName,
+         last_name: lastName,
+         phone: phone,
+         country: country,
+         ...(photoUrl && { profile_photo_url: photoUrl }),
+       });
+       setProfilePhotoPreview(null);
+       setPhotoFile(null);
+       if (photoUrl) setProfilePhotoUrl(photoUrl);
+       showMessage('Profil mis à jour avec succès!');
+     } catch (error: any) {
+       showMessage(error.response?.data?.error || 'Erreur lors de la mise à jour', 'error');
+     } finally {
+       setSaving(false);
+     }
+   };
 
   const handleSaveCompanyInfo = async () => {
     try {
@@ -378,7 +372,7 @@ const SettingsPage: React.FC = () => {
   const [platformName, setPlatformName] = React.useState<string>(userAny?.platform_name ?? '');
   const [supportEmail, setSupportEmail] = React.useState<string>(userAny?.support_email ?? '');
   const [commissionPercent, setCommissionPercent] = React.useState<string>(userAny?.commission_percent ?? '');
-  const [adminDefaultCurrency, setAdminDefaultCurrency] = React.useState<string>(userAny?.preferred_currency ?? 'TND');
+  const [adminDefaultCurrency, setAdminDefaultCurrency] = React.useState<string>('TND');
 
   // Social Links
   const [facebook, setFacebook] = React.useState<string>(organizerProfile?.facebook ?? '');
@@ -583,37 +577,23 @@ const SettingsPage: React.FC = () => {
                             }}
                           />
                         </Grid>
-                        <Grid item xs={12} md={6}>
-                          <FormControl fullWidth size="small">
-                            <InputLabel>Pays</InputLabel>
-                            <StyledSelect
-                              value={country}
-                              label="Pays"
-                              onChange={(e) => setCountry(e.target.value as string)}
-                            >
-                              <MenuItem value="Tunisia">Tunisie</MenuItem>
-                              <MenuItem value="France">France</MenuItem>
-                              <MenuItem value="Germany">Allemagne</MenuItem>
-                              <MenuItem value="Canada">Canada</MenuItem>
-                              <MenuItem value="United States">États-Unis</MenuItem>
-                            </StyledSelect>
-                          </FormControl>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <FormControl fullWidth size="small">
-                            <InputLabel>Langue préférée</InputLabel>
-                            <StyledSelect
-                              value={preferredLanguage}
-                              label="Langue préférée"
-                              onChange={(e) => setPreferredLanguage(e.target.value as string)}
-                            >
-                              <MenuItem value="fr">Français</MenuItem>
-                              <MenuItem value="en">English</MenuItem>
-                              <MenuItem value="ar">العربية</MenuItem>
-                            </StyledSelect>
-                          </FormControl>
-                        </Grid>
-                        <Grid item xs={12}>
+<Grid item xs={12} md={6}>
+                           <FormControl fullWidth size="small">
+                             <InputLabel>Pays</InputLabel>
+                             <StyledSelect
+                               value={country}
+                               label="Pays"
+                               onChange={(e) => setCountry(e.target.value as string)}
+                             >
+                               <MenuItem value="Tunisia">Tunisie</MenuItem>
+                               <MenuItem value="France">France</MenuItem>
+                               <MenuItem value="Germany">Allemagne</MenuItem>
+                               <MenuItem value="Canada">Canada</MenuItem>
+                               <MenuItem value="United States">États-Unis</MenuItem>
+                             </StyledSelect>
+                           </FormControl>
+                         </Grid>
+                         <Grid item xs={12}>
                           <Stack direction="row" spacing={2} alignItems="center">
                             <Avatar
                               src={headerAvatarSrc ? headerAvatarSrc : undefined}

@@ -218,27 +218,7 @@ const Login: React.FC = () => {
       <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 2 }}>
         <Zoom in timeout={800}>
           <Box>
-            {/* Logo/Brand */}
-            <Box sx={{ textAlign: 'center', mb: 4 }}>
-              <Typography
-                variant="h2"
-                sx={{
-                  fontWeight: 800,
-                  background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.navy})`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  mb: 1,
-                  letterSpacing: '-0.02em',
-                  fontSize: { xs: '2.5rem', md: '3rem' },
-                }}
-              >
-                TripBooking
-              </Typography>
-              <Typography variant="body1" sx={{ color: alpha(COLORS.navy, 0.6) }}>
-                Votre aventure commence ici
-              </Typography>
-            </Box>
-
+           
             <Fade in timeout={1000}>
               <StyledPaper elevation={0}>
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -334,33 +314,8 @@ const Login: React.FC = () => {
                     mt: 2,
                     mb: 3
                   }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox 
-                          checked={rememberMe}
-                          onChange={(e) => setRememberMe(e.target.checked)}
-                          sx={{
-                            color: alpha(COLORS.navy, 0.4),
-                            '&.Mui-checked': { color: COLORS.teal },
-                          }}
-                        />
-                      }
-                      label={<Typography sx={{ fontSize: '0.85rem', color: alpha(COLORS.navy, 0.7) }}>Se souvenir de moi</Typography>}
-                    />
-                    <Link 
-                      to="/forgot-password" 
-                      style={{ 
-                        textDecoration: 'none', 
-                        color: COLORS.teal,
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        transition: 'color 0.3s ease',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = COLORS.navy}
-                      onMouseLeave={(e) => e.currentTarget.style.color = COLORS.teal}
-                    >
-                      Mot de passe oublié ?
-                    </Link>
+                   
+                    
                   </Box>
 
                   <GradientButton
@@ -407,7 +362,6 @@ const Login: React.FC = () => {
               align="center" 
               sx={{ mt: 3, color: alpha(COLORS.navy, 0.5), fontSize: '0.75rem' }}
             >
-              En vous connectant, vous acceptez nos conditions d'utilisation
             </Typography>
           </Box>
         </Zoom>

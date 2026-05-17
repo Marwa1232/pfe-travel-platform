@@ -22,8 +22,7 @@ interface Activity {
   title: string;
   description: string;
   image: string;
-  duration: string;
-  difficulty?: string;
+  
   location: string;
 }
 
@@ -56,25 +55,19 @@ const TYPES: TravelType[] = [
       {
         title: 'Traversée du Haut-Atlas',
         description: "Marrakech → Imlil → Toubkal (4 167 m) — gravissez le toit de l'Afrique du Nord avec des guides berbères. Villages d'amandiers en fleurs et panoramas jusqu'au Sahara.",
-        image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80',
-        duration: '8 jours',
-        difficulty: 'Difficile',
+        image: 'https://i.pinimg.com/736x/7a/41/6f/7a416f36cd504b0b29d03aea4adb84ff.jpg',
         location: 'Maroc',
       },
       {
         title: 'Gorges de Todgha & Dadès',
         description: "Escalade et randonnée dans les gorges les plus spectaculaires du Maroc. Les parois de 300 mètres encadrent un chemin en surplomb au-dessus de la rivière.",
-        image: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80',
-        duration: '5 jours',
-        difficulty: 'Modéré',
+        image: 'https://i.pinimg.com/736x/56/55/91/565591c8d58fbc5b6a0a5822215a70a7.jpg',
         location: 'Maroc',
       },
       {
         title: 'Jebel Chaambi & Tinja',
         description: "Le point culminant de la Tunisie (1 544 m) offre des randonnées dans une forêt de pins et de chênes liège. Bivouacs sous les étoiles de la dorsale tunisienne.",
         image: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80',
-        duration: '4 jours',
-        difficulty: 'Modéré',
         location: 'Tunisie',
       },
     ],
@@ -96,22 +89,21 @@ const TYPES: TravelType[] = [
       {
         title: 'Carthage & Tunis Antique',
         description: "Musée du Bardo (plus grande collection de mosaïques romaines au monde), site de Carthage, Utique, Dougga — parcourez 3 000 ans d'histoire avec un archéologue.",
-        image: 'https://images.unsplash.com/photo-1545167622-3a6ac756afa4?w=800&q=80',
-        duration: '6 jours',
+        image: 'https://i.pinimg.com/736x/05/73/0e/05730e81012737f248a4cb2812fc026b.jpg',
+       
         location: 'Tunisie',
       },
       {
         title: 'Médinas du Maroc',
         description: "Fès el-Bali (XIe siècle), Chefchaouen la bleue, Meknès impériale — les médinas marocaines sont des villes-musées vivantes où l'artisanat médiéval perdure.",
-        image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&q=80',
-        duration: '9 jours',
+        image: 'https://i.pinimg.com/1200x/3e/94/19/3e94199827d1717a12f4f5bd084cd035.jpg',
+       
         location: 'Maroc',
       },
       {
         title: 'Tassili n\'Ajjer & Hoggar',
         description: "Le plateau du Tassili abrite plus de 15 000 peintures rupestres néolithiques — l'un des plus grands musées à ciel ouvert de l'humanité. Patrimoine UNESCO en plein désert.",
-        image: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=800&q=80',
-        duration: '10 jours',
+        image: 'https://i.pinimg.com/736x/97/cd/95/97cd95dcf0f0625f9d5b45a5f303f3a1.jpg',
         location: 'Algérie',
       },
     ],
@@ -134,21 +126,18 @@ const TYPES: TravelType[] = [
         title: 'Hammamet & Cap Bon',
         description: "Médina blanche et bleue, plages de sable fin, jasmin en fleurs — Hammamet est la perle balnéaire de la Tunisie. Le Cap Bon révèle des calanques sauvages hors des sentiers.",
         image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&q=80',
-        duration: '7 jours',
         location: 'Tunisie',
       },
       {
         title: 'Dakhla Kitesurf & Lagune',
         description: "Le lagon de Dakhla est considéré comme l'un des 5 meilleurs spots de kitesurf au monde. Eau plate, vent régulier, dunes de sable juste derrière — un rêve pour riders et novices.",
-        image: 'https://images.unsplash.com/photo-1484821582734-6c6a23238047?w=800&q=80',
-        duration: '8 jours',
+        image: 'https://i.pinimg.com/736x/e4/7b/6a/e47b6a292c3e7d150eeca67225f9b5bf.jpg',
         location: 'Maroc',
       },
       {
         title: 'Côte d\'Azur Algéroise',
         description: "Les plages de Tipaza, Zéralda et les calanques de la Corniche d'Alger offrent une Méditerranée préservée. Ruines romaines les pieds dans l'eau à Tipaza.",
         image: 'https://images.unsplash.com/photo-1533587851505-d119e13fa0d7?w=800&q=80',
-        duration: '6 jours',
         location: 'Algérie',
       },
     ],
@@ -160,7 +149,7 @@ const TYPES: TravelType[] = [
     label: 'Désert & Safari',
     icon: <WbSunny />,
     accent: '#D97706',
-    heroImage: 'https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=1400&q=80',
+    heroImage: 'https://i.pinimg.com/1200x/1d/77/3a/1d773a48fff8b9ad4e324297786bc43d.jpg',
     tagline: 'Le Grand Erg, les ksour et les nuits sous les étoiles sahariennes',
     description: [
       "Le Sahara représente plus d'un tiers de l'Afrique du Nord. Ses ergs monumentaux — Grand Erg Oriental, Grand Erg Occidental, Erg Chebbi — sont parmi les paysages les plus saisissants de la planète.",
@@ -170,25 +159,19 @@ const TYPES: TravelType[] = [
       {
         title: 'Erg Chebbi & Merzouga',
         description: "Les dunes de Merzouga atteignent 150 mètres. Traversée à dos de dromadaire au coucher du soleil, bivouac nomade sous les étoiles, réveil au lever du soleil sur les crêtes dorées.",
-        image: 'https://images.unsplash.com/photo-1489493887464-892be6d1daae?w=800&q=80',
-        duration: '5 jours',
-        difficulty: 'Facile',
+        image: 'https://i.pinimg.com/736x/fa/ee/f5/faeef58bf35661d1baf3f0cb17bddbf2.jpg',
         location: 'Maroc',
       },
       {
         title: 'Ksour du Sud Tunisien',
         description: "Matmata (villages troglodytes), Ksar Hadada, Douiret, Chenini — les ksour berbères accrochés aux falaises du Dahar sont les décors naturels de Star Wars. Un autre monde.",
-        image: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=800&q=80',
-        duration: '6 jours',
-        difficulty: 'Facile',
+        image: 'https://i.pinimg.com/1200x/d0/ee/a6/d0eea6bab4b09b1797b17d48bae28432.jpg',
         location: 'Tunisie',
       },
       {
         title: 'Tassili & Grand Erg Oriental',
         description: "L'Erg de l'Issaouane et le plateau du Tassili en 4x4 avec des guides touaregs. Dunes, roches sculptées par le vent, sources d'eau dans le désert — le Sahara profond.",
-        image: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80',
-        duration: '12 jours',
-        difficulty: 'Modéré',
+        image: 'https://i.pinimg.com/736x/a5/02/9a/a5029a21754784022ba39f1ecdf87e29.jpg',
         location: 'Algérie',
       },
     ],
@@ -200,7 +183,7 @@ const TYPES: TravelType[] = [
     label: 'Gastronomie',
     icon: <Restaurant />,
     accent: '#DC2626',
-    heroImage: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1400&q=80',
+    heroImage: 'https://i.pinimg.com/1200x/7e/d8/20/7ed820e5c480f310ca0096fbcb13ea85.jpg',
     tagline: 'Tajine, couscous, brik, harissa — la cuisine du Maghreb dévoile ses secrets',
     description: [
       "La gastronomie nord-africaine est l'une des plus riches et des plus complexes du monde méditerranéen. Épices d'Orient, herbes du Maghreb, influences andalouses et berbères se mêlent dans des recettes millénaires.",
@@ -210,22 +193,19 @@ const TYPES: TravelType[] = [
       {
         title: 'Saveurs de Tunis & Bizerte',
         description: "Marché Central de Tunis, Médina, lablabi matinal au souk, brik à l'œuf, makroud de Kairouan — un tour culinaire de la Tunisie avec une cheffe tunisoise passionnée.",
-        image: 'https://images.unsplash.com/photo-1534482421-64566f976cfa?w=800&q=80',
-        duration: '5 jours',
+        image: 'https://i.pinimg.com/1200x/d1/3b/1f/d13b1f30eea93636fc4e233ee9e8a637.jpg',
         location: 'Tunisie',
       },
       {
         title: 'Route des Épices de Marrakech',
         description: "Djemaa el-Fna, souk des épices, Mellah juif, riad privé — apprenez le tajine d'agneau aux pruneaux et la pastilla au pigeon avec un maître cuisinier fassi.",
-        image: 'https://images.unsplash.com/photo-1539020140153-e479b8c22e70?w=800&q=80',
-        duration: '6 jours',
+        image: 'https://i.pinimg.com/1200x/eb/5b/cc/eb5bcc7b24d1ba15e5c19b6fa34a0e6e.jpg',
         location: 'Maroc',
       },
       {
         title: 'Terroir Algérien & Vins de Médéa',
         description: "La région de Médéa et Mascara produit certains des meilleurs vins d'Afrique du Nord. Visite de domaines, dégustation de chorba et de méchoui, secrets de la cuisine kabyle.",
-        image: 'https://images.unsplash.com/photo-1504279577054-acfeccf8fc52?w=800&q=80',
-        duration: '7 jours',
+        image: 'https://i.pinimg.com/736x/e5/ef/4e/e5ef4e3978be109f1ff717a28545721f.jpg',
         location: 'Algérie',
       },
     ],
@@ -248,21 +228,18 @@ const TYPES: TravelType[] = [
         title: 'Thalasso de Hammamet',
         description: "Les instituts thalassothérapiques de Hammamet utilisent les eaux de la Méditerranée et les boues marines pour des soins réputés dans tout le monde arabe. Cure de 5 jours revitalisante.",
         image: 'https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?w=800&q=80',
-        duration: '6 jours',
         location: 'Tunisie',
       },
       {
         title: 'Riads Spa de Marrakech',
         description: "Hammam à la vapeur de menthe, massage à l'huile d'argan, gommage au savon beldi, masque à la ghassoul — les riads-spas de la médina de Marrakech sont un luxe discret et enveloppant.",
-        image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&q=80',
-        duration: '5 jours',
+        image: 'https://i.pinimg.com/736x/0f/d9/bd/0fd9bdaf94f0c4feb34c5398940cce51.jpg',
         location: 'Maroc',
       },
       {
         title: 'Silence & Détox Saharienne',
         description: "Une retraite de silence dans une oasis du Sud tunisien ou marocain. Yoga au lever du soleil face aux dunes, jeûne intermittent, bains de sable chaud — une remise à zéro totale.",
-        image: 'https://images.unsplash.com/photo-1531168486860-3fe0c30a6124?w=800&q=80',
-        duration: '7 jours',
+        image: 'https://i.pinimg.com/736x/1c/a3/0f/1ca30f4e03debaf690c1102c98291794.jpg',
         location: 'Tunisie / Maroc',
       },
     ],
@@ -519,29 +496,7 @@ const TravelTypesArticle: React.FC = () => {
                           {act.location}
                         </Typography>
                       </Box>
-                      {/* Duration */}
-                      <Box sx={{
-                        position: 'absolute', top: 10, right: 10,
-                        px: 1.5, py: 0.4, borderRadius: 20,
-                        bgcolor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
-                      }}>
-                        <Typography sx={{ fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: 'sans-serif' }}>
-                          {act.duration}
-                        </Typography>
-                      </Box>
-                      {/* Difficulty */}
-                      {act.difficulty && (
-                        <Box sx={{
-                          position: 'absolute', bottom: 10, right: 10,
-                          px: 1.5, py: 0.4, borderRadius: 20,
-                          bgcolor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(6px)',
-                          border: '1px solid rgba(255,255,255,0.3)',
-                        }}>
-                          <Typography sx={{ fontSize: 11, fontWeight: 600, color: '#fff', fontFamily: 'sans-serif' }}>
-                            {act.difficulty}
-                          </Typography>
-                        </Box>
-                      )}
+                      
                     </Box>
 
                     {/* Body */}

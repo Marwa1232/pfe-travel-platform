@@ -49,6 +49,14 @@ class Review
     #[Groups(['review:read'])]
     private ?\DateTimeImmutable $responseDate = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    #[Groups(['review:read'])]
+    private bool $flagged = false;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    #[Groups(['review:read'])]
+    private ?string $flagReason = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -144,6 +152,28 @@ class Review
     public function setResponseDate(?\DateTimeImmutable $responseDate): static
     {
         $this->responseDate = $responseDate;
+        return $this;
+    }
+
+    public function isFlagged(): bool
+    {
+        return $this->flagged;
+    }
+
+    public function setFlagged(bool $flagged): static
+    {
+        $this->flagged = $flagged;
+        return $this;
+    }
+
+    public function getFlagReason(): ?string
+    {
+        return $this->flagReason;
+    }
+
+    public function setFlagReason(?string $flagReason): static
+    {
+        $this->flagReason = $flagReason;
         return $this;
     }
 }

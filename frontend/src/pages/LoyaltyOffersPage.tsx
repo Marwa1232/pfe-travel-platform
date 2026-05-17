@@ -76,7 +76,7 @@ interface GroupedOffers {
   agency_name: string;
   available: number;
   offers: any[];
-}
+};
 
 const LoyaltyOffersPage: React.FC = () => {
   const navigate                    = useNavigate();
@@ -90,25 +90,37 @@ const LoyaltyOffersPage: React.FC = () => {
   const [error, setError]           = useState<string | null>(null);
 
   useEffect(() => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    // ✅ FIX 1 — Set token in localStorage AVANT d'appeler loadData
+    // sinon l'axios interceptor yji request sans Authorization header → 401
+    localStorage.setItem('token', token);
     loadData();
   }, [token, tripId]);
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const oRes = await loyaltyAPI.getOffers(tripId ?? undefined);
       setOffers(oRes.data.offers || []);
 
-      if (token) {
-        const pRes = await loyaltyAPI.getPoints();
-        setPoints(pRes.data);
-      }
+      const pRes = await loyaltyAPI.getPoints();
+      setPoints(pRes.data);
     } catch (e: any) {
       setError('Impossible de charger les offres');
     } finally {
       setLoading(false);
     }
   };
+
+  // ✅ FIX 2 — Calculer les points DISPONIBLES (somme de by_organizer[].available)
+  // et non total_earned (qui inclut les points déjà utilisés)
+  const totalAvailable = (points?.by_organizer || []).reduce(
+    (sum: number, o: any) => sum + (o.available || 0), 0
+  );
 
   const level = points ? getPointsLevel(points.total_earned || 0) : null;
 
@@ -138,8 +150,6 @@ const LoyaltyOffersPage: React.FC = () => {
   }, []);
 
   const mergedOffers = groupedOffers.flatMap((g) => g.offers);
-  const usableOffers = mergedOffers.filter((o: any) => o.can_use);
-  const lockedOffers = mergedOffers.filter((o: any) => !o.can_use);
 
   if (loading) return (
     <Page sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -169,14 +179,13 @@ const LoyaltyOffersPage: React.FC = () => {
             <Typography sx={{ fontSize: 16, color: alpha(COLORS.navy, 0.6), maxWidth: 520, mx: 'auto' }}>
               {tripId
                 ? 'Offres de l\'organisateur de ce voyage'
-                : 'Utilisez vos points pour débloquer des réductions exclusives sur vos prochains voyages'
-              }
+                : 'Utilisez vos points pour débloquer des réductions exclusives sur vos prochains voyages'}
             </Typography>
           </Box>
         </Fade>
 
         {/* ── Carte points utilisateur ── */}
-        {token && points ? (
+        {points ? (
           <Fade in timeout={600}>
             <Card sx={{
               mb: 5, borderRadius: 2, border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
@@ -192,8 +201,9 @@ const LoyaltyOffersPage: React.FC = () => {
                     <Typography sx={{ fontSize: 13, color: alpha(COLORS.white, 0.7), mb: 0.5 }}>
                       Vos points disponibles
                     </Typography>
+                    {/* ✅ FIX 2 — Afficher totalAvailable (pts non utilisés) et non total_earned */}
                     <Typography sx={{ fontSize: 48, fontWeight: 800, color: COLORS.white, lineHeight: 1 }}>
-                      {points.total_earned || 0}
+                      {totalAvailable}
                       <Typography component="span" sx={{ fontSize: 16, fontWeight: 500, color: alpha(COLORS.white, 0.7), ml: 1 }}>
                         pts
                       </Typography>
@@ -277,25 +287,6 @@ const LoyaltyOffersPage: React.FC = () => {
                 )}
               </Box>
             </Card>
-          </Fade>
-        ) : !token ? (
-          <Fade in>
-            <Alert
-              severity="info"
-              sx={{
-                mb: 4, borderRadius: 2,
-                bgcolor: alpha(COLORS.teal, 0.05),
-                color: COLORS.navy,
-                '& .MuiAlert-icon': { color: COLORS.teal },
-              }}
-              action={
-                <GradientButton size="small" onClick={() => navigate('/login')}>
-                  Se connecter
-                </GradientButton>
-              }
-            >
-              Connectez-vous pour voir vos points et utiliser les offres
-            </Alert>
           </Fade>
         ) : null}
 
@@ -414,7 +405,7 @@ const LoyaltyOffersPage: React.FC = () => {
                       .filter((o: any) => !o.can_use)
                       .map((offer: any, idx: number) => {
                         const missing = offer.points_required - group.available;
-                        const prog = token ? Math.min((group.available / offer.points_required) * 100, 100) : 0;
+                        const prog = Math.min((group.available / offer.points_required) * 100, 100);
                         return (
                           <Grid item xs={12} sm={6} md={4} key={offer.id}>
                             <Zoom in timeout={800 + idx * 100}>
@@ -470,23 +461,21 @@ const LoyaltyOffersPage: React.FC = () => {
                                     </Typography>
                                   </Box>
 
-                                  {token && (
-                                    <Box>
-                                      <LinearProgress
-                                        variant="determinate"
-                                        value={prog}
-                                        sx={{
-                                          height: 6,
-                                          borderRadius: 3,
-                                          bgcolor: alpha(COLORS.navy, 0.08),
-                                          '& .MuiLinearProgress-bar': { bgcolor: COLORS.amber, borderRadius: 3 },
-                                        }}
-                                      />
-                                      <Typography sx={{ fontSize: 10, color: alpha(COLORS.navy, 0.5), mt: 0.5 }}>
-                                        {group.available} / {offer.points_required} pts
-                                      </Typography>
-                                    </Box>
-                                  )}
+                                  <Box>
+                                    <LinearProgress
+                                      variant="determinate"
+                                      value={prog}
+                                      sx={{
+                                        height: 6,
+                                        borderRadius: 3,
+                                        bgcolor: alpha(COLORS.navy, 0.08),
+                                        '& .MuiLinearProgress-bar': { bgcolor: COLORS.amber, borderRadius: 3 },
+                                      }}
+                                    />
+                                    <Typography sx={{ fontSize: 10, color: alpha(COLORS.navy, 0.5), mt: 0.5 }}>
+                                      {group.available} / {offer.points_required} pts
+                                    </Typography>
+                                  </Box>
 
                                   {offer.expires_at && (
                                     <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.5), mt: 1 }}>

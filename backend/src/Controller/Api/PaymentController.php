@@ -144,7 +144,6 @@ $metadata = [
              'metadata'                  => $metadata,
          ]);
 
-        // Créer ou mettre à jour le Payment en base
         $payment = $this->paymentRepo->findOneBy(['booking' => $booking]) ?? new Payment();
         $payment->setBooking($booking);
         $payment->setStripePaymentIntentId($intent->id);
@@ -166,11 +165,7 @@ $metadata = [
         ]);
     }
 
-    // ════════════════════════════════════════════════════════
-    //  2. Confirmer côté backend après succès Stripe frontend
-    //     POST /api/payments/confirm
-    //     body: { payment_intent_id, offer_id? }
-    // ════════════════════════════════════════════════════════
+   
     #[Route('/confirm', methods: ['POST'])]
     public function confirm(Request $request): JsonResponse
     {
@@ -248,20 +243,24 @@ $metadata = [
             }
         }
 
-        // ── 7. Points fidélité gagnés ──
+        
         $pointsEarned = 0;
-        try {
-            $pointsEarned = $this->loyaltyService->earnPoints($user, $booking);
-            if ($pointsEarned > 0) {
-                $this->notificationService->create(
-                    $user,
-                    'Points fidélité gagnés ',
-                    sprintf('Vous avez gagné %d points pour "%s".', $pointsEarned, $booking->getTrip()?->getTitle()),
-                    'loyalty'
-                );
+        if (!$offerId) {
+            try {
+                $pointsEarned = $this->loyaltyService->earnPoints($user, $booking);
+                if ($pointsEarned > 0) {
+                    $this->notificationService->create(
+                        $user,
+                        'Points fidélité gagnés ',
+                        sprintf('Vous avez gagné %d points pour "%s".', $pointsEarned, $booking->getTrip()?->getTitle()),
+                        'loyalty'
+                    );
+                }
+            } catch (\Throwable $e) {
+                error_log('[Confirm] earnPoints error: ' . $e->getMessage());
             }
-        } catch (\Throwable $e) {
-            error_log('[Confirm] earnPoints error: ' . $e->getMessage());
+        } else {
+            error_log('[Confirm] Offre utilisée — points non accordés pour booking #' . $booking->getId());
         }
 
         $this->notificationService->notifyBookingConfirmed($booking);
@@ -433,13 +432,17 @@ $metadata = [
             } catch (\Exception $e) { error_log('[Webhook] Redeem failed: ' . $e->getMessage()); }
         }
 
-        try {
-            $points = $this->loyaltyService->earnPoints($user, $booking);
-            if ($points > 0) {
-                $this->notificationService->create($user, 'Points fidélité gagnés 🎯',
-                    sprintf('Vous avez gagné %d points pour "%s".', $points, $booking->getTrip()?->getTitle()), 'loyalty');
-            }
-        } catch (\Throwable $e) { error_log('[Webhook] earnPoints error: ' . $e->getMessage()); }
+        if (!$offerId) {
+            try {
+                $points = $this->loyaltyService->earnPoints($user, $booking);
+                if ($points > 0) {
+                    $this->notificationService->create($user, 'Points fidélité gagnés ',
+                        sprintf('Vous avez gagné %d points pour "%s".', $points, $booking->getTrip()?->getTitle()), 'loyalty');
+                }
+            } catch (\Throwable $e) { error_log('[Webhook] earnPoints error: ' . $e->getMessage()); }
+        } else {
+            error_log('[Webhook] Offre utilisée — points non accordés pour booking #' . $booking->getId());
+        }
 
         error_log('[Webhook] Payment succeeded DONE: ' . $intent->id);
     }

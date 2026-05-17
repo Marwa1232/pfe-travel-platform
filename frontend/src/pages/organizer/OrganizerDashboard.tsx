@@ -22,20 +22,22 @@ import {
 import Grid from '@mui/material/Unstable_Grid2';
 import { styled, alpha } from '@mui/material/styles';
 import {
-  FlightTakeoff,
-  People,
-  AttachMoney,
-  Add,
-  CalendarMonth,
-  Receipt,
-  Star,
-  ArrowForward,
-  HourglassEmpty,
-  TrendingUp,
-  TrendingDown,
-  EmojiEvents,
-  LocalOffer,
-  Delete,
+   FlightTakeoff,
+   People,
+   AttachMoney,
+   Add,
+   CalendarMonth,
+   Receipt,
+   Star,
+   ArrowForward,
+   HourglassEmpty,
+   TrendingUp,
+   TrendingDown,
+   EmojiEvents,
+   LocalOffer,
+   Delete,
+   Schedule,
+   RestartAlt,
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -52,15 +54,16 @@ import {
   Pie,
 } from 'recharts';
 import { RootState } from '../../store';
-import api, { organizerAPI } from '../../services/api';
+import api, { organizerAPI, loyaltyAPI } from '../../services/api';
 
 // ─── 4 COULEURS UNIQUEMENT ──────────────────────────────────────
 const COLORS = {
-  teal: '#0EA5A0',
-  navy: '#0F2D5C',
-  amber: '#D97706',
-  white: '#FFFFFF',
-};
+   teal: '#0EA5A0',
+   navy: '#0F2D5C',
+   amber: '#D97706',
+   white: '#FFFFFF',
+   red: '#DC2626',
+ };
 
 // ─── Styled ─────────────────────────────────────────────────────
 const Page = styled(Box)({
@@ -227,13 +230,21 @@ const OrganizerDashboard: React.FC = () => {
   const [loyaltyOffers, setLoyaltyOffers]   = useState<any[]>([]);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   const [offerSuccess, setOfferSuccess]     = useState<string | null>(null);
-  const [offerError, setOfferError]         = useState<string | null>(null);
-  const [newOffer, setNewOffer] = useState({
+const [offerError, setOfferError]         = useState<string | null>(null);
+  const [newOffer, setNewOffer] = useState<{
+    title: string;
+    description: string;
+    discount_type: 'percentage_discount' | 'fixed_discount';
+    discount_value: string;
+    points_required: string;
+    expires_at: string;
+  }>({
     title:           '',
     description:     '',
     discount_type:   'percentage_discount',
     discount_value:  '10',
     points_required: '100',
+    expires_at:      '',
   });
 
   useEffect(() => {
@@ -271,53 +282,56 @@ const OrganizerDashboard: React.FC = () => {
     }
   };
 
-  const loadLoyaltyOffers = async () => {
+const loadLoyaltyOffers = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/loyalty/offers', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const d = await res.json();
-        setLoyaltyOffers(d.offers || []);
-      }
+      const res = await loyaltyAPI.getOffers(undefined, true);
+      if (res.data) setLoyaltyOffers(res.data.offers || []);
     } catch (_) {}
   };
 
-  const handleCreateOffer = async () => {
-    if (!newOffer.title.trim()) {
-      setOfferError('Le titre est requis');
-      return;
-    }
-    setLoyaltyLoading(true);
-    setOfferError(null);
-    setOfferSuccess(null);
-    try {
-      const res = await fetch('http://localhost:8000/api/loyalty/offers', {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body:    JSON.stringify(newOffer),
-      });
-      if (!res.ok) throw new Error('Erreur création offre');
-      setOfferSuccess('Offre créée avec succès !');
-      setNewOffer({ title: '', description: '', discount_type: 'percentage_discount',
-        discount_value: '10', points_required: '100' });
-      await loadLoyaltyOffers();
-    } catch (e: any) {
-      setOfferError(e.message || 'Erreur lors de la création');
-    } finally {
-      setLoyaltyLoading(false);
-    }
-  };
+const handleCreateOffer = async () => {
+     if (!newOffer.title.trim()) {
+       setOfferError('Le titre est requis');
+       return;
+     }
+     setLoyaltyLoading(true);
+     setOfferError(null);
+     setOfferSuccess(null);
+     try {
+       await loyaltyAPI.createOffer(newOffer);
+       setOfferSuccess('Offre créée avec succès !');
+       setNewOffer({ title: '', description: '', discount_type: 'percentage_discount',
+         discount_value: '10', points_required: '100', expires_at: '' });
+       await loadLoyaltyOffers();
+     } catch (e: any) {
+       setOfferError(e.message || 'Erreur lors de la création');
+     } finally {
+       setLoyaltyLoading(false);
+     }
+   };
 
-  const handleDeleteOffer = async (id: number) => {
-    try {
-      await fetch(`http://localhost:8000/api/loyalty/offers/${id}`, {
-        method:  'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await loadLoyaltyOffers();
-    } catch (_) {}
-  };
+const handleDeleteOffer = async (id: number) => {
+     if (!window.confirm('Désactiver cette offre ?')) return;
+     try {
+       await loyaltyAPI.deleteOffer(id);
+       await loadLoyaltyOffers();
+     } catch (_) {}
+   };
+
+   const handleDeleteOfferPermanently = async (id: number) => {
+     if (!window.confirm('Supprimer définitivement cette offre ? Cette action est irréversible.')) return;
+     try {
+       await api.delete(`/loyalty/offers/${id}/delete`);
+       await loadLoyaltyOffers();
+     } catch (_) {}
+   };
+
+const handleActivateOffer = async (id: number) => {
+     try {
+       await loyaltyAPI.activateOffer(id);
+       await loadLoyaltyOffers();
+     } catch (_) {}
+   };
 
   if (loading) {
     return (
@@ -621,7 +635,7 @@ const OrganizerDashboard: React.FC = () => {
                         </Typography>
                         <StyledSelect
                           value={newOffer.discount_type}
-                          onChange={e => setNewOffer(p => ({ ...p, discount_type: e.target.value }))}
+                          onChange={e => setNewOffer(p => ({ ...p, discount_type: e.target.value as 'percentage_discount' | 'fixed_discount' }))}
                         >
                           <option value="percentage_discount">Réduction en pourcentage (%)</option>
                           <option value="fixed_discount">Réduction fixe (EUR)</option>
@@ -644,17 +658,28 @@ const OrganizerDashboard: React.FC = () => {
                         </Box>
                         <Box>
                           <Typography sx={{ fontSize: 11, fontWeight: 600, color: alpha(COLORS.navy, 0.6), mb: 0.5 }}>
-                            Points requis
-                          </Typography>
-                          <StyledInput
-                            type="number"
-                            placeholder="Ex: 100"
-                            value={newOffer.points_required}
-                            onChange={e => setNewOffer(p => ({ ...p, points_required: e.target.value }))}
-                            min="1"
-                          />
-                        </Box>
-                      </Box>
+Points requis
+                           </Typography>
+                           <StyledInput
+                             type="number"
+                             placeholder="Ex: 100"
+                             value={newOffer.points_required}
+                             onChange={e => setNewOffer(p => ({ ...p, points_required: e.target.value }))}
+                             min="1"
+                           />
+                         </Box>
+
+                         <Box>
+                           <Typography sx={{ fontSize: 11, fontWeight: 600, color: alpha(COLORS.navy, 0.6), mb: 0.5 }}>
+                             Date de fin (optionnel)
+                           </Typography>
+                           <StyledInput
+                             type="date"
+                             value={newOffer.expires_at}
+                             onChange={e => setNewOffer(p => ({ ...p, expires_at: e.target.value }))}
+                           />
+                         </Box>
+                       </Box>
 
                       {/* Aperçu */}
                       {newOffer.title && (
@@ -711,266 +736,186 @@ const OrganizerDashboard: React.FC = () => {
                       display: 'flex', alignItems: 'center', gap: 1
                     }}>
                       <EmojiEvents sx={{ fontSize: 16, color: COLORS.amber }} />
-                      Offres actives
-                    </Typography>
+offres actives
+                     </Typography>
 
-                    {loyaltyOffers.length === 0 ? (
-                      <Box sx={{
-                        textAlign: 'center', py: 6, px: 2,
-                        border: `2px dashed ${alpha(COLORS.teal, 0.2)}`,
-                        borderRadius: 3
-                      }}>
-                        <EmojiEvents sx={{ fontSize: 40, color: alpha(COLORS.teal, 0.3), mb: 1.5 }} />
-                        <Typography sx={{ fontSize: 14, fontWeight: 600, color: COLORS.navy, mb: 0.5 }}>
-                          Aucune offre créée
-                        </Typography>
-                        <Typography sx={{ fontSize: 12, color: alpha(COLORS.navy, 0.6) }}>
-                          Créez votre première offre fidélité pour récompenser vos clients
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        {loyaltyOffers.map((offer: any) => (
-                          <Box key={offer.id} sx={{
-                            p: 2, borderRadius: 2,
-                            border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
-                            display: 'flex', justifyContent: 'space-between',
-                            alignItems: 'flex-start', gap: 2,
-                            transition: 'border-color 0.15s',
-                            '&:hover': { borderColor: alpha(COLORS.amber, 0.5) },
-                          }}>
-                            <Box sx={{ flex: 1 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <Typography sx={{ fontSize: 13, fontWeight: 700, color: COLORS.navy }}>
-                                  {offer.title}
-                                </Typography>
-                                <Chip
-                                  label={offer.discount_type === 'percentage_discount'
-                                    ? `-${offer.discount_value}%`
-                                    : `-${offer.discount_value}€`}
-                                  size="small"
-                                  sx={{
-                                    height: 20,
-                                    fontSize: 10,
-                                    fontWeight: 800,
-                                    bgcolor: alpha(COLORS.amber, 0.1),
-                                    color: COLORS.amber,
-                                  }}
-                                />
-                              </Box>
-                              {offer.description && (
-                                <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.6), mb: 0.5 }}>
-                                  {offer.description}
-                                </Typography>
-                              )}
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <EmojiEvents sx={{ fontSize: 13, color: COLORS.amber }} />
-                                  <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.amber }}>
-                                    {offer.points_required} points requis
-                                  </Typography>
-                                </Box>
-                              </Box>
-                            </Box>
+                     {/* Offres actives */}
+                     {loyaltyOffers.filter((o: any) => o.is_active).length === 0 && loyaltyOffers.filter((o: any) => !o.is_active).length === 0 ? (
+                       <Box sx={{
+                         textAlign: 'center', py: 6, px: 2,
+                         border: `2px dashed ${alpha(COLORS.teal, 0.2)}`,
+                         borderRadius: 3
+                       }}>
+                         <EmojiEvents sx={{ fontSize: 40, color: alpha(COLORS.teal, 0.3), mb: 1.5 }} />
+                         <Typography sx={{ fontSize: 14, fontWeight: 600, color: COLORS.navy, mb: 0.5 }}>
+                           Aucune offre créée
+                         </Typography>
+                         <Typography sx={{ fontSize: 12, color: alpha(COLORS.navy, 0.6) }}>
+                           Créez votre première offre fidélité pour récompenser vos clients
+                         </Typography>
+                       </Box>
+                     ) : (
+                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                         {loyaltyOffers
+                           .filter((o: any) => o.is_active)
+                           .map((offer: any) => (
+                             <Box key={offer.id} sx={{
+                               p: 2, borderRadius: 2,
+                               border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
+                               display: 'flex', justifyContent: 'space-between',
+                               alignItems: 'flex-start', gap: 2,
+                               transition: 'border-color 0.15s',
+                               '&:hover': { borderColor: alpha(COLORS.amber, 0.5) },
+                             }}>
+                               <Box sx={{ flex: 1 }}>
+                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                   <Typography sx={{ fontSize: 13, fontWeight: 700, color: COLORS.navy }}>
+                                     {offer.title}
+                                   </Typography>
+                                   <Chip
+                                     label={offer.discount_type === 'percentage_discount'
+                                       ? `-${offer.discount_value}%`
+                                       : `-${offer.discount_value}€`}
+                                     size="small"
+                                     sx={{
+                                       height: 20,
+                                       fontSize: 10,
+                                       fontWeight: 800,
+                                       bgcolor: alpha(COLORS.amber, 0.1),
+                                       color: COLORS.amber,
+                                     }}
+                                   />
+                                 </Box>
+                                 {offer.description && (
+                                   <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.6), mb: 0.5 }}>
+                                     {offer.description}
+                                   </Typography>
+                                 )}
+                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                     <EmojiEvents sx={{ fontSize: 13, color: COLORS.amber }} />
+                                     <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.amber }}>
+                                       {offer.points_required} points requis
+                                     </Typography>
+                                   </Box>
+                                   {offer.expires_at && (
+                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                                       <Schedule sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.4) }} />
+                                       <Typography sx={{ fontSize: 10, color: alpha(COLORS.navy, 0.5) }}>
+                                         Expire le {offer.expires_at}
+                                       </Typography>
+                                     </Box>
+                                   )}
+                                 </Box>
+                               </Box>
 
-                            <Button
-                              size="small"
-                              onClick={() => handleDeleteOffer(offer.id)}
-                              sx={{
-                                color: COLORS.amber,
-                                fontSize: 11,
-                                textTransform: 'none',
-                                minWidth: 0,
-                                p: '6px 10px',
-                                borderRadius: 1.5,
-                                border: `1px solid ${alpha(COLORS.amber, 0.2)}`,
-                                '&:hover': { bgcolor: alpha(COLORS.amber, 0.06), borderColor: COLORS.amber },
-                              }}
-                            >
-                              Désactiver
-                            </Button>
-                          </Box>
-                        ))}
-                      </Box>
-                    )}
+                               <Box sx={{ display: 'flex', gap: 1 }}>
+                                 <Button
+                                   size="small"
+                                   onClick={() => handleDeleteOffer(offer.id)}
+                                   sx={{
+                                     color: COLORS.amber,
+                                     fontSize: 11,
+                                     textTransform: 'none',
+                                     minWidth: 0,
+                                     p: '6px 10px',
+                                     borderRadius: 1.5,
+                                     border: `1px solid ${alpha(COLORS.amber, 0.2)}`,
+                                     '&:hover': { bgcolor: alpha(COLORS.amber, 0.06), borderColor: COLORS.amber },
+                                   }}
+                                 >
+                                   Désactiver
+                                 </Button>
+                                 <Button
+                                   size="small"
+                                   onClick={() => handleDeleteOfferPermanently(offer.id)}
+                                   sx={{
+                                     color: COLORS.red,
+                                     fontSize: 11,
+                                     textTransform: 'none',
+                                     minWidth: 0,
+                                     p: '6px 10px',
+                                     borderRadius: 1.5,
+                                     border: `1px solid ${alpha(COLORS.red, 0.2)}`,
+                                     '&:hover': { bgcolor: alpha(COLORS.red, 0.06), borderColor: COLORS.red },
+                                   }}
+                                 >
+                                   Supprimer
+                                 </Button>
+                               </Box>
+                             </Box>
+                           ))}
+                       </Box>
+                     )}
+
+                   {/* ── Offres désactivées ── */}
+                   {loyaltyOffers.filter((o: any) => !o.is_active).length > 0 && (
+                     <Box sx={{ mt: 3 }}>
+                       <Typography sx={{
+                         fontSize: 13, fontWeight: 700, color: alpha(COLORS.navy, 0.5), mb: 2,
+                         display: 'flex', alignItems: 'center', gap: 1
+                       }}>
+                         <RestartAlt sx={{ fontSize: 14, color: alpha(COLORS.navy, 0.4) }} />
+                         Offres désactivées ({loyaltyOffers.filter((o: any) => !o.is_active).length})
+                       </Typography>
+
+                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                         {loyaltyOffers
+                           .filter((o: any) => !o.is_active)
+                           .map((offer: any) => (
+                             <Box key={offer.id} sx={{
+                               p: 2, borderRadius: 2,
+                               border: `1px solid ${alpha(COLORS.navy, 0.1)}`,
+                               display: 'flex', justifyContent: 'space-between',
+                               alignItems: 'flex-start', gap: 2,
+                               opacity: 0.75,
+                               transition: 'all 0.2s ease',
+                               '&:hover': { opacity: 1 },
+                             }}>
+                               <Box sx={{ flex: 1 }}>
+                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                   <Typography sx={{ fontSize: 13, fontWeight: 600, color: alpha(COLORS.navy, 0.5), textDecoration: 'line-through' }}>
+                                     {offer.title}
+                                   </Typography>
+                                 </Box>
+                                 <Typography sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.4), mb: 0.5 }}>
+                                   {offer.description || '—'}
+                                 </Typography>
+                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                     <EmojiEvents sx={{ fontSize: 11, color: alpha(COLORS.navy, 0.3) }} />
+                                     <Typography sx={{ fontSize: 10, color: alpha(COLORS.navy, 0.4) }}>
+                                       {offer.points_required} pts requis
+                                     </Typography>
+                                   </Box>
+                                 </Box>
+                               </Box>
+
+                               <Button
+                                 size="small"
+                                 onClick={() => handleActivateOffer(offer.id)}
+                                 sx={{
+                                   color: COLORS.teal,
+                                   fontSize: 11,
+                                   textTransform: 'none',
+                                   minWidth: 0,
+                                   p: '6px 10px',
+                                   borderRadius: 1.5,
+                                   border: `1px solid ${alpha(COLORS.teal, 0.2)}`,
+                                   '&:hover': { bgcolor: alpha(COLORS.teal, 0.06), borderColor: COLORS.teal },
+                                 }}
+                               >
+                                 <RestartAlt sx={{ fontSize: 14, mr: 0.5 }} />
+                                 Activer
+                               </Button>
+                             </Box>
+                           ))}
+                       </Box>
+                     </Box>
+                   )}
 
                   </Box>
                 </Box>
-              </CardContent>
-            </SCard>
-          </Grid>
-        </Grid>
-
-        {/* ── Bottom row ───────────────────────────────────────── */}
-        <Grid container spacing={2}>
-
-          {/* Recent bookings table */}
-          <Grid xs={12} lg={7}>
-            <SCard>
-              <CardContent sx={{ p: '20px 24px !important' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-                  <Typography sx={{ fontSize: 15, fontWeight: 600, color: COLORS.navy }}>
-                    Réservations récentes
-                  </Typography>
-                  <Button size="small" endIcon={<ArrowForward sx={{ fontSize: 12 }} />}
-                    onClick={() => navigate('/organizer/bookings')}
-                    sx={{
-                      fontSize: 12, textTransform: 'none', color: COLORS.teal, fontWeight: 600,
-                      p: 0, minWidth: 0, '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' }
-                    }}>
-                    Voir tout
-                  </Button>
-                </Box>
-
-                {recentBookings.length === 0 ? (
-                  <Box sx={{ textAlign: 'center', py: 5 }}>
-                    <Receipt sx={{ fontSize: 36, color: alpha(COLORS.teal, 0.3), mb: 1 }} />
-                    <Typography sx={{ fontSize: 13, color: alpha(COLORS.navy, 0.6) }}>Aucune réservation récente</Typography>
-                  </Box>
-                ) : (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          {['Voyage', 'Client', 'Prix', 'Statut'].map(h => (
-                            <TableCell key={h} sx={{
-                              fontSize: 11, fontWeight: 700, color: alpha(COLORS.navy, 0.6),
-                              textTransform: 'uppercase', letterSpacing: '0.05em',
-                              py: 1, borderBottom: `1px solid ${alpha(COLORS.teal, 0.15)}`
-                            }}>
-                              {h}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {recentBookings.map((b: any) => {
-                          const sc = bookingStatus[b.status] || { label: b.status, color: COLORS.navy, bg: alpha(COLORS.navy, 0.08) };
-                          return (
-                            <TableRow key={b.id} sx={{
-                              '&:last-child td': { borderBottom: 0 },
-                              '&:hover td': { bgcolor: alpha(COLORS.teal, 0.02) },
-                            }}>
-                              <TableCell sx={{ py: 1.2, borderColor: alpha(COLORS.teal, 0.1) }}>
-                                <Typography sx={{ fontSize: 13, fontWeight: 600, color: COLORS.navy }}>
-                                  {b.trip?.title?.substring(0, 22)}{(b.trip?.title?.length || 0) > 22 ? '…' : ''}
-                                </Typography>
-                              </TableCell>
-                              <TableCell sx={{ py: 1.2, borderColor: alpha(COLORS.teal, 0.1) }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <Avatar sx={{ width: 26, height: 26, bgcolor: COLORS.navy, fontSize: 10, color: COLORS.white }}>
-                                    {b.user?.first_name?.[0]}{b.user?.last_name?.[0]}
-                                  </Avatar>
-                                  <Typography sx={{ fontSize: 12, color: alpha(COLORS.navy, 0.7) }}>
-                                    {b.user?.first_name} {b.user?.last_name}
-                                  </Typography>
-                                </Box>
-                              </TableCell>
-                              <TableCell sx={{ py: 1.2, borderColor: alpha(COLORS.teal, 0.1) }}>
-                                <Typography sx={{ fontSize: 13, fontWeight: 700, color: COLORS.teal }}>
-                                  {b.total_price} {b.currency}
-                                </Typography>
-                              </TableCell>
-                              <TableCell sx={{ py: 1.2, borderColor: alpha(COLORS.teal, 0.1) }}>
-                                <Chip label={sc.label} size="small" sx={{
-                                  bgcolor: sc.bg, color: sc.color, fontWeight: 700,
-                                  fontSize: 11, height: 22, borderRadius: 6,
-                                }} />
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-              </CardContent>
-            </SCard>
-          </Grid>
-
-          {/* Recent reviews */}
-          <Grid xs={12} lg={5}>
-            <SCard sx={{ height: '100%' }}>
-              <CardContent sx={{ p: '20px 24px !important' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-                  <Typography sx={{ fontSize: 15, fontWeight: 600, color: COLORS.navy }}>Avis récents</Typography>
-                  <Button size="small" endIcon={<ArrowForward sx={{ fontSize: 12 }} />}
-                    onClick={() => navigate('/organizer/reviews')}
-                    sx={{
-                      fontSize: 12, textTransform: 'none', color: COLORS.teal, fontWeight: 600,
-                      p: 0, minWidth: 0, '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' }
-                    }}>
-                    Gérer
-                  </Button>
-                </Box>
-
-                {stats.pending_reviews > 0 && (
-                  <Box sx={{
-                    display: 'flex', alignItems: 'center', gap: 1, mb: 2,
-                    p: '10px 12px', borderRadius: 8,
-                    bgcolor: alpha(COLORS.amber, 0.08), border: `1px solid ${alpha(COLORS.amber, 0.2)}`
-                  }}>
-                    <HourglassEmpty sx={{ fontSize: 14, color: COLORS.amber }} />
-                    <Typography sx={{ fontSize: 12, color: COLORS.amber, fontWeight: 600 }}>
-                      {stats.pending_reviews} avis en attente de validation
-                    </Typography>
-                  </Box>
-                )}
-
-                {recentReviews.length === 0 ? (
-                  <Box sx={{ textAlign: 'center', py: 5 }}>
-                    <Star sx={{ fontSize: 36, color: alpha(COLORS.teal, 0.3), mb: 1 }} />
-                    <Typography sx={{ fontSize: 13, color: alpha(COLORS.navy, 0.6) }}>Aucun avis récent</Typography>
-                  </Box>
-                ) : (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    {recentReviews.map((r: any) => {
-                      const rc = reviewStatus[r.status] || { label: r.status, color: COLORS.navy, bg: alpha(COLORS.navy, 0.08) };
-                      return (
-                        <Box key={r.id} sx={{
-                          p: '12px 14px', borderRadius: 10,
-                          border: `1px solid ${alpha(COLORS.teal, 0.1)}`,
-                          transition: 'border-color 0.15s',
-                          '&:hover': { borderColor: alpha(COLORS.teal, 0.4) }
-                        }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 0.8 }}>
-                            <Avatar sx={{ width: 28, height: 28, bgcolor: COLORS.navy, fontSize: 10, color: COLORS.white }}>
-                              {r.user?.first_name?.[0]}{r.user?.last_name?.[0]}
-                            </Avatar>
-                            <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Typography sx={{ fontSize: 12, fontWeight: 600, color: COLORS.navy }}>
-                                {r.user?.first_name} {r.user?.last_name}
-                              </Typography>
-                              <Typography sx={{
-                                fontSize: 11, color: alpha(COLORS.navy, 0.6),
-                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                              }}>
-                                {r.trip?.title}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4, flexShrink: 0 }}>
-                              <Star sx={{ fontSize: 13, color: COLORS.amber }} />
-                              <Typography sx={{ fontSize: 12, fontWeight: 700, color: COLORS.navy }}>{r.rating}</Typography>
-                            </Box>
-                          </Box>
-                          {r.comment && (
-                            <Typography sx={{
-                              fontSize: 12, color: alpha(COLORS.navy, 0.7), lineHeight: 1.5, mb: 1,
-                              display: '-webkit-box', WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical', overflow: 'hidden'
-                            }}>
-                              {r.comment}
-                            </Typography>
-                          )}
-                          <Chip label={rc.label} size="small" sx={{
-                            bgcolor: rc.bg, color: rc.color, fontWeight: 700,
-                            fontSize: 10, height: 20, borderRadius: 5,
-                          }} />
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                )}
               </CardContent>
             </SCard>
           </Grid>

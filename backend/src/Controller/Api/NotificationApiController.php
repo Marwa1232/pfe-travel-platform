@@ -54,7 +54,16 @@ class NotificationApiController extends AbstractController
             ['createdAt' => 'DESC']
         );
 
-        return $this->json($notifications, Response::HTTP_OK, [], ['groups' => 'notification:read']);
+        $data = array_map(fn($n) => [
+            'id'        => $n->getId(),
+            'title'     => $n->getTitle(),
+            'message'   => $n->getMessage(),
+            'type'      => $n->getType(),
+            'isRead'    => $n->isRead(),   // camelCase garanti
+            'createdAt' => $n->getCreatedAt()?->format('Y-m-d H:i:s'),
+        ], $notifications);
+
+        return $this->json($data);
     }
 
     #[Route('/unread-count', name: 'api_notifications_unread_count', methods: ['GET'])]
@@ -68,6 +77,28 @@ class NotificationApiController extends AbstractController
         $count = $this->notificationService->getUnreadCount($user);
 
         return $this->json(['unreadCount' => $count]);
+    }
+
+    #[Route('/read-all', name: 'api_notifications_read_all', methods: ['PATCH'])]
+    public function markAllAsRead(Request $request): JsonResponse
+    {
+        $user = $this->getCurrentUser($request);
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $notifications = $this->em->getRepository(Notification::class)->findBy([
+            'user' => $user,
+            'isRead' => false,
+        ]);
+
+        foreach ($notifications as $notification) {
+            $notification->setIsRead(true);
+        }
+
+        $this->em->flush();
+
+        return $this->json(['message' => 'All notifications marked as read']);
     }
 
     #[Route('/{id}/read', name: 'api_notifications_read', methods: ['PATCH'])]
@@ -92,27 +123,5 @@ class NotificationApiController extends AbstractController
         $this->em->flush();
 
         return $this->json(['message' => 'Notification marked as read']);
-    }
-
-    #[Route('/read-all', name: 'api_notifications_read_all', methods: ['PATCH'])]
-    public function markAllAsRead(Request $request): JsonResponse
-    {
-        $user = $this->getCurrentUser($request);
-        if (!$user) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $notifications = $this->em->getRepository(Notification::class)->findBy([
-            'user' => $user,
-            'isRead' => false,
-        ]);
-
-        foreach ($notifications as $notification) {
-            $notification->setIsRead(true);
-        }
-
-        $this->em->flush();
-
-        return $this->json(['message' => 'All notifications marked as read']);
     }
 }

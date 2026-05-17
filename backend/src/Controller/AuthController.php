@@ -49,8 +49,6 @@ class AuthController extends AbstractController
         $user->setLastName($data['last_name'] ?? '');
         $user->setPhone($data['phone'] ?? null);
         $user->setCountry($data['country'] ?? 'Tunisia');
-        $user->setPreferredLanguage($data['preferred_language'] ?? 'fr');
-        $user->setPreferredCurrency($data['preferred_currency'] ?? 'TND');
 
         $roleUser = $this->em->getRepository(Role::class)->findOneBy(['name' => 'ROLE_USER']);
         if ($roleUser) {

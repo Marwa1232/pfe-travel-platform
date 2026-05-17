@@ -22,7 +22,7 @@ import {
   Send,
   ExpandMore,
   ExpandLess,
-  Verified,
+  Reply,
 } from '@mui/icons-material';
 import { reviewAPI } from '../services/api';
 import { useSelector } from 'react-redux';
@@ -95,6 +95,8 @@ interface Review {
   rating: number;
   comment: string | null;
   status: string;
+  organizer_response?: string | null;
+  response_date?: string | null;
   created_at: string;
   user: {
     id: number;
@@ -106,11 +108,25 @@ interface Review {
 interface TripReviewsProps {
   tripId: number;
   tripTitle?: string;
+  /**
+   * Date de fin du voyage (ISO string). Si fourni, le formulaire d'avis
+   * ne s'affiche que si cette date est passée.
+   */
+  tripEndDate?: string | null;
+  /**
+   * true = l'utilisateur a une réservation confirmée/complétée pour ce voyage
+   */
+  hasCompletedBooking?: boolean;
 }
 
-const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
+const TripReviews: React.FC<TripReviewsProps> = ({
+  tripId,
+  tripTitle,
+  tripEndDate,
+  hasCompletedBooking = false,
+}) => {
   const { token, user } = useSelector((state: RootState) => state.auth);
-  
+
   const [reviews, setReviews] = useState<Review[]>([]);
   const [avgRating, setAvgRating] = useState(0);
   const [total, setTotal] = useState(0);
@@ -118,10 +134,14 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
+
   const [rating, setRating] = useState<number | null>(null);
   const [comment, setComment] = useState('');
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
+  const [showForm, setShowForm] = useState(false);
+
+  // Le voyage est-il terminé ?
+  const tripEnded = tripEndDate ? new Date(tripEndDate) < new Date() : false;
 
   useEffect(() => {
     loadReviews();
@@ -143,7 +163,7 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!rating) {
       setError('Veuillez sélectionner une note');
       return;
@@ -159,19 +179,20 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
         rating,
         comment: comment.trim() || undefined,
       });
-      
-      setSuccess('Votre avis a été soumis et est en attente de validation.');
+
+      setSuccess('Votre avis a été soumis avec succès.');
       setRating(null);
       setComment('');
+      setShowForm(false);
       loadReviews();
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Erreur lors de la soumission';
       const errorCode = err.response?.data?.code;
-      
       if (errorCode === 'NO_BOOKING') {
         setError('Vous devez avoir réservé ce voyage pour laisser un avis');
+      } else if (errorCode === 'TRIP_NOT_ENDED') {
+        setError('Vous ne pouvez laisser un avis qu\'après la fin du voyage');
       } else {
-        setError(errorMessage);
+        setError(err.response?.data?.error || 'Erreur lors de la soumission');
       }
     } finally {
       setSubmitting(false);
@@ -179,10 +200,7 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
   };
 
   const handleDelete = async (reviewId: number) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer votre avis?')) {
-      return;
-    }
-
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer votre avis?')) return;
     try {
       await reviewAPI.deleteReview(reviewId);
       loadReviews();
@@ -194,11 +212,7 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
   const toggleExpand = (reviewId: number) => {
     setExpandedReviews(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(reviewId)) {
-        newSet.delete(reviewId);
-      } else {
-        newSet.add(reviewId);
-      }
+      newSet.has(reviewId) ? newSet.delete(reviewId) : newSet.add(reviewId);
       return newSet;
     });
   };
@@ -211,45 +225,41 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
 
   const userReview = token ? reviews.find(r => r.user.id === user?.id) : null;
 
-  const getInitials = (firstName?: string, lastName?: string) => {
-    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
-  };
+  const getInitials = (firstName?: string, lastName?: string) =>
+    `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return COLORS.teal;
-      case 'pending': return COLORS.amber;
-      default: return COLORS.navy;
+      case 'pending':  return COLORS.amber;
+      default:         return COLORS.navy;
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'approved': return 'Approuvé';
-      case 'pending': return 'En attente';
-      default: return status;
+      case 'pending':  return 'En attente';
+      default:         return status;
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress size={40} sx={{ color: COLORS.teal }} />
-      </Box>
+      <StyledPaper>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress size={32} sx={{ color: COLORS.teal }} />
+        </Box>
+      </StyledPaper>
     );
   }
 
   return (
     <StyledPaper>
-      <Typography variant="h5" fontWeight={800} sx={{ color: COLORS.navy, mb: 3, letterSpacing: '-0.02em' }}>
+      <Typography variant="h5" fontWeight={800} sx={{ color: COLORS.navy, mb: 3, letterSpacing: '-0.01em' }}>
         Avis et notes
       </Typography>
 
@@ -275,12 +285,10 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
                 <LinearProgress
                   variant="determinate"
                   value={percentage}
-                  sx={{ 
-                    flex: 1, 
-                    height: 8, 
-                    borderRadius: 4,
+                  sx={{
+                    flex: 1, height: 8, borderRadius: 4,
                     backgroundColor: alpha(COLORS.teal, 0.1),
-                    '& .MuiLinearProgress-bar': { backgroundColor: COLORS.teal, borderRadius: 4 }
+                    '& .MuiLinearProgress-bar': { backgroundColor: COLORS.teal, borderRadius: 4 },
                   }}
                 />
                 <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.5), width: 30 }}>
@@ -304,101 +312,143 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
         </Fade>
       )}
 
-      {/* Review Form */}
+      {/* ── ZONE AVIS UTILISATEUR ─────────────────────────────── */}
       {token && !userReview && (
-        <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
-          <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, mb: 2 }}>
-            Laisser un avis
-          </Typography>
-          
-          {error && (
+        <>
+          {/* Conditions non remplies : voyage pas encore terminé */}
+          {hasCompletedBooking && !tripEnded && (
             <Fade in>
-              <Alert severity="error" sx={{ mb: 2, borderRadius: 1, bgcolor: alpha(COLORS.amber, 0.05), borderLeft: `4px solid ${COLORS.amber}` }} onClose={() => setError(null)}>
-                {error}
-              </Alert>
-            </Fade>
-          )}
-          
-          {success && (
-            <Fade in>
-              <Alert severity="success" sx={{ mb: 2, borderRadius: 1, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }} onClose={() => setSuccess(null)}>
-                {success}
+              <Alert
+                severity="info"
+                sx={{ mb: 3, borderRadius: 10, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }}
+              >
+                Vous pourrez laisser un avis une fois le voyage terminé.
               </Alert>
             </Fade>
           )}
 
-          <RatingBox>
-            <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Note:</Typography>
-            <Rating
-              value={rating}
-              onChange={(_, newValue) => setRating(newValue)}
-              size="large"
-              sx={{ '& .MuiRating-iconFilled': { color: COLORS.amber } }}
-            />
-            {rating && (
-              <Chip 
-                label={`${rating}/5`} 
-                size="small"
-                sx={{ 
-                  bgcolor: alpha(COLORS.amber, 0.1), 
-                  color: COLORS.amber, 
-                  fontWeight: 600, 
-                  borderRadius: 8 
-                }} 
-                icon={<Star sx={{ color: COLORS.amber }} />}
-              />
-            )}
-          </RatingBox>
+          {/* Pas de réservation */}
+          {!hasCompletedBooking && (
+            <Fade in>
+              <Alert
+                severity="warning"
+                sx={{ mb: 3, borderRadius: 10, bgcolor: alpha(COLORS.amber, 0.05), borderLeft: `4px solid ${COLORS.amber}` }}
+              >
+                Seuls les voyageurs ayant effectué ce voyage peuvent laisser un avis.
+              </Alert>
+            </Fade>
+          )}
 
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            placeholder="Partagez votre expérience ..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            sx={{ 
-              mb: 2,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                '&:hover fieldset': { borderColor: COLORS.teal },
-                '&.Mui-focused fieldset': { borderColor: COLORS.teal },
-              },
-            }}
-          />
+          {/* Bouton pour afficher le formulaire (voyage terminé + réservation OK) */}
+          {hasCompletedBooking && tripEnded && !showForm && (
+            <Fade in>
+              <Box sx={{ mb: 3, textAlign: 'center' }}>
+                <GradientButton
+                  startIcon={<Star />}
+                  onClick={() => setShowForm(true)}
+                >
+                  Laisser un avis
+                </GradientButton>
+              </Box>
+            </Fade>
+          )}
 
-          <GradientButton
-            type="submit"
-            disabled={!rating || submitting}
-            startIcon={submitting ? <CircularProgress size={20} sx={{ color: COLORS.white }} /> : <Send />}
-          >
-            {submitting ? 'Envoi...' : 'Soumettre'}
-          </GradientButton>
-        </Box>
+          {/* Formulaire d'avis */}
+          {hasCompletedBooking && tripEnded && showForm && (
+            <Fade in>
+              <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4, p: 2.5, borderRadius: 12, border: `1px solid ${alpha(COLORS.teal, 0.15)}`, bgcolor: alpha(COLORS.teal, 0.02) }}>
+                <Typography variant="h6" fontWeight={700} sx={{ color: COLORS.navy, mb: 2 }}>
+                  Votre avis sur ce voyage
+                </Typography>
+
+                {error && (
+                  <Fade in>
+                    <Alert severity="error" sx={{ mb: 2, borderRadius: 10 }} onClose={() => setError(null)}>
+                      {error}
+                    </Alert>
+                  </Fade>
+                )}
+
+                {success && (
+                  <Fade in>
+                    <Alert severity="success" sx={{ mb: 2, borderRadius: 10 }} onClose={() => setSuccess(null)}>
+                      {success}
+                    </Alert>
+                  </Fade>
+                )}
+
+                <RatingBox>
+                  <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.6) }}>Note :</Typography>
+                  <Rating
+                    value={rating}
+                    onChange={(_, newValue) => setRating(newValue)}
+                    size="large"
+                    sx={{ '& .MuiRating-iconFilled': { color: COLORS.amber } }}
+                  />
+                  {rating && (
+                    <Chip
+                      label={`${rating}/5`}
+                      size="small"
+                      sx={{ bgcolor: alpha(COLORS.amber, 0.1), color: COLORS.amber, fontWeight: 600, borderRadius: 8 }}
+                      icon={<Star sx={{ color: COLORS.amber }} />}
+                    />
+                  )}
+                </RatingBox>
+
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="Partagez votre expérience..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  sx={{
+                    mb: 2,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      '&:hover fieldset': { borderColor: COLORS.teal },
+                      '&.Mui-focused fieldset': { borderColor: COLORS.teal },
+                    },
+                  }}
+                />
+
+                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                  <GradientButton
+                    type="submit"
+                    disabled={!rating || submitting}
+                    startIcon={submitting ? <CircularProgress size={18} sx={{ color: COLORS.white }} /> : <Send />}
+                  >
+                    {submitting ? 'Envoi...' : 'Soumettre'}
+                  </GradientButton>
+                  <Button
+                    variant="text"
+                    onClick={() => { setShowForm(false); setError(null); }}
+                    sx={{ color: alpha(COLORS.navy, 0.5), textTransform: 'none', borderRadius: 10 }}
+                  >
+                    Annuler
+                  </Button>
+                </Box>
+              </Box>
+            </Fade>
+          )}
+        </>
       )}
 
-      {/* User review status alert */}
+      {/* Message si l'utilisateur a déjà un avis */}
       {token && userReview && (
         <Fade in>
-          <Alert 
-            severity={userReview.status === 'approved' ? 'success' : 'warning'} 
-            sx={{ 
-              mb: 3, 
-              borderRadius: 10,
-              bgcolor: userReview.status === 'approved' ? alpha(COLORS.teal, 0.05) : alpha(COLORS.amber, 0.05),
-              borderLeft: `4px solid ${userReview.status === 'approved' ? COLORS.teal : COLORS.amber}`,
-            }}
+          <Alert
+            severity="success"
+            sx={{ mb: 3, borderRadius: 10, bgcolor: alpha(COLORS.teal, 0.05), borderLeft: `4px solid ${COLORS.teal}` }}
           >
-            {userReview.status === 'approved' 
-              ? 'Merci pour votre avis!' 
-              : 'Votre avis est en attente de validation par l\'organisateur.'}
+            Merci pour votre avis !
           </Alert>
         </Fade>
       )}
 
       {!token && (
         <Fade in>
-          <Alert severity="warning" sx={{ mb: 3, borderRadius: 1, bgcolor: alpha(COLORS.amber, 0.05), borderLeft: `4px solid ${COLORS.amber}` }}>
+          <Alert severity="warning" sx={{ mb: 3, borderRadius: 10, bgcolor: alpha(COLORS.amber, 0.05), borderLeft: `4px solid ${COLORS.amber}` }}>
             Connectez-vous pour laisser un avis.
           </Alert>
         </Fade>
@@ -417,34 +467,33 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
               <Fade in key={review.id} timeout={300}>
                 <ReviewItem>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, flex: 1 }}>
                       <Avatar sx={{ bgcolor: isOwn ? COLORS.teal : alpha(COLORS.navy, 0.7), color: COLORS.white }}>
                         {getInitials(review.user.first_name, review.user.last_name)}
                       </Avatar>
-                      <Box>
+                      <Box sx={{ flex: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
                           <Typography variant="subtitle1" fontWeight={700} sx={{ color: COLORS.navy }}>
                             {review.user.first_name} {review.user.last_name}
                           </Typography>
                           <Rating value={review.rating} readOnly size="small" sx={{ '& .MuiRating-iconFilled': { color: COLORS.amber } }} />
                           {isOwn && (
-                            <StatusChip 
-                              label={getStatusLabel(review.status)} 
+                            <StatusChip
+                              label={getStatusLabel(review.status)}
                               size="small"
                               sx={{ bgcolor: alpha(getStatusColor(review.status), 0.1), color: getStatusColor(review.status) }}
                             />
                           )}
                         </Box>
-                        
+
                         {review.comment ? (
                           <>
                             <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.7), lineHeight: 1.6 }}>
-                              {expandedReviews.has(review.id) 
-                                ? review.comment 
-                                : review.comment.length > 150 
+                              {expandedReviews.has(review.id)
+                                ? review.comment
+                                : review.comment.length > 150
                                   ? review.comment.substring(0, 150) + '...'
-                                  : review.comment
-                              }
+                                  : review.comment}
                             </Typography>
                             {review.comment.length > 150 && (
                               <Button
@@ -458,14 +507,40 @@ const TripReviews: React.FC<TripReviewsProps> = ({ tripId, tripTitle }) => {
                             )}
                           </>
                         ) : null}
-                        
+
+                        {/* ── Réponse de l'organisateur */}
+                        {review.organizer_response && (
+                          <Box
+                            sx={{
+                              mt: 1.5, p: 1.5, borderRadius: 10,
+                              bgcolor: alpha(COLORS.teal, 0.04),
+                              borderLeft: `3px solid ${COLORS.teal}`,
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5 }}>
+                              <Reply sx={{ fontSize: 14, color: COLORS.teal }} />
+                              <Typography variant="caption" fontWeight={700} sx={{ color: COLORS.teal }}>
+                                Réponse de l'organisateur
+                              </Typography>
+                              {review.response_date && (
+                                <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.4) }}>
+                                  · {formatDate(review.response_date)}
+                                </Typography>
+                              )}
+                            </Box>
+                            <Typography variant="body2" sx={{ color: alpha(COLORS.navy, 0.7), fontStyle: 'italic', lineHeight: 1.5 }}>
+                              {review.organizer_response}
+                            </Typography>
+                          </Box>
+                        )}
+
                         <Typography variant="caption" sx={{ color: alpha(COLORS.navy, 0.5), mt: 1, display: 'block' }}>
                           {formatDate(review.created_at)}
                         </Typography>
                       </Box>
                     </Box>
 
-                    {/* Delete button - only for own review */}
+                    {/* Delete button - seulement pour son propre avis */}
                     {token && review.user.id === user?.id && (
                       <IconButton
                         size="small"

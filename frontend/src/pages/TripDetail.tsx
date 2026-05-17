@@ -355,6 +355,10 @@ const TripDetail: React.FC = () => {
     allowRebooking: boolean;
   } | null>(null);
 
+  // Vérifier si l'utilisateur a réservé et terminé ce voyage
+  const [hasCompletedBooking, setHasCompletedBooking] = useState(false);
+  const [tripEndDate, setTripEndDate] = useState<string | null>(null);
+
   useEffect(() => {
     if (id) loadTrip();
   }, [id]);
@@ -362,6 +366,13 @@ const TripDetail: React.FC = () => {
   useEffect(() => {
     validateBooking();
   }, [selectedSession, participantCount]);
+
+  // Vérifier si l'utilisateur a réservé et terminé ce voyage
+  useEffect(() => {
+    if (trip && token) {
+      checkUserBooking();
+    }
+  }, [trip, token]);
 
   const loadTrip = async () => {
     try {
@@ -376,6 +387,25 @@ const TripDetail: React.FC = () => {
       setError(err.response?.data?.error || 'Erreur lors du chargement du voyage');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkUserBooking = async () => {
+    try {
+      const response = await bookingAPI.getByTrip(Number(id));
+      const { booking, found } = response.data;
+      
+      if (found && booking && ['COMPLETED', 'CONFIRMED'].includes(booking.status)) {
+        setHasCompletedBooking(true);
+        if (booking.trip_session?.end_date) {
+          setTripEndDate(booking.trip_session.end_date);
+        }
+      } else {
+        setHasCompletedBooking(false);
+      }
+    } catch (error) {
+      console.error('Error checking user booking:', error);
+      setHasCompletedBooking(false);
     }
   };
 
@@ -800,7 +830,12 @@ const TripDetail: React.FC = () => {
 
               {/* Reviews - Affiché seulement si showBookingAndReviews est true (USER ou non connecté) */}
               {showBookingAndReviews && (
-                <TripReviews tripId={Number(id)} tripTitle={trip.title} />
+                <TripReviews
+                  tripId={Number(id)}
+                  tripTitle={trip.title}
+                  hasCompletedBooking={hasCompletedBooking}
+                  tripEndDate={tripEndDate}
+                />
               )}
 
               {/* Message pour les admins/organisateurs */}

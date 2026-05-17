@@ -119,7 +119,7 @@ const LogoText = styled(Typography)(({ theme }) => ({
 const UserAvatar = styled(Avatar, {
   shouldForwardProp: p => p !== 'hasCustomImage',
 })<{ hasCustomImage?: boolean }>(({ hasCustomImage }) => ({
-  width: 42, height: 42, cursor: 'pointer',
+  width: 50, height: 50, cursor: 'pointer',
   borderRadius: '50% !important',
   overflow: 'hidden !important',
   border: '2px solid transparent',
@@ -258,8 +258,13 @@ const Navbar: React.FC = () => {
       if (!res.ok) return;
       const data = await res.json();
       const notifs = Array.isArray(data) ? data : data['hydra:member'] || [];
-      setNotifications(notifs);
-      setUnreadCount(notifs.filter((n: any) => !n.isRead).length);
+      // Normalise isRead : Symfony peut retourner is_read (snake_case) ou isRead (camelCase)
+      const normalized = notifs.map((n: any) => ({
+        ...n,
+        isRead: n.isRead ?? n.is_read ?? false,
+      }));
+      setNotifications(normalized);
+      setUnreadCount(normalized.filter((n: any) => !n.isRead).length);
     } catch { }
   };
 
@@ -625,7 +630,7 @@ const Navbar: React.FC = () => {
               display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <UserAvatar hasCustomImage={hasCustomPhoto}
                 src={hasCustomPhoto && profilePhotoUrl ? profilePhotoUrl : undefined}
-                sx={{ width: 38, height: 38, fontSize: '0.85rem' }}>
+                sx={{ width: 70, height: 70, fontSize: '0.85rem' }}>
                 {user?.first_name?.[0]}{user?.last_name?.[0]}
               </UserAvatar>
               <Box sx={{ minWidth: 0 }}>
@@ -748,7 +753,16 @@ const Navbar: React.FC = () => {
 
         {notifications.length > 0 && (
           <Box sx={{ p: 1.5, borderTop: `1px solid ${alpha(COLORS.teal, 0.1)}`, textAlign: 'center' }}>
-            <Button size="small" onClick={() => { setNotifAnchor(null); }}
+            <Button size="small" onClick={async () => {
+              try {
+                await fetch('http://localhost:8000/api/notifications/read-all', {
+                  method: 'PATCH',
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                fetchNotifications();
+              } catch {}
+              setNotifAnchor(null);
+            }}
               sx={{ textTransform: 'none', color: COLORS.teal, fontWeight: 600, fontSize: '0.82rem' }}>
               Marquer tout comme lu
             </Button>

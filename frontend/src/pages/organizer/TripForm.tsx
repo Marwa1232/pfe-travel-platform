@@ -272,7 +272,6 @@ const TripForm: React.FC = () => {
     tags: [] as string[],
     start_date: '',
     end_date: '',
-    meeting_point: '',
     meeting_address: '',
     max_places: '',
     program: [] as { day: number; title: string; description: string }[],
@@ -341,7 +340,6 @@ const TripForm: React.FC = () => {
         tags: trip.tags || [],
         start_date: session.start_date ? new Date(session.start_date).toISOString().split('T')[0] : '',
         end_date: session.end_date ? new Date(session.end_date).toISOString().split('T')[0] : '',
-        meeting_point: trip.meeting_point || '',
         meeting_address: trip.meeting_address || '',
         max_places: session.max_capacity?.toString() || '',
         base_price: trip.base_price?.toString() || '',
@@ -617,7 +615,6 @@ const TripForm: React.FC = () => {
         tags: formData.tags || [],
         inclusions: formData.inclusions || [],
         exclusions: formData.exclusions || [],
-        meeting_point: formData.meeting_point?.trim() || null,
         meeting_address: formData.meeting_address?.trim() || null,
         category: formData.category ? parseInt(formData.category) : null,
         destination: formData.destination ? parseInt(formData.destination) : null,
@@ -828,16 +825,7 @@ const TripForm: React.FC = () => {
                     inputProps={{ min: formData.start_date || today }}
                   />
                 </Grid>
-                <Grid xs={12}>
-                  <StyledTextField
-                    fullWidth
-                    label="Point de rendez-vous"
-                    name="meeting_point"
-                    value={formData.meeting_point}
-                    onChange={handleChange}
-                    placeholder="Ex: Agence de voyage, Gare..."
-                  />
-                </Grid>
+              
                 <Grid xs={12}>
                   <StyledTextField
                     fullWidth
